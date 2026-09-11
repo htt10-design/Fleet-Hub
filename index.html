@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FleetHub - Fahrzeug-Management Pro</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation / Header -->
+  <header class="app-header">
+    <div class="logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
+        <circle cx="7" cy="17" r="2"/>
+        <path d="M9 17h6"/>
+        <circle cx="17" cy="17" r="2"/>
+      </svg>
+      <span>FleetHub</span>
+    </div>
+    <div class="vehicle-selector-wrapper">
+      <select id="vehicleSelect" onchange="switchVehicle()"></select>
+      <button class="btn btn-secondary btn-sm" onclick="openVehicleModal()">+ Fahrzeug</button>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <!-- Sidebar / Nav -->
+    <nav class="sidebar">
+      <button class="nav-item active" onclick="showTab('dashboard', this)"><span>Dashboard</span></button>
+      <button class="nav-item" onclick="showTab('fuel', this)"><span>Tanken & Scan</span></button>
+      <button class="nav-item" onclick="showTab('service', this)"><span>Wartung & Reparatur</span></button>
+      <button class="nav-item" onclick="showTab('history', this)"><span>Historie & Einträge</span></button>
+      <button class="nav-item" onclick="showTab('settings', this)"><span>Fahrzeugdaten</span></button>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+
+      <!-- DASHBOARD TAB -->
+      <section id="tab-dashboard" class="tab-content active">
+        <div class="vehicle-banner-card card">
+          <div class="vehicle-banner-content">
+            <div class="vehicle-image-wrapper" id="vehicleImageContainer">
+              <div class="vehicle-image-placeholder" id="vehicleImagePlaceholder">📷 Kein Bild hinterlegt</div>
+              <img id="vehicleDashboardImage" class="vehicle-dash-img" src="" alt="Fahrzeugbild" style="display:none;">
+            </div>
+            <div class="vehicle-banner-info">
+              <div class="banner-title-row">
+                <h1 id="dashVehicleName">Fahrzeug Name</h1>
+                <span class="badge badge-plate" id="dashVehiclePlate">KI-XX 123</span>
+              </div>
+              <div class="banner-specs-row">
+                <span id="dashVehicleFuel">Kraftstoff: -</span> | 
+                <span id="dashVehicleType">Typ: KM</span> | 
+                <span id="dashVehicleVin">VIN: -</span>
+              </div>
+              <p class="banner-notes" id="dashVehicleSpecs">Keine weiteren Spezifikationen eingetragen.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">Aktueller Stand</span>
+            <div class="kpi-value" id="kpi-mileage">0 km</div>
+            <span class="kpi-sub" id="kpi-mileage-unit">Kilometerstand</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Durchschn. Verbrauch</span>
+            <div class="kpi-value" id="kpi-consumption">0.0 <small>L/100km</small></div>
+            <span class="kpi-sub">Basiert auf Tankungen</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Gesamtkosten</span>
+            <div class="kpi-value" id="kpi-total-cost">0,00 €</div>
+            <span class="kpi-sub">Sprit, Service & TÜV</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Kosten / 100 km</span>
+            <div class="kpi-value" id="kpi-cost-per-km">0,00 €</div>
+            <span class="kpi-sub">Reine Kraftstoffkosten</span>
+          </div>
+        </div>
+
+        <div class="card card-warning" id="status-reminders-card">
+          <h3>Anstehende Termine & Wartungen</h3>
+          <ul class="reminder-list" id="reminderList"></ul>
+        </div>
+
+        <div class="charts-grid">
+          <div class="card">
+            <h3>Verbrauchsverlauf</h3>
+            <div class="chart-container">
+              <canvas id="consumptionChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Kostenverteilung</h3>
+            <div class="chart-container">
+              <canvas id="costPieChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FUEL TAB -->
+      <section id="tab-fuel" class="tab-content">
+        <div class="grid-2col">
+          <div class="card">
+            <h2 id="fuelFormTitle">Tankung eintragen</h2>
+            <div class="ocr-scanner-box">
+              <div class="ocr-actions">
+                <label class="btn btn-scan">
+                  📷 Foto aufnehmen / Beleg wählen
+                  <input type="file" id="ocrFileInput" accept="image/*" onchange="handleOCRScan(event)">
+                </label>
+              </div>
+              <div id="ocrStatus" class="ocr-status" style="display: none;">
+                <div class="spinner"></div>
+                <span id="ocrStatusText">Beleg wird analysiert...</span>
+              </div>
+            </div>
+
+            <form id="fuelForm" onsubmit="saveFuelEntry(event)">
+              <input type="hidden" id="fuelEditId">
+              <div class="form-group">
+                <label>Datum</label>
+                <input type="date" id="fuelDate" required>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label id="fuelKmLabel">KM-Stand / Betr.-Std.</label>
+                  <input type="number" step="0.1" id="fuelMileage" required placeholder="z.B. 185000">
+                </div>
+                <div class="form-group">
+                  <label>Getankte Menge (Liter)</label>
+                  <input type="number" step="0.01" id="fuelLiters" required placeholder="z.B. 65.4" oninput="calcFuelFields('liters')">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Gesamtpreis (€)</label>
+                  <input type="number" step="0.01" id="fuelTotalPrice" required placeholder="z.B. 110.50" oninput="calcFuelFields('total')">
+                </div>
+                <div class="form-group">
+                  <label>Preis pro Liter (€)</label>
+                  <input type="number" step="0.001" id="fuelPricePerLiter" placeholder="z.B. 1.689" oninput="calcFuelFields('ppl')">
+                </div>
+              </div>
+              <div class="form-group checkbox-group">
+                <label><input type="checkbox" id="fuelFull" checked> Vollgetankt</label>
+              </div>
+              <div class="form-group checkbox-group">
+                <label><input type="checkbox" id="fuelHasAdditive" onchange="toggleAdditiveInput()"> Zusatzstoff / Additiv zugegeben</label>
+              </div>
+              <div class="form-group" id="fuelAdditiveGroup" style="display: none;">
+                <label>Bezeichnung & Menge des Zusatzes</label>
+                <input type="text" id="fuelAdditiveName" placeholder="z.B. ERC System Reiniger">
+              </div>
+              <div class="form-group">
+                <label>Notizen / Ort</label>
+                <input type="text" id="fuelNotes" placeholder="z.B. Shell Hauptstraße">
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="fuelSubmitBtn">Tankung Speichern</button>
+                <button type="button" class="btn btn-secondary" onclick="resetFuelForm()" id="fuelCancelBtn" style="display:none;">Abbrechen</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>Letzte Tankungen</h3>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Datum</th>
+                    <th>Stand</th>
+                    <th>Liter</th>
+                    <th>Zusatz</th>
+                    <th>Gesamt</th>
+                    <th>Aktion</th>
+                  </tr>
+                </thead>
+                <tbody id="fuelTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SERVICE TAB -->
+      <section id="tab-service" class="tab-content">
+        <div class="grid-2col">
+          <div class="card">
+            <h2 id="serviceFormTitle">Wartung / Reparatur eintragen</h2>
+            <form id="serviceForm" onsubmit="saveServiceEntry(event)">
+              <input type="hidden" id="serviceEditId">
+              <div class="form-group">
+                <label>Kategorie</label>
+                <select id="serviceCategory" required>
+                  <option value="Wartung">Routine-Wartung (Öl, Filter, Zündkerzen)</option>
+                  <option value="Reparatur">Reparatur / Instandsetzung</option>
+                  <option value="TÜV">HU / AU / TÜV</option>
+                  <option value="Sonstiges">Sonstiges / Pflege</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Titel / Bezeichnung</label>
+                <input type="text" id="serviceTitle" required placeholder="z.B. Ölwechsel MB 229.5">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Datum</label>
+                  <input type="date" id="serviceDate" required>
+                </div>
+                <div class="form-group">
+                  <label>KM-Stand / Betr.-Std.</label>
+                  <input type="number" step="0.1" id="serviceMileage" required>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Kosten (€)</label>
+                  <input type="number" step="0.01" id="serviceCost" required placeholder="0.00">
+                </div>
+                <div class="form-group">
+                  <label>Ausführung</label>
+                  <select id="servicePerformer">
+                    <option value="Eigenleistung">Eigenleistung</option>
+                    <option value="Werkstatt">Werkstatt</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Teilenummern & Detaillierte Notizen</label>
+                <textarea id="serviceNotes" rows="4" placeholder="z.B. Teilenummern..."></textarea>
+              </div>
+              <div class="form-group">
+                <label>Bilder / Dokumente anhängen</label>
+                <input type="file" id="serviceImagesInput" accept="image/*" multiple onchange="handleServiceImageUpload(event)">
+                <div id="serviceImagePreviewContainer" class="image-preview-grid"></div>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="serviceSubmitBtn">Eintrag Speichern</button>
+                <button type="button" class="btn btn-secondary" onclick="resetServiceForm()" id="serviceCancelBtn" style="display:none;">Abbrechen</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>Wartungshistorie</h3>
+            <p class="sub-text">Klicke auf einen Eintrag, um alle Details anzuzeigen.</p>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Datum</th>
+                    <th>Kategorie</th>
+                    <th>Titel</th>
+                    <th>Kosten</th>
+                    <th>Aktion</th>
+                  </tr>
+                </thead>
+                <tbody id="serviceTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HISTORY TAB -->
+      <section id="tab-history" class="tab-content">
+        <div class="card">
+          <div class="card-header-flex">
+            <h2>Gesamte Chronik</h2>
+            <div class="filter-tools">
+              <input type="text" id="historySearch" placeholder="Suchen..." oninput="renderHistoryTable()">
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Typ</th>
+                  <th>Datum</th>
+                  <th>Stand</th>
+                  <th>Beschreibung</th>
+                  <th>Betrag</th>
+                  <th>Aktionen</th>
+                </tr>
+              </thead>
+              <tbody id="fullHistoryTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS TAB -->
+      <section id="tab-settings" class="tab-content">
+        <div class="card">
+          <h2>Fahrzeugkonfiguration & Stammdaten</h2>
+
+          <!-- OCR SCAN BOX FÜR FAHRZEUGSCHEIN -->
+          <div class="ocr-scanner-box">
+            <div class="ocr-actions">
+              <label class="btn btn-scan">
+                📄 Fahrzeugschein (Teil I) scannen
+                <input type="file" id="ocrRegistrationInput" accept="image/*" onchange="handleRegistrationScan(event)">
+              </label>
+            </div>
+            <div id="ocrRegStatus" class="ocr-status" style="display: none;">
+              <div class="spinner"></div>
+              <span id="ocrRegStatusText">Fahrzeugschein wird analysiert...</span>
+            </div>
+          </div>
+
+          <form id="vehicleDetailsForm" onsubmit="saveVehicleDetails(event)">
+            <div class="form-group">
+              <label>Fahrzeugfoto hochladen</label>
+              <div class="vehicle-upload-row">
+                <input type="file" id="vehicleImageInput" accept="image/*" onchange="handleVehicleImageUpload(event)">
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeVehicleImage()">Bild entfernen</button>
+              </div>
+              <div class="image-preview-single" id="vehicleImageSettingsPreview"></div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fahrzeugname / Bezeichnung</label>
+                <input type="text" id="vName" required>
+              </div>
+              <div class="form-group">
+                <label>Kennzeichen / ID (A)</label>
+                <input type="text" id="vPlate">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Typ / Einheit</label>
+                <select id="vType">
+                  <option value="km">Straßenfahrzeug (Kilometer / L/100km)</option>
+                  <option value="hours">Boot / Maschine (Betriebsstunden / L/Std)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Kraftstoffart (P.3)</label>
+                <input type="text" id="vFuelType" placeholder="z.B. Benzin Super Plus">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fahrgestellnummer / FIN (E)</label>
+                <input type="text" id="vVin" placeholder="z.B. WDB1240341B******">
+              </div>
+              <div class="form-group">
+                <label>Erstzulassung (B)</label>
+                <input type="date" id="vFirstReg">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>HSN (2.1)</label>
+                <input type="text" id="vHsn" maxlength="4" placeholder="z.B. 0708">
+              </div>
+              <div class="form-group">
+                <label>TSN (2.2)</label>
+                <input type="text" id="vTsn" maxlength="10" placeholder="z.B. 420">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Leistung in PS (P.2 / P.4)</label>
+                <input type="number" id="vPowerHp" placeholder="z.B. 279">
+              </div>
+              <div class="form-group">
+                <label>Anhängelast gebremst (O.1 in kg)</label>
+                <input type="number" id="vTowingBraked" placeholder="z.B. 1900">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Nächster TÜV / Inspektion</label>
+                <input type="month" id="vNextTuev">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Spezifikationen & Technische Daten</label>
+              <textarea id="vSpecs" rows="5"></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Stammdaten Speichern</button>
+              <button type="button" class="btn btn-danger" onclick="deleteCurrentVehicle()">Fahrzeug Löschen</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: NEW VEHICLE -->
+  <div class="modal-overlay" id="vehicleModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Neues Fahrzeug anlegen</h3>
+        <button class="modal-close" onclick="closeVehicleModal()">✕</button>
+      </div>
+      <form onsubmit="createNewVehicle(event)">
+        <div class="form-group">
+          <label>Fahrzeugname</label>
+          <input type="text" id="newVName" required placeholder="z.B. W124 E420">
+        </div>
+        <div class="form-group">
+          <label>Mess-Typ</label>
+          <select id="newVType">
+            <option value="km">Kilometer (Straßenfahrzeug)</option>
+            <option value="hours">Betriebsstunden (Boot / Traktor)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Start-Stand</label>
+          <input type="number" step="0.1" id="newVMileage" value="0" required>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary">Anlegen</button>
+          <button type="button" class="btn btn-secondary" onclick="closeVehicleModal()">Abbrechen</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SERVICE DETAILS -->
+  <div class="modal-overlay" id="serviceDetailModal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3 id="sdTitle">Wartung Details</h3>
+        <button class="modal-close" onclick="closeServiceDetailModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div><strong>Kategorie:</strong> <span id="sdCategory">-</span></div>
+          <div><strong>Datum:</strong> <span id="sdDate">-</span></div>
+          <div><strong>Stand:</strong> <span id="sdMileage">-</span></div>
+          <div><strong>Kosten:</strong> <span id="sdCost">-</span></div>
+          <div><strong>Ausführung:</strong> <span id="sdPerformer">-</span></div>
+        </div>
+        
+        <div class="detail-section">
+          <h4>Notizen & Teilenummern:</h4>
+          <p id="sdNotes" class="detail-notes-box">Keine Notizen vorhanden.</p>
+        </div>
+
+        <div class="detail-section">
+          <h4>Angehängte Bilder & Belege:</h4>
+          <div id="sdImagesContainer" class="detail-image-gallery">
+            <span class="text-muted">Keine Bilder vorhanden.</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="sdEditBtn">Bearbeiten</button>
+        <button class="btn btn-secondary" onclick="closeServiceDetailModal()">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
