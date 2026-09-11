@@ -1,4 +1,6 @@
+/* --- THEME VARIABLES --- */
 :root {
+  /* Dark Theme (Standard) */
   --bg-body: #0f172a;
   --bg-card: #1e293b;
   --bg-sidebar: #0f172a;
@@ -12,18 +14,40 @@
   --accent-success: #10b981;
   --accent-warning: #f59e0b;
   --accent-danger: #ef4444;
+
+  --card-gradient: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  --table-header-bg: rgba(0, 0, 0, 0.2);
+  --table-hover-bg: rgba(255, 255, 255, 0.03);
   
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
   --radius-lg: 16px;
   
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+[data-theme="light"] {
+  --bg-body: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-sidebar: #ffffff;
+  --border-color: #cbd5e1;
+  
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  
+  --accent-primary: #2563eb;
+  --accent-primary-hover: #1d4ed8;
+
+  --card-gradient: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  --table-header-bg: #f8fafc;
+  --table-hover-bg: rgba(0, 0, 0, 0.03);
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -33,6 +57,8 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: background-color 0.2s, color 0.2s;
+  touch-action: manipulation;
 }
 
 /* Header */
@@ -43,36 +69,59 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 1.5rem;
+  padding: 0 1rem;
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   font-weight: 700;
-  font-size: 1.2rem;
-  color: #60a5fa;
+  font-size: 1.15rem;
+  color: #3b82f6;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-theme-toggle {
+  background: var(--bg-body);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-size: 1.1rem;
+  min-width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .vehicle-selector-wrapper {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .vehicle-selector-wrapper select {
   background-color: var(--bg-body);
   color: var(--text-main);
   border: 1px solid var(--border-color);
-  padding: 0.4rem 0.8rem;
+  padding: 0.4rem 0.6rem;
+  height: 40px;
   border-radius: var(--radius-sm);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   outline: none;
+  max-width: 140px;
 }
 
 /* Layout Container */
@@ -81,7 +130,7 @@ body {
   flex: 1;
 }
 
-/* Sidebar */
+/* Sidebar & Navigation */
 .sidebar {
   width: 220px;
   background-color: var(--bg-sidebar);
@@ -90,6 +139,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
 .nav-item {
@@ -102,11 +152,20 @@ body {
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.nav-icon {
+  font-size: 1.2rem;
+  display: none;
 }
 
 .nav-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(37, 99, 235, 0.1);
   color: var(--text-main);
 }
 
@@ -118,7 +177,7 @@ body {
 /* Main Content */
 .main-content {
   flex: 1;
-  padding: 1.5rem;
+  padding: 1.25rem;
   overflow-y: auto;
 }
 
@@ -132,15 +191,15 @@ body {
 
 /* Vehicle Banner (Dashboard) */
 .vehicle-banner-card {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   padding: 1.25rem;
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: var(--card-gradient);
   border: 1px solid var(--border-color);
 }
 
 .vehicle-banner-content {
   display: flex;
-  gap: 1.5rem;
+  gap: 1.25rem;
   align-items: center;
 }
 
@@ -177,13 +236,24 @@ body {
 .banner-title-row {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   margin-bottom: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .banner-title-row h1 {
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   font-weight: 700;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: var(--border-color);
+  color: var(--text-main);
 }
 
 .badge-plate {
@@ -199,8 +269,16 @@ body {
 
 .banner-specs-row {
   font-size: 0.85rem;
-  color: #60a5fa;
-  margin-bottom: 0.5rem;
+  color: var(--accent-primary);
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.banner-vin-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+  font-family: monospace;
 }
 
 .banner-notes {
@@ -212,23 +290,15 @@ body {
 /* Grids & Cards */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
 }
 
 .grid-2col {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-}
-
-@media (max-width: 900px) {
-  .grid-2col { grid-template-columns: 1fr; }
-  .app-container { flex-direction: column; }
-  .sidebar { width: 100%; flex-direction: row; overflow-x: auto; }
-  .vehicle-banner-content { flex-direction: column; align-items: flex-start; }
-  .vehicle-image-wrapper { width: 100%; height: 160px; }
+  gap: 1.25rem;
 }
 
 .card {
@@ -236,7 +306,8 @@ body {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1.25rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
 .card h2, .card h3 {
@@ -255,79 +326,34 @@ body {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 1rem 1.25rem;
+  padding: 0.9rem 1rem;
   display: flex;
   flex-direction: column;
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
 .kpi-label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
 }
 
 .kpi-value {
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--text-main);
 }
 
 .kpi-value small {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
 }
 
 .kpi-sub {
   font-size: 0.75rem;
   color: var(--text-muted);
-  margin-top: 0.25rem;
+  margin-top: 0.2rem;
 }
-
-/* OCR Box */
-.ocr-scanner-box {
-  background-color: rgba(37, 99, 235, 0.1);
-  border: 2px dashed var(--accent-primary);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-  text-align: center;
-  margin-bottom: 1.25rem;
-}
-
-.btn-scan {
-  display: inline-block;
-  background-color: var(--accent-primary);
-  color: #fff;
-  padding: 0.6rem 1.2rem;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.btn-scan input[type="file"] {
-  display: none;
-}
-
-.ocr-status {
-  margin-top: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: #93c5fd;
-}
-
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #93c5fd;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
 
 /* Forms & Inputs */
 .form-group {
@@ -336,7 +362,7 @@ body {
 
 .form-row {
   display: flex;
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 .form-row .form-group {
@@ -350,6 +376,7 @@ label {
   margin-bottom: 0.35rem;
 }
 
+/* 16px Font verhindert automatischen iOS-Zoom */
 input[type="text"],
 input[type="number"],
 input[type="date"],
@@ -360,10 +387,16 @@ textarea {
   background-color: var(--bg-body);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 0.6rem 0.8rem;
+  padding: 0.65rem 0.8rem;
   border-radius: var(--radius-sm);
-  font-size: 0.95rem;
+  font-size: 16px;
   outline: none;
+  min-height: 44px;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+textarea {
+  min-height: 80px;
 }
 
 input:focus, select:focus, textarea:focus {
@@ -373,9 +406,16 @@ input:focus, select:focus, textarea:focus {
 .checkbox-group label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   color: var(--text-main);
   cursor: pointer;
+  min-height: 38px;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent-primary);
 }
 
 .badge-additive {
@@ -386,6 +426,17 @@ input:focus, select:focus, textarea:focus {
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.divider {
+  border: 0;
+  height: 1px;
+  background: var(--border-color);
+  margin: 1.5rem 0;
+}
+
+.backup-section {
+  margin-top: 1rem;
 }
 
 /* Image Upload & Previews */
@@ -415,13 +466,13 @@ input:focus, select:focus, textarea:focus {
   position: absolute;
   top: 2px;
   right: 2px;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0,0,0,0.8);
   color: #fff;
   border: none;
   border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  font-size: 10px;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -432,6 +483,7 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .image-preview-single {
@@ -439,20 +491,26 @@ input:focus, select:focus, textarea:focus {
 }
 
 .image-preview-single img {
-  max-width: 150px;
-  max-height: 100px;
+  max-width: 100%;
+  max-height: 120px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
 }
 
 /* Buttons */
 .btn {
-  padding: 0.6rem 1.2rem;
+  padding: 0.65rem 1.2rem;
   border-radius: var(--radius-sm);
   font-weight: 600;
   border: none;
   cursor: pointer;
   transition: opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  font-size: 0.95rem;
 }
 
 .btn:hover { opacity: 0.9; }
@@ -460,12 +518,18 @@ input:focus, select:focus, textarea:focus {
 .btn-primary { background-color: var(--accent-primary); color: #fff; }
 .btn-secondary { background-color: var(--border-color); color: var(--text-main); }
 .btn-danger { background-color: var(--accent-danger); color: #fff; }
-.btn-sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+.btn-sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; min-height: 36px; }
 
 .form-actions {
   display: flex;
   gap: 0.5rem;
   margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.form-actions .btn {
+  flex: 1;
+  min-width: 140px;
 }
 
 /* Data Tables */
@@ -481,7 +545,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .data-table th {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--table-header-bg);
   color: var(--text-muted);
   padding: 0.75rem;
   border-bottom: 1px solid var(--border-color);
@@ -501,7 +565,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .data-table tr:hover {
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: var(--table-hover-bg);
 }
 
 .card-header-flex {
@@ -509,20 +573,24 @@ input:focus, select:focus, textarea:focus {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filter-tools {
+  width: 100%;
 }
 
 /* Charts */
 .charts-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
-
-@media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
 
 .chart-container {
   position: relative;
-  height: 250px;
+  height: 220px;
   width: 100%;
 }
 
@@ -530,11 +598,12 @@ input:focus, select:focus, textarea:focus {
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(0,0,0,0.7);
+  background-color: rgba(0,0,0,0.75);
   display: none;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 1rem;
 }
 
 .modal-overlay.active { display: flex; }
@@ -543,9 +612,11 @@ input:focus, select:focus, textarea:focus {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  width: 90%;
+  width: 100%;
   max-width: 450px;
-  padding: 1.5rem;
+  padding: 1.25rem;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .modal-lg {
@@ -565,7 +636,8 @@ input:focus, select:focus, textarea:focus {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 1.2rem;
+  font-size: 1.5rem;
+  padding: 0.2rem 0.5rem;
   cursor: pointer;
 }
 
@@ -606,8 +678,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 .gallery-img-wrapper {
-  width: 120px;
-  height: 90px;
+  width: 100px;
+  height: 80px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   border: 1px solid var(--border-color);
@@ -618,11 +690,6 @@ input:focus, select:focus, textarea:focus {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.2s;
-}
-
-.gallery-img-wrapper img:hover {
-  transform: scale(1.05);
 }
 
 .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
@@ -639,5 +706,144 @@ input:focus, select:focus, textarea:focus {
 
 .reminder-list li {
   padding: 0.4rem 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* ==========================================================================
+   MOBILE-OPTIMIERUNGEN & RESPONSIVE RULES (SMARTPHONES)
+   ========================================================================== */
+@media (max-width: 850px) {
+  /* Layout-Anpassung für Mobile (Bottom-Nav) */
+  .app-container { 
+    flex-direction: column; 
+    padding-bottom: 70px; /* Platzhalter für fixierte Bottom Navigation Bar */
+  }
+  
+  .main-content {
+    padding: 0.85rem;
+  }
+
+  /* Bottom Navigation Bar Design */
+  .sidebar { 
+    width: 100%; 
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    z-index: 999;
+    background-color: var(--bg-card);
+    flex-direction: row; 
+    justify-content: space-around;
+    align-items: center;
+    border-right: none;
+    border-top: 1px solid var(--border-color);
+    padding: 0 0.25rem;
+    padding-bottom: env(safe-area-inset-bottom); /* iOS Notch Support */
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
+  }
+
+  .nav-item { 
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 0.3rem 0.2rem;
+    gap: 0.15rem;
+    flex: 1;
+    border-radius: 6px;
+    height: 100%;
+  }
+
+  .nav-icon {
+    display: block;
+  }
+
+  .nav-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  /* Formular & Grid-Anpassungen */
+  .charts-grid,
+  .grid-2col { 
+    grid-template-columns: 1fr; 
+    gap: 1rem;
+  }
+
+  .form-row { 
+    flex-direction: column; 
+    gap: 0; 
+  }
+
+  .vehicle-banner-content { 
+    flex-direction: column; 
+    align-items: stretch; 
+  }
+
+  .vehicle-image-wrapper { 
+    width: 100%; 
+    height: 160px; 
+  }
+
+  .detail-grid { 
+    grid-template-columns: 1fr; 
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr; /* 2-Spalten-Raster für KPI Cards */
+  }
+
+  /* Transformation von Datentabellen zu veränderten Mobile-Cards */
+  .data-table, 
+  .data-table thead, 
+  .data-table tbody, 
+  .data-table th, 
+  .data-table td, 
+  .data-table tr { 
+    display: block; 
+  }
+
+  .data-table thead tr { 
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  .data-table tr {
+    background-color: var(--bg-body);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .data-table td { 
+    border: none;
+    padding: 0.35rem 0;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.88rem;
+  }
+
+  .data-table td:before { 
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    padding-right: 0.5rem;
+  }
+
+  .data-table td:last-child {
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--border-color);
+  }
+
+  .data-table td:last-child:before {
+    content: "";
+  }
 }

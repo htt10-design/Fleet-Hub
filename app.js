@@ -1,6 +1,7 @@
 /* --- STATE MANAGEMENT --- */
 let appData = {
   activeVehicleId: null,
+  theme: "dark",
   vehicles: []
 };
 
@@ -12,55 +13,75 @@ let tempServiceImages = [];
 function initApp() {
   const saved = localStorage.getItem('fleethub_data');
   if (saved) {
-    appData = JSON.parse(saved);
+    try {
+      appData = JSON.parse(saved);
+    } catch (e) {
+      console.error("Fehler beim Laden des Speicherstands, Fallback auf Standardwerte", e);
+      loadDefaultData();
+    }
   } else {
-    // Initialdaten
-    appData = {
-      activeVehicleId: "v1",
-      vehicles: [
-        {
-          id: "v1",
-          name: "Mercedes E420 (W124)",
-          plate: "KI-E 420",
-          type: "km",
-          fuelType: "Super Plus",
-          vin: "WDB1240341B******",
-          firstReg: "1994-05-12",
-          hsn: "0708",
-          tsn: "420",
-          powerHp: 279,
-          towingBraked: 1900,
-          nextTuev: "2027-05",
-          image: "",
-          specs: "Motoröl: MB 229.5 5W-40 (8.0L)\nReifendruck: 2.3 bar / 2.5 bar\nZündkerzen: Bosch F8DC4",
-          fuelEntries: [
-            { id: "f1", date: "2026-08-10", mileage: 184200, liters: 72.5, totalPrice: 130.50, pricePerLiter: 1.80, full: true, hasAdditive: true, additiveName: "ERC Benzoinjection Reiniger", notes: "Aral Kiel" },
-            { id: "f2", date: "2026-08-28", mileage: 184750, liters: 68.0, totalPrice: 122.40, pricePerLiter: 1.80, full: true, hasAdditive: false, additiveName: "", notes: "Shell" }
-          ],
-          serviceEntries: [
-            { 
-              id: "s1", 
-              category: "Wartung", 
-              title: "Ölwechsel + Ölfilter + Luftfilter", 
-              date: "2026-05-15", 
-              mileage: 182000, 
-              cost: 95.00, 
-              performer: "Eigenleistung", 
-              notes: "8.0L Fuchs Titan GT1 5W-40 eingefüllt.\nÖlfilter Mann HU718/1k verbaut.\nAblassschraube mit 30 Nm angezogen.",
-              images: [] 
-            }
-          ]
-        }
-      ]
-    };
-    saveData();
+    loadDefaultData();
   }
+
+  // Fallback check
+  if (!appData.vehicles || appData.vehicles.length === 0) {
+    loadDefaultData();
+  }
+  if (!appData.activeVehicleId || !appData.vehicles.some(v => v.id === appData.activeVehicleId)) {
+    appData.activeVehicleId = appData.vehicles[0].id;
+  }
+
+  // Theme laden
+  applyTheme(appData.theme || 'dark');
 
   document.getElementById('fuelDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('serviceDate').value = new Date().toISOString().split('T')[0];
 
   renderVehicleSelect();
   loadActiveVehicle();
+}
+
+function loadDefaultData() {
+  appData = {
+    activeVehicleId: "v1",
+    theme: "dark",
+    vehicles: [
+      {
+        id: "v1",
+        name: "Mercedes E420 (W124)",
+        plate: "KI-E 420",
+        type: "km",
+        fuelType: "Super Plus",
+        vin: "WDB1240341B******",
+        firstReg: "1994-05-12",
+        hsn: "0708",
+        tsn: "420",
+        powerHp: 279,
+        towingBraked: 1900,
+        nextTuev: "2027-05",
+        image: "",
+        specs: "Motoröl: MB 229.5 5W-40 (8.0L)\nReifendruck: 2.3 bar / 2.5 bar\nZündkerzen: Bosch F8DC4",
+        fuelEntries: [
+          { id: "f1", date: "2026-08-10", fuelType: "Super Plus", mileage: 184200, liters: 72.5, totalPrice: 130.50, pricePerLiter: 1.80, full: true, hasAdditive: true, additiveName: "ERC Benzoinjection Reiniger", notes: "Aral Kiel" },
+          { id: "f2", date: "2026-08-28", fuelType: "Super Plus", mileage: 184750, liters: 68.0, totalPrice: 122.40, pricePerLiter: 1.80, full: true, hasAdditive: false, additiveName: "", notes: "Shell" }
+        ],
+        serviceEntries: [
+          { 
+            id: "s1", 
+            category: "Wartung", 
+            title: "Ölwechsel + Ölfilter + Luftfilter", 
+            date: "2026-05-15", 
+            mileage: 182000, 
+            cost: 95.00, 
+            performer: "Eigenleistung", 
+            notes: "8.0L Fuchs Titan GT1 5W-40 eingefüllt.\nÖlfilter Mann HU718/1k verbaut.\nAblassschraube mit 30 Nm angezogen.",
+            images: [] 
+          }
+        ]
+      }
+    ]
+  };
+  saveData();
 }
 
 function saveData() {
@@ -71,13 +92,36 @@ function getActiveVehicle() {
   return appData.vehicles.find(v => v.id === appData.activeVehicleId);
 }
 
+/* --- DESIGN / THEME TOGGLE --- */
+function toggleTheme() {
+  const newTheme = appData.theme === 'light' ? 'dark' : 'light';
+  appData.theme = newTheme;
+  saveData();
+  applyTheme(newTheme);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const icon = document.getElementById('themeToggleIcon');
+  if (icon) {
+    icon.innerText = theme === 'light' ? '☀️' : '🌙';
+  }
+  const v = getActiveVehicle();
+  if (v) renderCharts(v);
+}
+
 /* --- NAVIGATION & TABS --- */
 function showTab(tabId, element) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   
   document.getElementById(`tab-${tabId}`).classList.add('active');
-  element.classList.add('active');
+  if (element) {
+    element.classList.add('active');
+  }
+
+  // Automatischer Scroll nach oben für Mobile Viewports beim Tab-Wechsel
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 
   if (tabId === 'dashboard') {
     renderDashboard();
@@ -105,13 +149,17 @@ function switchVehicle() {
   loadActiveVehicle();
 }
 
+function updateUnitLabels() {
+  const currentType = document.getElementById('vType').value;
+  const isKm = currentType === 'km';
+  document.getElementById('fuelKmLabel').innerText = isKm ? "KM-Stand" : "Betriebsstunden";
+  document.getElementById('serviceKmLabel').innerText = isKm ? "KM-Stand" : "Betriebsstunden";
+  document.getElementById('kpi-mileage-unit').innerText = isKm ? "Kilometerstand" : "Betriebsstunden";
+}
+
 function loadActiveVehicle() {
   const vehicle = getActiveVehicle();
   if (!vehicle) return;
-
-  const isKm = vehicle.type === 'km';
-  document.getElementById('fuelKmLabel').innerText = isKm ? "KM-Stand" : "Betriebsstunden";
-  document.getElementById('kpi-mileage-unit').innerText = isKm ? "Kilometerstand" : "Betriebsstunden";
 
   document.getElementById('vName').value = vehicle.name || '';
   document.getElementById('vPlate').value = vehicle.plate || '';
@@ -125,6 +173,8 @@ function loadActiveVehicle() {
   document.getElementById('vTowingBraked').value = vehicle.towingBraked || '';
   document.getElementById('vNextTuev').value = vehicle.nextTuev || '';
   document.getElementById('vSpecs').value = vehicle.specs || '';
+
+  updateUnitLabels();
 
   const settingsImgPreview = document.getElementById('vehicleImageSettingsPreview');
   settingsImgPreview.innerHTML = vehicle.image ? `<img src="${vehicle.image}" alt="Fahrzeug">` : '';
@@ -218,140 +268,18 @@ function saveVehicleDetails(e) {
   alert("Stammdaten gespeichert!");
 }
 
-/* --- FAHRZEUGSCHEIN OCR SCANNER --- */
-async function handleRegistrationScan(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const statusBox = document.getElementById('ocrRegStatus');
-  const statusText = document.getElementById('ocrRegStatusText');
-  statusBox.style.display = 'flex';
-  statusText.innerText = 'Lese Fahrzeugschein aus...';
-
-  try {
-    const worker = await Tesseract.createWorker('deu');
-    statusText.innerText = 'Erkenne Feldwerte...';
-
-    const ret = await worker.recognize(file);
-    await worker.terminate();
-
-    parseRegistrationOCR(ret.data.text);
-    statusBox.style.display = 'none';
-  } catch (err) {
-    console.error(err);
-    alert("Fehler beim Scannen des Fahrzeugscheins.");
-    statusBox.style.display = 'none';
-  }
+/* --- KRAFTSTOFF DROPDOWN & ADDITIV --- */
+function toggleCustomFuelInput() {
+  const selectVal = document.getElementById('fuelCategorySelect').value;
+  const customGroup = document.getElementById('customFuelGroup');
+  customGroup.style.display = selectVal === 'Sonstiges' ? 'block' : 'none';
 }
 
-function parseRegistrationOCR(text) {
-  // FIN (Feld E): 17-stellige VIN
-  const vinMatch = text.match(/\b([A-HJ-NPR-Z0-9]{17})\b/i);
-  if (vinMatch) {
-    document.getElementById('vVin').value = vinMatch[1].toUpperCase();
-  }
-
-  // Erstzulassung (Feld B): DD.MM.YYYY -> YYYY-MM-DD
-  const dateMatch = text.match(/\b(\d{2})\.(\d{2})\.(\d{4})\b/);
-  if (dateMatch) {
-    document.getElementById('vFirstReg').value = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
-  }
-
-  // HSN (Feld 2.1): 4-stellige Nummer
-  const hsnMatch = text.match(/2\.1[^\d]*(\d{4})/i);
-  if (hsnMatch) {
-    document.getElementById('vHsn').value = hsnMatch[1];
-  }
-
-  // TSN (Feld 2.2): Erste 3-4 Alphanumerische Zeichen
-  const tsnMatch = text.match(/2\.2[^\w]*([A-Z0-9]{3,4})/i);
-  if (tsnMatch) {
-    document.getElementById('vTsn').value = tsnMatch[1].toUpperCase();
-  }
-
-  // Leistung in kW (Feld P.2 / P.4) -> Umrechnung in PS (1 kW = 1.35962 PS)
-  const powerMatch = text.match(/P\.2[^\d]*(\d{2,4})/i) || text.match(/(\d{2,3})\s*kW/i);
-  if (powerMatch) {
-    const kw = parseInt(powerMatch[1], 10);
-    if (!isNaN(kw)) {
-      document.getElementById('vPowerHp').value = Math.round(kw * 1.35962);
-    }
-  }
-
-  // Anhängelast gebremst (Feld O.1 in kg)
-  const towingMatch = text.match(/O\.1[^\d]*(\d{3,4})/i);
-  if (towingMatch) {
-    document.getElementById('vTowingBraked').value = towingMatch[1];
-  }
-
-  // Kennzeichen (Feld A)
-  const plateMatch = text.match(/A[.\s]+([A-Z]{1,3}[-\s]?[A-Z]{1,2}\s?\d{1,4})/i);
-  if (plateMatch) {
-    document.getElementById('vPlate').value = plateMatch[1].toUpperCase();
-  }
-
-  alert("Fahrzeugschein gescannt! Bitte überprüfe die ausgelesenen Werte in den Feldern.");
-}
-
-/* --- ADDITIV / ZUSATZ TOGGLE --- */
 function toggleAdditiveInput() {
   const hasAdd = document.getElementById('fuelHasAdditive').checked;
   const group = document.getElementById('fuelAdditiveGroup');
   group.style.display = hasAdd ? 'block' : 'none';
   if (!hasAdd) document.getElementById('fuelAdditiveName').value = '';
-}
-
-/* --- TANKBELEG OCR SCANNER --- */
-async function handleOCRScan(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const statusBox = document.getElementById('ocrStatus');
-  const statusText = document.getElementById('ocrStatusText');
-  statusBox.style.display = 'flex';
-  statusText.innerText = 'Lese Bilddaten aus...';
-
-  try {
-    const worker = await Tesseract.createWorker('deu');
-    statusText.innerText = 'Erkenne Text (OCR)...';
-    
-    const ret = await worker.recognize(file);
-    await worker.terminate();
-    
-    const text = ret.data.text;
-    parseOCRResults(text);
-    
-    statusBox.style.display = 'none';
-  } catch (err) {
-    console.error(err);
-    alert("Fehler beim Verarbeiten des Bildes.");
-    statusBox.style.display = 'none';
-  }
-}
-
-function parseOCRResults(text) {
-  const lines = text.split('\n');
-  let foundTotal = null;
-  let foundLiters = null;
-
-  const amountRegex = /(\d+[.,]\d{2})/;
-
-  lines.forEach(line => {
-    if (line.toLowerCase().includes('eur') || line.toLowerCase().includes('gesamt') || line.toLowerCase().includes('summe')) {
-      const match = line.match(amountRegex);
-      if (match) foundTotal = match[1].replace(',', '.');
-    }
-    if (line.toLowerCase().includes('liter') || line.toLowerCase().includes(' l ')) {
-      const match = line.match(amountRegex);
-      if (match) foundLiters = match[1].replace(',', '.');
-    }
-  });
-
-  if (foundTotal) document.getElementById('fuelTotalPrice').value = parseFloat(foundTotal).toFixed(2);
-  if (foundLiters) document.getElementById('fuelLiters').value = parseFloat(foundLiters).toFixed(2);
-
-  calcFuelFields('total');
-  alert("OCR-Scan abgeschlossen! Bitte überprüfe die übertragenen Werte.");
 }
 
 /* --- TANKUNGEN (CRUD) --- */
@@ -375,9 +303,15 @@ function saveFuelEntry(e) {
   const editId = document.getElementById('fuelEditId').value;
   const hasAdditive = document.getElementById('fuelHasAdditive').checked;
 
+  const categorySelect = document.getElementById('fuelCategorySelect').value;
+  const finalFuelType = categorySelect === 'Sonstiges' 
+    ? (document.getElementById('fuelCustomType').value || 'Sonstiges')
+    : categorySelect;
+
   const entry = {
     id: editId ? editId : "f_" + Date.now(),
     date: document.getElementById('fuelDate').value,
+    fuelType: finalFuelType,
     mileage: parseFloat(document.getElementById('fuelMileage').value) || 0,
     liters: parseFloat(document.getElementById('fuelLiters').value) || 0,
     totalPrice: parseFloat(document.getElementById('fuelTotalPrice').value) || 0,
@@ -410,6 +344,17 @@ function editFuelEntry(id) {
 
   document.getElementById('fuelEditId').value = entry.id;
   document.getElementById('fuelDate').value = entry.date;
+
+  const standardTypes = ["Super", "Super Plus", "Diesel", "Premium Diesel"];
+  if (standardTypes.includes(entry.fuelType)) {
+    document.getElementById('fuelCategorySelect').value = entry.fuelType;
+    document.getElementById('customFuelGroup').style.display = 'none';
+  } else {
+    document.getElementById('fuelCategorySelect').value = 'Sonstiges';
+    document.getElementById('customFuelGroup').style.display = 'block';
+    document.getElementById('fuelCustomType').value = entry.fuelType || '';
+  }
+
   document.getElementById('fuelMileage').value = entry.mileage;
   document.getElementById('fuelLiters').value = entry.liters;
   document.getElementById('fuelTotalPrice').value = entry.totalPrice;
@@ -424,6 +369,8 @@ function editFuelEntry(id) {
 
   document.getElementById('fuelSubmitBtn').innerText = "Änderungen Speichern";
   document.getElementById('fuelCancelBtn').style.display = "inline-block";
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function deleteFuelEntry(id) {
@@ -439,6 +386,7 @@ function resetFuelForm() {
   document.getElementById('fuelEditId').value = '';
   document.getElementById('fuelForm').reset();
   document.getElementById('fuelDate').value = new Date().toISOString().split('T')[0];
+  toggleCustomFuelInput();
   toggleAdditiveInput();
   document.getElementById('fuelSubmitBtn').innerText = "Tankung Speichern";
   document.getElementById('fuelCancelBtn').style.display = "none";
@@ -453,12 +401,13 @@ function renderFuelTable() {
     const tr = document.createElement('tr');
     const additiveBadge = f.hasAdditive ? `<span class="badge-additive" title="${f.additiveName || ''}">🧪 ${f.additiveName || 'Zusatz'}</span>` : '-';
     tr.innerHTML = `
-      <td>${f.date}</td>
-      <td>${f.mileage}</td>
-      <td>${f.liters.toFixed(2)} L</td>
-      <td>${additiveBadge}</td>
-      <td>${f.totalPrice.toFixed(2)} €</td>
-      <td>
+      <td data-label="Datum">${f.date}</td>
+      <td data-label="Kraftstoff"><span class="badge">${f.fuelType || 'Sprit'}</span></td>
+      <td data-label="Stand">${f.mileage}</td>
+      <td data-label="Liter">${f.liters.toFixed(2)} L</td>
+      <td data-label="Zusatz">${additiveBadge}</td>
+      <td data-label="Gesamt">${f.totalPrice.toFixed(2)} €</td>
+      <td data-label="Aktion">
         <button class="btn btn-secondary btn-sm" onclick="editFuelEntry('${f.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteFuelEntry('${f.id}')">🗑️</button>
       </td>
@@ -553,6 +502,8 @@ function editServiceEntry(id) {
 
   document.getElementById('serviceSubmitBtn').innerText = "Änderungen Speichern";
   document.getElementById('serviceCancelBtn').style.display = "inline-block";
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function deleteServiceEntry(id) {
@@ -584,11 +535,11 @@ function renderServiceTable() {
     tr.className = 'clickable-row';
     const hasImg = s.images && s.images.length > 0 ? ` 📷(${s.images.length})` : '';
     tr.innerHTML = `
-      <td onclick="openServiceDetailModal('${s.id}')">${s.date}</td>
-      <td onclick="openServiceDetailModal('${s.id}')"><span class="badge">${s.category}</span></td>
-      <td onclick="openServiceDetailModal('${s.id}')"><strong>${s.title}</strong>${hasImg}</td>
-      <td onclick="openServiceDetailModal('${s.id}')">${s.cost.toFixed(2)} €</td>
-      <td>
+      <td data-label="Datum" onclick="openServiceDetailModal('${s.id}')">${s.date}</td>
+      <td data-label="Kategorie" onclick="openServiceDetailModal('${s.id}')"><span class="badge">${s.category}</span></td>
+      <td data-label="Titel" onclick="openServiceDetailModal('${s.id}')"><strong>${s.title}</strong>${hasImg}</td>
+      <td data-label="Kosten" onclick="openServiceDetailModal('${s.id}')">${s.cost.toFixed(2)} €</td>
+      <td data-label="Aktion">
         <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); editServiceEntry('${s.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteServiceEntry('${s.id}')">🗑️</button>
       </td>
@@ -647,7 +598,7 @@ function renderHistoryTable() {
     id: f.id,
     date: f.date,
     mileage: f.mileage,
-    desc: `Tankung: ${f.liters.toFixed(2)}L ${f.hasAdditive ? '[Zusatz: ' + f.additiveName + ']' : ''} (${f.notes || ''})`,
+    desc: `Tankung [${f.fuelType || 'Sprit'}]: ${f.liters.toFixed(2)}L ${f.hasAdditive ? '[Zusatz: ' + f.additiveName + ']' : ''} (${f.notes || ''})`,
     cost: f.totalPrice
   }));
 
@@ -665,14 +616,18 @@ function renderHistoryTable() {
   all.filter(item => item.desc.toLowerCase().includes(search) || item.date.includes(search))
      .forEach(item => {
        const tr = document.createElement('tr');
+       const editAction = item.type === 'Fuel'
+         ? `showTab('fuel', document.querySelectorAll('.nav-item')[1]); editFuelEntry('${item.id}')`
+         : `openServiceDetailModal('${item.id}')`;
+
        tr.innerHTML = `
-         <td>${item.type === 'Fuel' ? '⛽ Tanken' : '🔧 Service'}</td>
-         <td>${item.date}</td>
-         <td>${item.mileage}</td>
-         <td>${item.desc}</td>
-         <td>${item.cost.toFixed(2)} €</td>
-         <td>
-           <button class="btn btn-secondary btn-sm" onclick="${item.type === 'Fuel' ? `showTab('fuel', document.querySelectorAll('.nav-item')[1]); editFuelEntry('${item.id}')` : `openServiceDetailModal('${item.id}')`}">👁️ / ✏️</button>
+         <td data-label="Typ">${item.type === 'Fuel' ? '⛽ Tanken' : '🔧 Service'}</td>
+         <td data-label="Datum">${item.date}</td>
+         <td data-label="Stand">${item.mileage}</td>
+         <td data-label="Beschreibung">${item.desc}</td>
+         <td data-label="Betrag">${item.cost.toFixed(2)} €</td>
+         <td data-label="Aktionen">
+           <button class="btn btn-secondary btn-sm" onclick="${editAction}">👁️ / ✏️</button>
          </td>
        `;
        tbody.appendChild(tr);
@@ -712,11 +667,13 @@ function renderDashboard() {
     imgPlaceholder.style.display = 'block';
   }
 
+  // Aktueller KM Stand / Betriebsstunden
   let maxMileage = 0;
   v.fuelEntries.forEach(f => { if(f.mileage > maxMileage) maxMileage = f.mileage; });
   v.serviceEntries.forEach(s => { if(s.mileage > maxMileage) maxMileage = s.mileage; });
   document.getElementById('kpi-mileage').innerText = maxMileage > 0 ? maxMileage.toLocaleString() + (v.type === 'km' ? ' km' : ' h') : '0';
 
+  // Gesamtkosten Summe
   let totalFuelCost = 0;
   v.fuelEntries.forEach(f => totalFuelCost += f.totalPrice);
 
@@ -725,45 +682,83 @@ function renderDashboard() {
 
   document.getElementById('kpi-total-cost').innerText = (totalFuelCost + totalServiceCost).toFixed(2) + ' €';
 
+  // Intervallberechnung Verbrauch & Kosten
   let avgConsumption = 0;
-  if (v.fuelEntries.length >= 2) {
-    const sortedFuel = [...v.fuelEntries].sort((a,b) => a.mileage - b.mileage);
-    const first = sortedFuel[0];
-    const last = sortedFuel[sortedFuel.length - 1];
-    const dist = last.mileage - first.mileage;
-    
-    let litersSum = 0;
-    for(let i = 1; i < sortedFuel.length; i++) litersSum += sortedFuel[i].liters;
+  let costPer100Km = 0;
 
-    if (dist > 0) {
-      avgConsumption = (litersSum / dist) * 100;
+  const sortedFuel = [...v.fuelEntries].sort((a,b) => a.mileage - b.mileage);
+
+  if (sortedFuel.length >= 2) {
+    let validDistanceSum = 0;
+    let validLitersSum = 0;
+
+    for (let i = 1; i < sortedFuel.length; i++) {
+      const prev = sortedFuel[i - 1];
+      const curr = sortedFuel[i];
+      const dist = curr.mileage - prev.mileage;
+
+      if (dist > 0 && curr.full) {
+        validDistanceSum += dist;
+        validLitersSum += curr.liters;
+      }
+    }
+
+    if (validDistanceSum > 0) {
+      avgConsumption = (validLitersSum / validDistanceSum) * 100;
+    }
+
+    const totalCoveredDist = sortedFuel[sortedFuel.length - 1].mileage - sortedFuel[0].mileage;
+    if (totalCoveredDist > 0) {
+      let fuelCostAfterFirst = 0;
+      for (let i = 1; i < sortedFuel.length; i++) {
+        fuelCostAfterFirst += sortedFuel[i].totalPrice;
+      }
+      costPer100Km = (fuelCostAfterFirst / totalCoveredDist) * 100;
     }
   }
-  
+
   const unitLabel = v.type === 'km' ? ' L/100km' : ' L/Std';
   document.getElementById('kpi-consumption').innerHTML = `${avgConsumption.toFixed(2)} <small>${unitLabel}</small>`;
 
-  if (maxMileage > 0 && totalFuelCost > 0) {
-    document.getElementById('kpi-cost-per-km').innerText = (totalFuelCost / maxMileage * 100).toFixed(2) + ' € / 100km';
-  }
+  const costUnitLabel = v.type === 'km' ? ' € / 100km' : ' € / Std';
+  document.getElementById('kpi-cost-per-km').innerText = `${costPer100Km.toFixed(2)} ${costUnitLabel}`;
 
+  // Reminders
   const reminderList = document.getElementById('reminderList');
   reminderList.innerHTML = '';
   if (v.nextTuev) {
     const li = document.createElement('li');
     li.innerHTML = `📅 Nächster TÜV / Hauptuntersuchung: <strong>${v.nextTuev}</strong>`;
     reminderList.appendChild(li);
+  } else {
+    reminderList.innerHTML = '<li>Keine anstehenden Termine hinterlegt.</li>';
   }
 
   renderCharts(v);
 }
 
 function renderCharts(v) {
-  const ctxLine = document.getElementById('consumptionChart').getContext('2d');
-  const sortedFuel = [...v.fuelEntries].sort((a,b) => new Date(a.date) - new Date(b.date));
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const textColor = isLight ? '#0f172a' : '#94a3b8';
+  const gridColor = isLight ? '#cbd5e1' : '#334155';
 
-  const labels = sortedFuel.map(f => f.date);
-  const dataPoints = sortedFuel.map(f => f.pricePerLiter);
+  const ctxLine = document.getElementById('consumptionChart').getContext('2d');
+  const sortedFuel = [...v.fuelEntries].sort((a,b) => a.mileage - b.mileage);
+
+  let labels = [];
+  let dataPoints = [];
+
+  for (let i = 1; i < sortedFuel.length; i++) {
+    const prev = sortedFuel[i - 1];
+    const curr = sortedFuel[i];
+    const dist = curr.mileage - prev.mileage;
+
+    if (dist > 0 && curr.full) {
+      const consumption = (curr.liters / dist) * 100;
+      labels.push(curr.date);
+      dataPoints.push(consumption.toFixed(2));
+    }
+  }
 
   if (consumptionChartInstance) consumptionChartInstance.destroy();
 
@@ -772,7 +767,7 @@ function renderCharts(v) {
     data: {
       labels: labels,
       datasets: [{
-        label: 'Spritpreis (€/L)',
+        label: 'Verbrauch',
         data: dataPoints,
         borderColor: '#2563eb',
         backgroundColor: 'rgba(37, 99, 235, 0.1)',
@@ -785,8 +780,8 @@ function renderCharts(v) {
       maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor }, grid: { color: gridColor } }
       }
     }
   });
@@ -809,9 +804,45 @@ function renderCharts(v) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { color: '#f8fafc' } } }
+      plugins: { legend: { position: 'bottom', labels: { color: textColor } } }
     }
   });
+}
+
+/* --- EXPORT & IMPORT --- */
+function exportData() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `fleethub_backup_${new Date().toISOString().split('T')[0]}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (imported && imported.vehicles && Array.isArray(imported.vehicles)) {
+        appData = imported;
+        saveData();
+        applyTheme(appData.theme || 'dark');
+        renderVehicleSelect();
+        loadActiveVehicle();
+        alert("Daten erfolgreich importiert!");
+      } else {
+        alert("Ungültiges Dateiformat.");
+      }
+    } catch (err) {
+      alert("Fehler beim Einlesen der Backup-Datei.");
+    }
+  };
+  reader.readAsText(file);
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
