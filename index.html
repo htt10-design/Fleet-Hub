@@ -1,17 +1,24 @@
 <!DOCTYPE html>
+<script>
+  window.onerror = function(msg, url, line) {
+    alert("Fehler: " + msg + "\nin Zeile: " + line);
+    return false;
+  };
+</script>
+
 <html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>FleetHub - Fahrzeug-Management Pro</title>
+  <title>SGS - Fahrzeug-Management Pro</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb'><path d='M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2'/><circle cx='7' cy='17' r='2'/><path d='M9 17h6'/><circle cx='17' cy='17' r='2'/></svg>">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-  <!-- Top Navigation / Header -->
-  <header class="app-header">
+  <!-- Header -->
+  <header class="app-header no-print">
     <div class="logo">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
@@ -19,7 +26,7 @@
         <path d="M9 17h6"/>
         <circle cx="17" cy="17" r="2"/>
       </svg>
-      <span>FleetHub</span>
+      <span>SGS</span>
     </div>
     <div class="header-controls">
       <button class="btn-theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" title="Design wechseln">
@@ -33,8 +40,8 @@
   </header>
 
   <div class="app-container">
-    <!-- Desktop Sidebar / Mobile Bottom Nav -->
-    <nav class="sidebar">
+    <!-- Navigation -->
+    <nav class="sidebar no-print">
       <button class="nav-item active" onclick="showTab('dashboard', this)">
         <span class="nav-icon">📊</span>
         <span class="nav-label">Dashboard</span>
@@ -47,6 +54,10 @@
         <span class="nav-icon">🔧</span>
         <span class="nav-label">Wartung</span>
       </button>
+      <button class="nav-item" onclick="showTab('customers', this)">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Kunden</span>
+      </button>
       <button class="nav-item" onclick="showTab('history', this)">
         <span class="nav-icon">📋</span>
         <span class="nav-label">Historie</span>
@@ -57,7 +68,6 @@
       </button>
     </nav>
 
-    <!-- Main Content Area -->
     <main class="main-content">
 
       <!-- DASHBOARD TAB -->
@@ -132,7 +142,6 @@
         <div class="grid-2col">
           <div class="card">
             <h2 id="fuelFormTitle">Tankung eintragen</h2>
-
             <form id="fuelForm" onsubmit="saveFuelEntry(event)">
               <input type="hidden" id="fuelEditId">
               <div class="form-group">
@@ -204,6 +213,8 @@
                     <th>Kraftstoff</th>
                     <th>Stand</th>
                     <th>Liter</th>
+                    <th>€/Liter</th>
+                    <th>Verbrauch</th>
                     <th>Zusatz</th>
                     <th>Gesamt</th>
                     <th>Aktion</th>
@@ -296,6 +307,118 @@
         </div>
       </section>
 
+      <!-- CUSTOMERS TAB -->
+      <section id="tab-customers" class="tab-content">
+        <div class="card">
+          <div class="card-header-flex">
+            <h2>Kundenfahrzeuge & Werkstattaufträge</h2>
+            <button class="btn btn-primary" onclick="openCustomerVehicleModal()">+ Neues Kundenfahrzeug</button>
+          </div>
+          <p class="sub-text">Hier verwaltest du Reparaturen für Bekannte und Kunden sauber getrennt von deinen eigenen Fahrzeugen.</p>
+
+          <div class="form-group">
+            <label>Kundenfahrzeug auswählen</label>
+            <select id="customerVehicleSelect" onchange="switchCustomerVehicle()"></select>
+          </div>
+        </div>
+
+        <div id="customerVehicleContent" style="display: none;">
+          <!-- Active Customer Banner -->
+          <div class="card">
+            <div class="card-header-flex">
+              <div>
+                <h2 id="custBannerName">Kunden Name - Fahrzeug</h2>
+                <span class="badge badge-plate" id="custBannerPlate">KI-XX 123</span>
+              </div>
+              <div>
+                <button class="btn btn-secondary btn-sm" onclick="openCustomerVehicleModal(true)">✏️ Stammdaten</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteCurrentCustomerVehicle()">🗑️ Fahrzeug Löschen</button>
+              </div>
+            </div>
+            <div class="detail-grid">
+              <div><strong>Kunde:</strong> <span id="custBannerOwner">-</span></div>
+              <div><strong>Kontakt:</strong> <span id="custBannerContact">-</span></div>
+              <div><strong>VIN / FIN:</strong> <span id="custBannerVin">-</span></div>
+              <div><strong>HSN / TSN:</strong> <span id="custBannerHsnTsn">-</span></div>
+              <div><strong>Erstzulassung:</strong> <span id="custBannerFirstReg">-</span></div>
+            </div>
+          </div>
+
+          <div class="grid-2col">
+            <!-- Form: Customer Service Entry -->
+            <div class="card">
+              <h2 id="custServiceFormTitle">Reparatur / Leistung eintragen</h2>
+              <form id="custServiceForm" onsubmit="saveCustomerServiceEntry(event)">
+                <input type="hidden" id="custServiceEditId">
+                
+                <div class="form-group">
+                  <label>Auftragsbezeichnung / Titel</label>
+                  <input type="text" id="custServiceTitle" required placeholder="z.B. Bremse VA erneuern & Service">
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Datum</label>
+                    <input type="date" id="custServiceDate" required>
+                  </div>
+                  <div class="form-group">
+                    <label>KM-Stand</label>
+                    <input type="number" step="0.1" id="custServiceMileage" inputmode="decimal" required placeholder="145000">
+                  </div>
+                </div>
+
+                <!-- Positionen Kalkulator -->
+                <div class="form-group">
+                  <label>Einzelpositionen & Teile (Für Rechnungs-Druck)</label>
+                  <div id="invoiceItemsContainer"></div>
+                  <button type="button" class="btn btn-secondary btn-sm" style="margin-top:0.5rem;" onclick="addInvoiceItemRow()">+ Position hinzufügen</button>
+                </div>
+
+                <div class="form-group">
+                  <label>Gesamtsumme (€)</label>
+                  <input type="number" step="0.01" id="custServiceTotalCost" inputmode="decimal" required placeholder="0.00">
+                </div>
+
+                <div class="form-group">
+                  <label>Arbeitsbericht / Notizen für den Kunden</label>
+                  <textarea id="custServiceNotes" rows="3" placeholder="z.B. Bremsscheiben und Beläge erneuert, Führungsbolzen gefettet..."></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label>Bilder / Dokumente anhängen</label>
+                  <input type="file" id="custServiceImagesInput" accept="image/*" multiple onchange="handleCustomerServiceImageUpload(event)">
+                  <div id="custServiceImagePreviewContainer" class="image-preview-grid"></div>
+                </div>
+
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary" id="custServiceSubmitBtn">Auftrag Speichern</button>
+                  <button type="button" class="btn btn-secondary" onclick="resetCustomerServiceForm()" id="custServiceCancelBtn" style="display:none;">Abbrechen</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Customer Service List -->
+            <div class="card">
+              <h3>Durchgeführte Arbeiten</h3>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Datum</th>
+                      <th>Titel</th>
+                      <th>KM-Stand</th>
+                      <th>Gesamt</th>
+                      <th>Aktion</th>
+                    </tr>
+                  </thead>
+                  <tbody id="custServiceTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- HISTORY TAB -->
       <section id="tab-history" class="tab-content">
         <div class="card">
@@ -327,7 +450,6 @@
       <section id="tab-settings" class="tab-content">
         <div class="card">
           <h2>Fahrzeugkonfiguration & Stammdaten</h2>
-
           <form id="vehicleDetailsForm" onsubmit="saveVehicleDetails(event)">
             <div class="form-group">
               <label>Fahrzeugfoto hochladen</label>
@@ -418,7 +540,7 @@
 
           <div class="backup-section">
             <h3>Daten-Sicherung (Backup)</h3>
-            <p class="sub-text">Exportiere deine FleetHub-Daten als JSON-Datei oder stelle sie wieder her.</p>
+            <p class="sub-text">Exportiere deine SGS-Daten als JSON-Datei oder stelle sie wieder her.</p>
             <div class="form-actions">
               <button type="button" class="btn btn-secondary" onclick="exportData()">📥 Daten Exportieren</button>
               <label class="btn btn-secondary">
@@ -433,11 +555,11 @@
     </main>
   </div>
 
-  <!-- MODAL: NEW VEHICLE -->
+  <!-- MODAL: NEW VEHICLE (PRIVATE) -->
   <div class="modal-overlay" id="vehicleModal">
     <div class="modal">
       <div class="modal-header">
-        <h3>Neues Fahrzeug anlegen</h3>
+        <h3>Neues Eigenes Fahrzeug anlegen</h3>
         <button class="modal-close" onclick="closeVehicleModal()">✕</button>
       </div>
       <form onsubmit="createNewVehicle(event)">
@@ -453,6 +575,10 @@
           </select>
         </div>
         <div class="form-group">
+          <label>Standard Kraftstoffart</label>
+          <input type="text" id="newVFuelType" placeholder="z.B. Super Plus">
+        </div>
+        <div class="form-group">
           <label>Start-Stand</label>
           <input type="number" step="0.1" id="newVMileage" inputmode="decimal" value="0" required>
         </div>
@@ -464,7 +590,62 @@
     </div>
   </div>
 
-  <!-- MODAL: SERVICE DETAILS -->
+  <!-- MODAL: CUSTOMER VEHICLE (STAMMDATEN) -->
+  <div class="modal-overlay" id="customerVehicleModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="custModalTitle">Kundenfahrzeug anlegen</h3>
+        <button class="modal-close" onclick="closeCustomerVehicleModal()">✕</button>
+      </div>
+      <form onsubmit="saveCustomerVehicleModal(event)">
+        <input type="hidden" id="custModalEditId">
+        <div class="form-group">
+          <label>Kundenname / Halter</label>
+          <input type="text" id="custModalOwner" required placeholder="z.B. Max Mustermann">
+        </div>
+        <div class="form-group">
+          <label>Kontakt (Telefon / E-Mail)</label>
+          <input type="text" id="custModalContact" placeholder="z.B. 0170 1234567">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fahrzeugmodell</label>
+            <input type="text" id="custModalModel" required placeholder="z.B. VW Golf 7 GTI">
+          </div>
+          <div class="form-group">
+            <label>Kennzeichen</label>
+            <input type="text" id="custModalPlate" placeholder="KI-AB 789">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>FIN / VIN</label>
+            <input type="text" id="custModalVin" placeholder="WVWZZZ...">
+          </div>
+          <div class="form-group">
+            <label>Erstzulassung</label>
+            <input type="date" id="custModalFirstReg">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>HSN</label>
+            <input type="text" id="custModalHsn" maxlength="4" placeholder="0603">
+          </div>
+          <div class="form-group">
+            <label>TSN</label>
+            <input type="text" id="custModalTsn" maxlength="10" placeholder="ABC">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary">Speichern</button>
+          <button type="button" class="btn btn-secondary" onclick="closeCustomerVehicleModal()">Abbrechen</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: SERVICE DETAILS (PRIVATE) -->
   <div class="modal-overlay" id="serviceDetailModal">
     <div class="modal modal-lg">
       <div class="modal-header">
@@ -498,6 +679,42 @@
       </div>
     </div>
   </div>
+
+  <!-- MODAL: CUSTOMER SERVICE DETAILS -->
+  <div class="modal-overlay" id="customerServiceDetailModal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3 id="csdTitle">Auftragsdetails</h3>
+        <button class="modal-close" onclick="closeCustomerServiceDetailModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div><strong>Datum:</strong> <span id="csdDate">-</span></div>
+          <div><strong>Stand:</strong> <span id="csdMileage">-</span></div>
+          <div><strong>Gesamtsumme:</strong> <span id="csdTotalCost">-</span></div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Arbeitsbericht / Notizen:</h4>
+          <p id="csdNotes" class="detail-notes-box">Keine Notizen vorhanden.</p>
+        </div>
+
+        <div class="detail-section">
+          <h4>Angehängte Bilder & Dokumente:</h4>
+          <div id="csdImagesContainer" class="detail-image-gallery">
+            <span class="text-muted">Keine Bilder vorhanden.</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="csdEditBtn">Bearbeiten</button>
+        <button class="btn btn-secondary" onclick="closeCustomerServiceDetailModal()">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRINT CONTAINER -->
+  <div id="printableInvoice" class="print-only"></div>
 
   <script src="app.js"></script>
 </body>
