@@ -130,20 +130,30 @@ function applyTheme(theme) {
   if (v) renderCharts(v);
 }
 
-/* --- TABS --- */
 function showTab(tabId, element) {
+  // 1. Alle Tabs ausblenden
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   
+  // 2. Aktiven Tab aktivieren
   const targetTab = document.getElementById(`tab-${tabId}`);
-  if (targetTab) targetTab.classList.add('active');
+  if (targetTab) {
+    targetTab.classList.add('active');
+  } else {
+    console.warn(`Tab "tab-${tabId}" nicht gefunden!`);
+  }
+
+  // 3. Nav-Button aktivieren
   if (element) element.classList.add('active');
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  if (tabId === 'dashboard') renderDashboard();
-  else if (tabId === 'history') renderHistoryTable();
-  else if (tabId === 'customers') renderCustomerSection();
+  // 4. Passende Daten-Render-Funktionen ausführen
+  if (tabId === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
+  else if (tabId === 'service' && typeof renderCustomerServiceTable === 'function') renderCustomerServiceTable();
+  else if (tabId === 'history' && typeof renderHistoryTable === 'function') renderHistoryTable();
+  else if (tabId === 'customers' && typeof renderCustomerSection === 'function') renderCustomerSection();
+  else if (tabId === 'settings' && typeof loadVehicleSettingsIntoForm === 'function') loadVehicleSettingsIntoForm();
 }
 
 /* --- EIGENE FAHRZEUGE --- */
@@ -456,13 +466,21 @@ function resetFuelForm() {
   document.getElementById('fuelCancelBtn').style.display = "none";
 }
 
+// Globalen Status ganz oben in der app.js halten (oder vor renderFuelTable)
+let showAllFuelEntries = false;
+
 function renderFuelTable() {
   const v = getActiveVehicle();
   const tbody = document.getElementById('fuelTableBody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  if (!v || !v.fuelEntries) return;
+  if (!v || !v.fuelEntries || v.fuelEntries.length === 0) {
+    const toggleContainer = document.getElementById('fuelToggleBtnContainer');
+    if (toggleContainer) toggleContainer.style.display = 'none';
+    return;
+  }
 
+  // 1. Sortierung für die Verbrauchsberechnung (aufsteigend nach Kilometerstand)
   const sortedFuel = [...v.fuelEntries].sort((a, b) => a.mileage - b.mileage);
   const consumptionMap = {};
   const unitLabel = v.type === 'km' ? 'L/100km' : 'L/Std';
@@ -483,7 +501,17 @@ function renderFuelTable() {
     }
   }
 
-  v.fuelEntries.forEach(f => {
+  // 2. Sortierung für die Anzeige in der Tabelle (neueste Einträge zuerst)
+  const displaySorted = [...v.fuelEntries].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // 3. Auf max. 5 Einträge begrenzen (falls nicht ausgeklappt)
+  const hasMoreThan10 = displaySorted.length > 5;
+  const entriesToRender = (hasMoreThan10 && !showAllFuelEntries) 
+    ? displaySorted.slice(0, 5) 
+    : displaySorted;
+
+  // 4. Tabelle befüllen
+  entriesToRender.forEach(f => {
     const tr = document.createElement('tr');
     const additiveBadge = f.hasAdditive ? `<span class="badge-additive" title="${f.additiveName || ''}">🧪 ${f.additiveName || 'Zusatz'}</span>` : '-';
     const consumptionVal = consumptionMap[f.id] || '-';
@@ -505,7 +533,29 @@ function renderFuelTable() {
     `;
     tbody.appendChild(tr);
   });
+
+  // 5. Button "Mehr anzeigen / Weniger anzeigen" steuern
+  let toggleContainer = document.getElementById('fuelToggleBtnContainer');
+  let toggleBtn = document.getElementById('fuelToggleBtn');
+
+  if (hasMoreThan10 && toggleContainer && toggleBtn) {
+    toggleContainer.style.display = 'block';
+    const remainingCount = displaySorted.length - 5;
+    toggleBtn.innerText = showAllFuelEntries 
+      ? 'Weniger anzeigen' 
+      : `Mehr anzeigen (${remainingCount} weitere Einträge)`;
+  } else if (toggleContainer) {
+    toggleContainer.style.display = 'none';
+  }
 }
+
+// Umschalt-Funktion & Global-Bindung
+function toggleFuelEntries() {
+  showAllFuelEntries = !showAllFuelEntries;
+  renderFuelTable();
+}
+
+window.toggleFuelEntries = toggleFuelEntries;
 
 /* --- WARTUNG & SERVICE --- */
 function handleServiceImageUpload(event) {
@@ -586,25 +636,47 @@ function resetServiceForm() {
   document.getElementById('serviceCancelBtn').style.display = "none";
 }
 
+// Globaler Status für die Wartungstabelle (ganz oben in app.js oder vor der Funktion)
+let showAllServiceEntries = false;
+
 function renderServiceTable() {
   const v = getActiveVehicle();
   const tbody = document.getElementById('serviceTableBody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  if (!v || !v.serviceEntries) return;
 
-  v.serviceEntries.forEach(s => {
+  const toggleContainer = document.getElementById('serviceToggleBtnContainer');
+  const toggleBtn = document.getElementById('serviceToggleBtn');
+
+  if (!v || !v.serviceEntries || v.serviceEntries.length === 0) {
+    if (toggleContainer) toggleContainer.style.display = 'none';
+    return;
+  }
+
+  // 1. Nach Datum sortieren (neueste Einträge zuerst)
+  const sortedServices = [...v.serviceEntries].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // 2. Auf max. 5 Einträge begrenzen (falls nicht ausgeklappt)
+  const hasMoreThan5 = sortedServices.length > 5;
+  const entriesToRender = (hasMoreThan5 && !showAllServiceEntries) 
+    ? sortedServices.slice(0, 5) 
+    : sortedServices;
+
+  // 3. Tabelle befüllen
+  entriesToRender.forEach(s => {
     const tr = document.createElement('tr');
     tr.className = 'clickable-row';
     tr.onclick = (e) => {
       if (e.target.tagName !== 'BUTTON') openServiceDetailModal(s.id);
     };
 
+    const costVal = typeof s.cost === 'number' ? s.cost.toFixed(2) + ' €' : '-';
+
     tr.innerHTML = `
-      <td data-label="Datum">${s.date}</td>
-      <td data-label="Kategorie"><span class="badge">${s.category}</span></td>
-      <td data-label="Titel"><strong>${s.title}</strong></td>
-      <td data-label="Kosten">${s.cost.toFixed(2)} €</td>
+      <td data-label="Datum">${s.date || '-'}</td>
+      <td data-label="Kategorie"><span class="badge">${s.category || 'Allgemein'}</span></td>
+      <td data-label="Titel"><strong>${s.title || 'Wartung'}</strong></td>
+      <td data-label="Kosten">${costVal}</td>
       <td>
         <button class="btn btn-secondary btn-sm" onclick="editServiceEntry('${s.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteServiceEntry('${s.id}')">🗑️</button>
@@ -612,7 +684,26 @@ function renderServiceTable() {
     `;
     tbody.appendChild(tr);
   });
+
+  // 4. Button "Mehr anzeigen / Weniger anzeigen" steuern
+  if (hasMoreThan5 && toggleContainer && toggleBtn) {
+    toggleContainer.style.display = 'block';
+    const remainingCount = sortedServices.length - 5;
+    toggleBtn.innerText = showAllServiceEntries 
+      ? 'Weniger anzeigen' 
+      : `Mehr anzeigen (${remainingCount} weitere Einträge)`;
+  } else if (toggleContainer) {
+    toggleContainer.style.display = 'none';
+  }
 }
+
+// Umschalt-Funktion & Global-Bindung für HTML
+function toggleServiceEntries() {
+  showAllServiceEntries = !showAllServiceEntries;
+  renderServiceTable();
+}
+
+window.toggleServiceEntries = toggleServiceEntries;
 
 function editServiceEntry(id) {
   const v = getActiveVehicle();
@@ -700,6 +791,10 @@ function renderDashboard() {
   document.getElementById('dashVehicleType').innerText = `Typ: ${v.type === 'km' ? 'KM' : 'Betriebsstunden'}`;
   document.getElementById('dashVehicleVin').innerText = `VIN: ${v.vin || '-'}`;
   document.getElementById('dashVehicleSpecs').innerText = v.specs || 'Keine Spezifikationen eingetragen.';
+  const hsn = v.hsn || '-';
+  const tsn = v.tsn || '-';
+  document.getElementById('dashVehicleHsnTsn').innerText = `HSN/TSN: ${hsn} / ${tsn}`;
+
 
   const imgDash = document.getElementById('vehicleDashboardImage');
   const imgPlaceholder = document.getElementById('vehicleImagePlaceholder');
@@ -845,19 +940,29 @@ function renderCharts(v) {
   }
 }
 
-/* --- HISTORIE TAB --- */
+let showAllHistoryEntries = false;
+
 function renderHistoryTable() {
   const v = getActiveVehicle();
   const tbody = document.getElementById('fullHistoryTableBody');
   if (!tbody) return;
-  const searchVal = (document.getElementById('historySearch').value || '').toLowerCase();
   tbody.innerHTML = '';
-  if (!v) return;
+
+  const toggleContainer = document.getElementById('historyToggleBtnContainer');
+  const toggleBtn = document.getElementById('historyToggleBtn');
+
+  if (!v) {
+    if (toggleContainer) toggleContainer.style.display = 'none';
+    return;
+  }
+
+  const searchVal = (document.getElementById('historySearch')?.value || '').toLowerCase().trim();
 
   const fuelList = v.fuelEntries || [];
   const serviceList = v.serviceEntries || [];
 
-  const combined = [
+  // 1. Alle Einträge zusammenführen
+  let combined = [
     ...fuelList.map(f => ({
       type: '⛽ Tanken',
       date: f.date,
@@ -874,25 +979,62 @@ function renderHistoryTable() {
     }))
   ];
 
-  combined.sort((a,b) => new Date(b.date) - new Date(a.date));
+  // 2. Suche anwenden
+  if (searchVal) {
+    combined = combined.filter(item => 
+      item.desc.toLowerCase().includes(searchVal) || 
+      item.type.toLowerCase().includes(searchVal)
+    );
+  }
 
-  combined.forEach(item => {
-    if (searchVal && !item.desc.toLowerCase().includes(searchVal) && !item.type.toLowerCase().includes(searchVal)) {
-      return;
-    }
+  if (combined.length === 0) {
+    if (toggleContainer) toggleContainer.style.display = 'none';
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Keine Einträge gefunden.</td></tr>`;
+    return;
+  }
 
+  // 3. Nach Datum sortieren (neueste zuerst)
+  combined.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // 4. Auf max. 5 Einträge begrenzen (sofern nicht ausgeklappt und keine Suche aktiv ist)
+  const hasMoreThan5 = combined.length > 5;
+  const entriesToRender = (hasMoreThan5 && !showAllHistoryEntries && !searchVal) 
+    ? combined.slice(0, 5) 
+    : combined;
+
+  // 5. Tabelle befüllen
+  entriesToRender.forEach(item => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td data-label="Typ">${item.type}</td>
-      <td data-label="Datum">${item.date}</td>
+      <td data-label="Datum">${item.date || '-'}</td>
       <td data-label="Stand">${item.mileage.toLocaleString()}</td>
       <td data-label="Beschreibung">${item.desc}</td>
       <td data-label="Betrag"><strong>${item.amount.toFixed(2)} €</strong></td>
-      <td>-</td>
+      <td style="text-align: right;">-</td>
     `;
     tbody.appendChild(tr);
   });
+
+  // 6. Button "Mehr anzeigen / Weniger anzeigen" steuern
+  if (hasMoreThan5 && !searchVal && toggleContainer && toggleBtn) {
+    toggleContainer.style.display = 'block';
+    const remainingCount = combined.length - 5;
+    toggleBtn.innerText = showAllHistoryEntries 
+      ? 'Weniger anzeigen' 
+      : `Mehr anzeigen (${remainingCount} weitere Einträge)`;
+  } else if (toggleContainer) {
+    toggleContainer.style.display = 'none';
+  }
 }
+
+// Umschalt-Funktion & Global-Bindung
+function toggleHistoryEntries() {
+  showAllHistoryEntries = !showAllHistoryEntries;
+  renderHistoryTable();
+}
+
+window.toggleHistoryEntries = toggleHistoryEntries;
 
 /* --- KUNDEN SEKTION (KUNDENFAHRZEUGE & WERKSTATT) --- */
 function renderCustomerSection() {
@@ -1138,26 +1280,48 @@ function resetCustomerServiceForm() {
   document.getElementById('custServiceCancelBtn').style.display = "none";
 }
 
+// Globaler Status für die Kunden-Service-Tabelle (ganz oben in app.js oder vor der Funktion)
+let showAllCustomerServiceEntries = false;
+
 function renderCustomerServiceTable() {
   const c = getActiveCustomerVehicle();
   const tbody = document.getElementById('custServiceTableBody');
   if (!tbody) return;
   tbody.innerHTML = '';
 
-  if (!c || !c.services) return;
+  const toggleContainer = document.getElementById('custServiceToggleBtnContainer');
+  const toggleBtn = document.getElementById('custServiceToggleBtn');
 
-  c.services.forEach(cs => {
+  if (!c || !c.services || c.services.length === 0) {
+    if (toggleContainer) toggleContainer.style.display = 'none';
+    return;
+  }
+
+  // 1. Nach Datum sortieren (neueste Einträge zuerst)
+  const sortedServices = [...c.services].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // 2. Auf max. 5 Einträge begrenzen (falls nicht ausgeklappt)
+  const hasMoreThan5 = sortedServices.length > 5;
+  const entriesToRender = (hasMoreThan5 && !showAllCustomerServiceEntries) 
+    ? sortedServices.slice(0, 5) 
+    : sortedServices;
+
+  // 3. Tabelle befüllen
+  entriesToRender.forEach(cs => {
     const tr = document.createElement('tr');
     tr.className = 'clickable-row';
     tr.onclick = (e) => {
       if (e.target.tagName !== 'BUTTON') openCustomerServiceDetailModal(cs.id);
     };
 
+    const mileageVal = typeof cs.mileage === 'number' ? cs.mileage.toLocaleString() + ' km' : '-';
+    const totalCostVal = typeof cs.totalCost === 'number' ? cs.totalCost.toFixed(2) + ' €' : '-';
+
     tr.innerHTML = `
-      <td data-label="Datum">${cs.date}</td>
-      <td data-label="Titel"><strong>${cs.title}</strong></td>
-      <td data-label="KM-Stand">${cs.mileage.toLocaleString()} km</td>
-      <td data-label="Gesamt">${cs.totalCost.toFixed(2)} €</td>
+      <td data-label="Datum">${cs.date || '-'}</td>
+      <td data-label="Titel"><strong>${cs.title || 'Auftrag'}</strong></td>
+      <td data-label="KM-Stand">${mileageVal}</td>
+      <td data-label="Gesamt">${totalCostVal}</td>
       <td>
         <button class="btn btn-secondary btn-sm" onclick="editCustomerServiceEntry('${cs.id}')">✏️</button>
         <button class="btn btn-primary btn-sm" onclick="printInvoice('${cs.id}')">🖨️ Drucken</button>
@@ -1166,7 +1330,26 @@ function renderCustomerServiceTable() {
     `;
     tbody.appendChild(tr);
   });
+
+  // 4. Button "Mehr anzeigen / Weniger anzeigen" steuern
+  if (hasMoreThan5 && toggleContainer && toggleBtn) {
+    toggleContainer.style.display = 'block';
+    const remainingCount = sortedServices.length - 5;
+    toggleBtn.innerText = showAllCustomerServiceEntries 
+      ? 'Weniger anzeigen' 
+      : `Mehr anzeigen (${remainingCount} weitere Einträge)`;
+  } else if (toggleContainer) {
+    toggleContainer.style.display = 'none';
+  }
 }
+
+// Umschalt-Funktion & Global-Bindung für HTML
+function toggleCustomerServiceEntries() {
+  showAllCustomerServiceEntries = !showAllCustomerServiceEntries;
+  renderCustomerServiceTable();
+}
+
+window.toggleCustomerServiceEntries = toggleCustomerServiceEntries;
 
 function editCustomerServiceEntry(id) {
   const c = getActiveCustomerVehicle();
@@ -1402,3 +1585,120 @@ function compressImage(base64Str, maxWidth = 800, maxHeight = 800, quality = 0.7
     };
   });
 }
+function printSaleReport() {
+  const v = getActiveVehicle();
+  const printContainer = document.getElementById('printableInvoice');
+  
+  if (!v) {
+    alert("Kein aktives Fahrzeug ausgewählt.");
+    return;
+  }
+  if (!printContainer) {
+    alert("Fehler: Druck-Container ('printableInvoice') wurde im HTML nicht gefunden.");
+    return;
+  }
+
+  // 1. Service-Einträge nach Datum sortieren (neueste zuerst)
+  const serviceList = v.serviceEntries || [];
+  const sortedServices = [...serviceList].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // 2. HTML-Zeilen für die Historie aufbauen
+  let historyRowsHTML = "";
+  if (sortedServices.length > 0) {
+    historyRowsHTML = sortedServices.map(s => {
+      const dateStr = s.date ? new Date(s.date).toLocaleDateString('de-DE') : '-';
+      const mileageStr = s.mileage ? `${s.mileage.toLocaleString('de-DE')} km` : '-';
+      const performerStr = s.performer ? `<small>(${s.performer})</small>` : '';
+      const notesStr = s.notes ? `<div style="font-size: 0.85rem; color: #555; margin-top: 4px;">${s.notes.replace(/\n/g, '<br>')}</div>` : '';
+
+      return `
+        <tr style="border-bottom: 1px solid #ddd;">
+          <td style="padding: 8px; vertical-align: top;">${dateStr}</td>
+          <td style="padding: 8px; vertical-align: top;">${mileageStr}</td>
+          <td style="padding: 8px; vertical-align: top;">
+            <strong>${s.title || 'Wartung / Reparatur'}</strong> ${performerStr}
+            ${notesStr}
+          </td>
+          <td style="padding: 8px; vertical-align: top; text-align: right;">${s.category || 'Wartung'}</td>
+        </tr>
+      `;
+    }).join('');
+  } else {
+    historyRowsHTML = `<tr><td colspan="4" style="padding: 12px; text-align: center; color: #777;">Keine dokumentierten Wartungseinträge vorhanden.</td></tr>`;
+  }
+
+  // 3. Formatierungs-Vorbereitung für Stammdaten
+  const firstRegStr = v.firstReg ? new Date(v.firstReg).toLocaleDateString('de-DE') : '-';
+  const currentMileageStr = v.mileage ? `${v.mileage.toLocaleString('de-DE')} km` : '-';
+  const hsnTsnStr = (v.hsn || v.tsn) ? `${v.hsn || '-'} / ${v.tsn || '-'}` : '-';
+
+  // 4. Druck-Layout zusammenbauen
+  printContainer.innerHTML = `
+    <div style="padding: 20px; font-family: Arial, sans-serif; color: #222; max-width: 800px; margin: 0 auto;">
+      
+      <!-- Kopfzeile -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #222; padding-bottom: 15px; margin-bottom: 20px;">
+        <div>
+          <h1 style="margin: 0; font-size: 1.8rem; text-transform: uppercase;">Fahrzeug-Verkaufsbericht</h1>
+          <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">Lückenlose Wartungs- & Historienübersicht</p>
+        </div>
+        <div style="text-align: right;">
+          <h2 style="margin: 0; font-size: 1.4rem; color: #0056b3;">${v.name || 'Fahrzeug'}</h2>
+          <span style="display: inline-block; padding: 3px 8px; background: #eee; border: 1px solid #ccc; font-weight: bold; border-radius: 4px; margin-top: 5px;">
+            ${v.plate || 'OHNE KENNZEICHEN'}
+          </span>
+        </div>
+      </div>
+
+      <!-- Stammdaten Raster -->
+      <div style="background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 15px; margin-bottom: 25px;">
+        <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 1.1rem; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Fahrzeugdaten</h3>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 0.95rem;">
+          <div><strong>Erstzulassung:</strong> ${firstRegStr}</div>
+          <div><strong>Aktueller Stand:</strong> ${currentMileageStr}</div>
+          <div><strong>FIN / VIN:</strong> ${v.vin || '-'}</div>
+          <div><strong>HSN / TSN:</strong> ${hsnTsnStr}</div>
+          <div><strong>Kraftstoffart:</strong> ${v.fuelType || '-'}</div>
+          <div><strong>Nächster TÜV / HU:</strong> ${v.nextTuev || '-'}</div>
+        </div>
+      </div>
+
+      <!-- Spezifikationen (falls vorhanden) -->
+      ${v.specs ? `
+      <div style="margin-bottom: 25px;">
+        <h3 style="margin-top: 0; margin-bottom: 8px; font-size: 1.1rem; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Spezifikationen & Ausstattung</h3>
+        <p style="white-space: pre-wrap; margin: 0; font-size: 0.9rem; line-height: 1.4; color: #333;">${v.specs}</p>
+      </div>
+      ` : ''}
+
+      <!-- Wartungshistorie Tabelle -->
+      <div style="margin-bottom: 30px;">
+        <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 1.1rem; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Dokumentierte Wartungen & Instandhaltungen</h3>
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+          <thead>
+            <tr style="background: #f0f0f0; border-bottom: 2px solid #ccc;">
+              <th style="padding: 8px;">Datum</th>
+              <th style="padding: 8px;">KM-Stand</th>
+              <th style="padding: 8px;">Arbeiten / Notizen</th>
+              <th style="padding: 8px; text-align: right;">Kategorie</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${historyRowsHTML}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Fußzeile / Hinweis -->
+      <div style="margin-top: 40px; border-top: 1px solid #ccc; padding-top: 15px; font-size: 0.8rem; color: #666; text-align: center;">
+        Dieser Bericht wurde automatisch aus der Service-Datenbank erstellt. Alle Angaben basieren auf den erfassten Wartungseinträgen.
+      </div>
+
+    </div>
+  `;
+
+  // 5. Druckdialog öffnen
+  window.print();
+}
+
+window.printSaleReport = printSaleReport;
