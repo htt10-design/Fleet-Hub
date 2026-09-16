@@ -55,6 +55,10 @@ function initApp() {
   renderVehicleSelect();
   renderCustomerVehicleSelect();
   loadActiveVehicle();
+
+  // ERGÄNZUNG: Initial auf das Dashboard wechseln
+  const defaultNavBtn = document.querySelector('.nav-item[onclick*="dashboard"]');
+  showTab('dashboard', defaultNavBtn);
 }
 
 function loadDefaultData() {
@@ -130,31 +134,84 @@ function applyTheme(theme) {
   if (v) renderCharts(v);
 }
 
+// Variable zur Speicherung des aktuellen Modus
+let currentMode = 'eigene'; 
+
+function selectArea(area) {
+  currentMode = area;
+  
+  const selectionScreen = document.getElementById('selection-screen');
+  const appWrapper = document.getElementById('app-wrapper');
+
+  if (!selectionScreen || !appWrapper) {
+    console.error('Konnte #selection-screen oder #app-wrapper nicht finden!');
+    return;
+  }
+
+  // 1. Kachel-Bildschirm ausblenden, App einblenden
+  selectionScreen.classList.add('hidden');
+  appWrapper.classList.remove('hidden');
+
+  // 2. Start-Tab aufrufen
+  if (area === 'kunden') {
+    showTab('customers');
+  } else {
+    showTab('dashboard');
+  }
+}
+
+function backToSelection() {
+  document.getElementById('selection-screen')?.classList.remove('hidden');
+  document.getElementById('app-wrapper')?.classList.add('hidden');
+}
+
 function showTab(tabId, element) {
-  // 1. Alle Tabs ausblenden
+  // 1. Aktive Tabs und Nav-Buttons zurücksetzen
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   
-  // 2. Aktiven Tab aktivieren
-  const targetTab = document.getElementById(`tab-${tabId}`);
+  // 2. Ziel-Tab aktivieren
+  const targetTab = document.getElementById(`tab-${tabId}`) || document.getElementById(tabId);
   if (targetTab) {
     targetTab.classList.add('active');
   } else {
-    console.warn(`Tab "tab-${tabId}" nicht gefunden!`);
+    console.warn(`Tab-Inhalt mit ID "tab-${tabId}" oder "${tabId}" fehlt im HTML!`);
   }
 
-  // 3. Nav-Button aktivieren
-  if (element) element.classList.add('active');
+  // 3. Wenn über Button geklickt, Button als 'active' markieren
+  if (element) {
+    element.classList.add('active');
+  } else {
+    // Falls via selectArea aufgerufen: Ersten sichtbaren Button aktivieren
+    const activeSelector = currentMode === 'kunden' ? '.nav-kunden-only' : '.nav-eigene-only';
+    document.querySelector(`.sidebar ${activeSelector}`)?.classList.add('active');
+  }
+
+  // 4. Nav-Sichtbarkeiten umschalten
+  const isCustomerMode = (currentMode === 'kunden');
+
+  document.querySelectorAll('.nav-eigene-only').forEach(item => {
+    item.style.setProperty('display', isCustomerMode ? 'none' : 'flex', 'important');
+  });
+
+  document.querySelectorAll('.nav-kunden-only').forEach(item => {
+    item.style.setProperty('display', isCustomerMode ? 'flex' : 'none', 'important');
+  });
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  // 4. Passende Daten-Render-Funktionen ausführen
-  if (tabId === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
-  else if (tabId === 'service' && typeof renderCustomerServiceTable === 'function') renderCustomerServiceTable();
-  else if (tabId === 'history' && typeof renderHistoryTable === 'function') renderHistoryTable();
-  else if (tabId === 'customers' && typeof renderCustomerSection === 'function') renderCustomerSection();
-  else if (tabId === 'settings' && typeof loadVehicleSettingsIntoForm === 'function') loadVehicleSettingsIntoForm();
+  // 5. Tab-Inhalte rendern
+  try {
+    if (tabId === 'dashboard' && typeof renderDashboard === 'function') renderDashboard();
+    else if (tabId === 'service' && typeof renderCustomerServiceTable === 'function') renderCustomerServiceTable();
+    else if (tabId === 'history' && typeof renderHistoryTable === 'function') renderHistoryTable();
+    else if (tabId === 'customers' && typeof renderCustomerSection === 'function') renderCustomerSection();
+    else if (tabId === 'settings' && typeof loadVehicleSettingsIntoForm === 'function') loadVehicleSettingsIntoForm();
+  } catch (err) {
+    console.error(`Fehler beim Laden von Tab ${tabId}:`, err);
+  }
 }
+
 
 /* --- EIGENE FAHRZEUGE --- */
 function renderVehicleSelect() {
@@ -1468,59 +1525,228 @@ function printInvoice(serviceId) {
     `;
   }
 
-  printContainer.innerHTML = `
-    <div class="invoice-box">
-      <div class="invoice-header">
-        <div>
-          <div class="invoice-title">SGS Fahrzeug-Service</div>
-          <div class="invoice-subtitle">Smart Garage Solutions & Werkstattdokumentation</div>
+      printContainer.innerHTML = `
+    <!-- DRUCK-STYLES BEGRENZEN AUF 1 SEITE -->
+    <style>
+      @media print {
+        @page {
+          size: A4 portrait;
+          margin: 10mm; /* Feste Ränder für den Druck */
+        }
+        body {
+          margin: 0;
+          padding: 0;
+          background: #fff;
+        }
+        .invoice-box {
+          height: calc(100vh - 20mm) !important; /* Exakt 1 Druckseite */
+          box-sizing: border-box !important;
+        }
+      }
+    </style>
+
+    <div class="invoice-box" style="
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      line-height: 1.35;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-sizing: border-box;
+    ">
+      <!-- INHALT (Header, Details, Tabelle, Summe, Notizen) -->
+      <div class="invoice-content">
+        <!-- HEADER -->
+        <div class="invoice-header" style="
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 2px solid #2563eb;
+          padding-bottom: 8px;
+          margin-bottom: 14px;
+        ">
+          <div>
+            <div class="invoice-title" style="
+              font-size: 20px;
+              font-weight: 700;
+              color: #0f172a;
+              letter-spacing: -0.5px;
+            ">SGS Fahrzeug-Service</div>
+            <div class="invoice-subtitle" style="
+              font-size: 11px;
+              color: #64748b;
+              margin-top: 1px;
+            ">Smart Garage Solutions & Werkstattdokumentation</div>
+          </div>
+          <div style="text-align: right; font-size: 12px; color: #475569;">
+            <strong style="color: #0f172a;">Datum:</strong> ${cs.date}
+          </div>
         </div>
-        <div style="text-align: right;">
-          <strong>Datum:</strong> ${cs.date}
+
+        <!-- KUNDEN & FAHRZEUG DETAILS -->
+        <div class="invoice-details-grid" style="
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          background-color: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          padding: 10px 12px;
+          margin-bottom: 14px;
+          font-size: 11px;
+        ">
+          <div>
+            <div style="
+              font-size: 9px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              color: #64748b;
+              font-weight: 700;
+              margin-bottom: 2px;
+            ">Kunde / Halter</div>
+            <strong style="font-size: 12px; color: #0f172a;">${c.owner}</strong><br>
+            <span style="color: #475569;">${c.contact || ''}</span>
+          </div>
+          <div>
+            <div style="
+              font-size: 9px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              color: #64748b;
+              font-weight: 700;
+              margin-bottom: 2px;
+            ">Fahrzeug-Daten</div>
+            <table style="width: 100%; font-size: 10.5px; border-collapse: collapse;">
+              <tr>
+                <td style="color: #64748b; padding: 0;">Modell:</td>
+                <td style="text-align: right; font-weight: 600; color: #0f172a;">${c.model}</td>
+              </tr>
+              <tr>
+                <td style="color: #64748b; padding: 0;">Kennzeichen:</td>
+                <td style="text-align: right; font-weight: 600; color: #0f172a;">${c.plate || '-'}</td>
+              </tr>
+              <tr>
+                <td style="color: #64748b; padding: 0;">FIN:</td>
+                <td style="text-align: right; font-weight: 500; font-family: monospace; color: #0f172a;">${c.vin || '-'}</td>
+              </tr>
+              <tr>
+                <td style="color: #64748b; padding: 0;">HSN / TSN:</td>
+                <td style="text-align: right; font-weight: 500; color: #0f172a;">${c.hsn || '-'}${c.tsn ? ' / ' + c.tsn : ''}</td>
+              </tr>
+              <tr>
+                <td style="color: #64748b; padding: 0;">KM-Stand:</td>
+                <td style="text-align: right; font-weight: 600; color: #2563eb;">${cs.mileage.toLocaleString('de-DE')} km</td>
+              </tr>
+            </table>
+          </div>
         </div>
+
+        <!-- TITEL / AUFTRAG -->
+        <h3 style="
+          font-size: 14px;
+          font-weight: 600;
+          color: #0f172a;
+          margin-bottom: 10px;
+          padding-bottom: 2px;
+          border-bottom: 1px solid #e2e8f0;
+        ">${cs.title}</h3>
+
+        <!-- LEISTUNGSTABELLE -->
+        <table class="invoice-table" style="
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 12px;
+          font-size: 12px;
+        ">
+          <thead>
+            <tr style="background-color: #f1f5f9; color: #334155; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+              <th style="padding: 6px 8px; text-align: left; border-radius: 4px 0 0 4px;">Position / Beschreibung</th>
+              <th style="padding: 6px 8px; text-align: right; border-radius: 0 4px 4px 0;">Betrag</th>
+            </tr>
+          </thead>
+          <tbody style="color: #334155;">
+            ${itemsHtml}
+          </tbody>
+        </table>
+
+        <!-- GESAMTSUMME -->
+        <div class="invoice-total" style="
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          background-color: #0f172a;
+          color: #ffffff;
+          padding: 8px 12px;
+          border-radius: 4px;
+          font-size: 15px;
+          font-weight: 700;
+          margin-top: 10px;
+          margin-bottom: 12px;
+        ">
+          <span style="margin-right: 10px; font-weight: 400; font-size: 12px; opacity: 0.8;">Gesamtsumme:</span>
+          <span>${cs.totalCost.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
+        </div>
+
+        <!-- ARBEITSBERICHT & ANMERKUNGEN -->
+        ${cs.notes ? `
+          <div class="invoice-notes" style="
+            background-color: #fffbeb;
+            border: 1px solid #fef3c7;
+            border-left: 3px solid #f59e0b;
+            border-radius: 4px;
+            padding: 8px 10px;
+            margin-bottom: 12px;
+            font-size: 11px;
+            color: #92400e;
+          ">
+            <strong style="display: block; margin-bottom: 2px; color: #78350f;">Arbeitsbericht / Anmerkungen:</strong>
+            <span style="white-space: pre-line;">${cs.notes}</span>
+          </div>
+        ` : ''}
+
+        <!-- BILDER / DOKUMENTATION -->
+        ${imagesHtml ? `
+          <div style="margin-top: 10px; margin-bottom: 10px; page-break-inside: avoid;">
+            <strong style="display: block; font-size: 11px; color: #0f172a; margin-bottom: 4px;">Fotodokumentation:</strong>
+            ${imagesHtml}
+          </div>
+        ` : ''}
       </div>
 
-      <div class="invoice-details-grid">
+      <!-- FUSSZEILE (Ganz unten angepinnt) -->
+      <div class="invoice-footer" style="
+        padding-top: 8px;
+        border-top: 1px solid #e2e8f0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        font-size: 9.5px;
+        color: #64748b;
+        page-break-inside: avoid;
+      ">
         <div>
-          <strong>Kunde / Halter:</strong><br>
-          ${c.owner}<br>
-          ${c.contact || ''}
+          <strong style="color: #334155; font-size: 10px;">Bankverbindung (Überweisung)</strong><br>
+          Empfänger: SGS Fahrzeug-Service<br>
+          IBAN: DE00 0000 0000 0000 0000 00<br>
+          BIC: XXXXXXXXXXX | Bank: Musterbank
         </div>
         <div>
-          <strong>Fahrzeug-Daten:</strong><br>
-          Modell: ${c.model}<br>
-          Kennzeichen: ${c.plate || '-'}<br>
-          FIN: ${c.vin || '-'}<br>
-          HSN / TSN: ${c.hsn || '-'}${c.tsn ? ' / ' + c.tsn : ''}<br>
-          KM-Stand: ${cs.mileage.toLocaleString()} km
+          <strong style="color: #334155; font-size: 10px;">PayPal / Alternative</strong><br>
+          PayPal-Me: paypal.me/SGSFahrzeugservice<br>
+          E-Mail: paypal@sgs-service.de<br>
+          Verwendungszweck: ${c.plate || c.owner} - ${cs.date}
         </div>
       </div>
-
-      <h3>${cs.title}</h3>
-
-      <table class="invoice-table">
-        <thead>
-          <tr>
-            <th>Position / Beschreibung</th>
-            <th style="text-align: right;">Betrag</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemsHtml}
-        </tbody>
-      </table>
-
-      <div class="invoice-total">
-        Gesamtsumme: ${cs.totalCost.toFixed(2)} €
-      </div>
-
-      ${cs.notes ? `<div class="invoice-notes"><strong>Arbeitsbericht / Anmerkungen:</strong><br>${cs.notes}</div>` : ''}
-      ${imagesHtml}
     </div>
   `;
 
   window.print();
 }
+
 
 /* --- EXPORT & IMPORT (BACKUP) --- */
 function exportData() {
