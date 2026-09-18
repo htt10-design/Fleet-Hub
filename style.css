@@ -659,6 +659,23 @@ body {
   border-bottom: none;
 }
 
+.reminder-title {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.reminder-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.reminder-item.reminder-overdue .reminder-meta {
+  color: var(--accent-danger);
+  font-weight: 700;
+}
+
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -693,6 +710,25 @@ body {
 
 .form-row { display: flex; gap: 0.75rem; }
 .form-row .form-group { flex: 1; }
+
+.routine-interval-box {
+  margin-bottom: 1rem;
+}
+
+.routine-interval-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+
+.routine-interval-box .form-row {
+  margin-bottom: 0.5rem;
+}
+
+.routine-interval-hint {
+  margin: 0;
+}
 
 label {
   display: block;
@@ -898,6 +934,53 @@ input:focus, select:focus, textarea:focus {
   gap: 0.5rem;
   font-size: 0.85rem;
   margin-bottom: 1rem;
+}
+
+/* Bildzuschnitt-Werkzeug (Fahrzeugfoto Stammdaten) */
+.crop-frame-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.crop-frame {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-body);
+  touch-action: none;
+}
+
+.crop-frame img {
+  position: absolute;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  cursor: grab;
+}
+
+.crop-frame img:active {
+  cursor: grabbing;
+}
+
+.crop-zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.25rem;
+}
+
+.crop-zoom-row label {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.crop-zoom-row input[type="range"] {
+  flex: 1;
 }
 
 .detail-section {

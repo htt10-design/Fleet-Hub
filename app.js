@@ -242,6 +242,55 @@ function formatTuevDate(value) {
   return value;
 }
 
+// Ermittelt anstehende Routine-Wartungen anhand der hinterlegten KM-/Datums-Erinnerung.
+// Pro Titel wird nur der jeweils neueste Wartungseintrag berücksichtigt (eine neue
+// Wartung zum selben Thema ersetzt die alte Erinnerung).
+function getUpcomingMaintenanceReminders(v) {
+  const serviceList = v.serviceEntries || [];
+  const currentMileage = getVehicleCurrentMileage(v);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const withReminder = serviceList.filter(s => s.category === 'Wartung' && (s.nextKm || s.nextDate));
+
+  const latestByTitle = {};
+  withReminder.forEach(s => {
+    const key = (s.title || 'Wartung').trim().toLowerCase();
+    if (!latestByTitle[key] || new Date(s.date) > new Date(latestByTitle[key].date)) {
+      latestByTitle[key] = s;
+    }
+  });
+
+  const reminders = Object.values(latestByTitle).map(s => {
+    const kmRemaining = s.nextKm ? Math.round(s.nextKm - currentMileage) : null;
+    let daysRemaining = null;
+    if (s.nextDate) {
+      const due = new Date(s.nextDate);
+      daysRemaining = Math.round((due - today) / (1000 * 60 * 60 * 24));
+    }
+    const overdue = (kmRemaining !== null && kmRemaining <= 0) || (daysRemaining !== null && daysRemaining <= 0);
+
+    return {
+      title: s.title || 'Wartung',
+      nextKm: s.nextKm || null,
+      nextDate: s.nextDate || null,
+      kmRemaining,
+      daysRemaining,
+      overdue
+    };
+  });
+
+  // Dringendste zuerst: überfällige ganz oben, danach nach verbleibender Zeit/Strecke sortiert
+  reminders.sort((a, b) => {
+    if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+    const aMetric = a.daysRemaining !== null ? a.daysRemaining : (a.kmRemaining !== null ? a.kmRemaining / 30 : Infinity);
+    const bMetric = b.daysRemaining !== null ? b.daysRemaining : (b.kmRemaining !== null ? b.kmRemaining / 30 : Infinity);
+    return aMetric - bMetric;
+  });
+
+  return reminders;
+}
+
 // Rendert alle gespeicherten eigenen Fahrzeuge als Auswahlkacheln hinter "Meine Garage"
 function renderGarageVehicleTiles() {
   const grid = document.getElementById('garageVehicleGrid');
@@ -534,17 +583,183 @@ function handleVehicleImageUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = async function(e) {
-    const compressed = await compressImage(e.target.result);
-    const v = getActiveVehicle();
-    if (v) {
-      v.image = compressed;
-      saveData();
-      loadActiveVehicle();
-    }
+  reader.onload = function(e) {
+    openImageCropModal(e.target.result);
   };
   reader.readAsDataURL(file);
 }
+
+/* --- BILDZUSCHNITT (Fahrzeugfoto Stammdaten) --- */
+let cropState = {
+  naturalWidth: 0,
+  naturalHeight: 0,
+  minScale: 1,
+  scaleMultiplier: 1,
+  left: 0,
+  top: 0,
+  dragging: false,
+  startPointerX: 0,
+  startPointerY: 0,
+  startLeft: 0,
+  startTop: 0
+};
+let cropDragHandlersAttached = false;
+
+function openImageCropModal(dataUrl) {
+  const modal = document.getElementById('imageCropModal');
+  const img = document.getElementById('cropImage');
+  const slider = document.getElementById('cropZoomSlider');
+
+  // Modal zuerst sichtbar machen, damit der Rahmen beim Laden des Bildes
+  // schon seine echte Größe hat
+  modal.classList.add('active');
+  attachCropDragHandlers();
+
+  img.onload = () => {
+    const frame = document.getElementById('cropFrame');
+    const frameW = frame.clientWidth || 380;
+    const frameH = frame.clientHeight || 285;
+
+    cropState.naturalWidth = img.naturalWidth;
+    cropState.naturalHeight = img.naturalHeight;
+    cropState.minScale = Math.max(frameW / cropState.naturalWidth, frameH / cropState.naturalHeight);
+    cropState.scaleMultiplier = 1;
+    slider.value = 1;
+
+    const imgW = cropState.naturalWidth * cropState.minScale;
+    const imgH = cropState.naturalHeight * cropState.minScale;
+    cropState.left = (frameW - imgW) / 2;
+    cropState.top = (frameH - imgH) / 2;
+
+    applyCropTransform();
+  };
+  img.src = dataUrl;
+}
+
+function applyCropTransform() {
+  const img = document.getElementById('cropImage');
+  const scale = cropState.minScale * cropState.scaleMultiplier;
+  img.style.width = (cropState.naturalWidth * scale) + 'px';
+  img.style.height = (cropState.naturalHeight * scale) + 'px';
+  img.style.left = cropState.left + 'px';
+  img.style.top = cropState.top + 'px';
+}
+
+function clampCropPosition() {
+  const frame = document.getElementById('cropFrame');
+  const img = document.getElementById('cropImage');
+  const frameW = frame.clientWidth;
+  const frameH = frame.clientHeight;
+  const imgW = img.offsetWidth;
+  const imgH = img.offsetHeight;
+
+  const minLeft = Math.min(0, frameW - imgW);
+  const minTop = Math.min(0, frameH - imgH);
+
+  cropState.left = Math.min(0, Math.max(minLeft, cropState.left));
+  cropState.top = Math.min(0, Math.max(minTop, cropState.top));
+}
+
+function updateCropZoom() {
+  const slider = document.getElementById('cropZoomSlider');
+  const frame = document.getElementById('cropFrame');
+  const img = document.getElementById('cropImage');
+  const frameW = frame.clientWidth;
+  const frameH = frame.clientHeight;
+
+  const oldImgW = img.offsetWidth;
+  const oldImgH = img.offsetHeight;
+
+  // Aktuellen Bildmittelpunkt merken, damit der Zoom dort ansetzt statt neu zu zentrieren
+  const relX = (frameW / 2 - cropState.left) / oldImgW;
+  const relY = (frameH / 2 - cropState.top) / oldImgH;
+
+  cropState.scaleMultiplier = parseFloat(slider.value);
+  const scale = cropState.minScale * cropState.scaleMultiplier;
+  const newImgW = cropState.naturalWidth * scale;
+  const newImgH = cropState.naturalHeight * scale;
+
+  cropState.left = frameW / 2 - relX * newImgW;
+  cropState.top = frameH / 2 - relY * newImgH;
+
+  applyCropTransform();
+  clampCropPosition();
+  applyCropTransform();
+}
+window.updateCropZoom = updateCropZoom;
+
+function attachCropDragHandlers() {
+  if (cropDragHandlersAttached) return;
+  cropDragHandlersAttached = true;
+
+  const img = document.getElementById('cropImage');
+
+  img.addEventListener('pointerdown', (e) => {
+    cropState.dragging = true;
+    cropState.startPointerX = e.clientX;
+    cropState.startPointerY = e.clientY;
+    cropState.startLeft = cropState.left;
+    cropState.startTop = cropState.top;
+    img.setPointerCapture(e.pointerId);
+  });
+
+  img.addEventListener('pointermove', (e) => {
+    if (!cropState.dragging) return;
+    cropState.left = cropState.startLeft + (e.clientX - cropState.startPointerX);
+    cropState.top = cropState.startTop + (e.clientY - cropState.startPointerY);
+    clampCropPosition();
+    applyCropTransform();
+  });
+
+  const endDrag = () => { cropState.dragging = false; };
+  img.addEventListener('pointerup', endDrag);
+  img.addEventListener('pointercancel', endDrag);
+}
+
+function closeImageCropModal() {
+  document.getElementById('imageCropModal').classList.remove('active');
+  const input = document.getElementById('vehicleImageInput');
+  if (input) input.value = '';
+}
+window.closeImageCropModal = closeImageCropModal;
+
+function applyImageCrop() {
+  const frame = document.getElementById('cropFrame');
+  const img = document.getElementById('cropImage');
+
+  const frameW = frame.clientWidth;
+  const frameH = frame.clientHeight;
+
+  const outputWidth = 800;
+  const outputHeight = Math.round(outputWidth * (frameH / frameW));
+  const ratio = outputWidth / frameW;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
+  const ctx = canvas.getContext('2d');
+
+  ctx.drawImage(
+    img,
+    cropState.left * ratio,
+    cropState.top * ratio,
+    img.offsetWidth * ratio,
+    img.offsetHeight * ratio
+  );
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+  const v = getActiveVehicle();
+  if (v) {
+    v.image = dataUrl;
+    saveData();
+    loadActiveVehicle();
+  }
+
+  closeImageCropModal();
+}
+window.applyImageCrop = applyImageCrop;
+
 function removeVehicleImage() {
   const v = getActiveVehicle();
   if (v) {
@@ -795,6 +1010,26 @@ function toggleFuelEntries() {
 window.toggleFuelEntries = toggleFuelEntries;
 
 /* --- WARTUNG & SERVICE --- */
+
+// Blendet die Wiederholungs-Erinnerung (KM/Datum) nur bei Kategorie "Wartung" ein
+function toggleRoutineIntervalFields() {
+  const category = document.getElementById('serviceCategory').value;
+  const container = document.getElementById('routineIntervalContainer');
+  if (!container) return;
+
+  if (category === 'Wartung') {
+    container.style.display = '';
+  } else {
+    container.style.display = 'none';
+    // Felder leeren, wenn sie nicht zu einer Routine-Wartung gehören
+    const kmField = document.getElementById('nextServiceKm');
+    const dateField = document.getElementById('nextServiceDate');
+    if (kmField) kmField.value = '';
+    if (dateField) dateField.value = '';
+  }
+}
+window.toggleRoutineIntervalFields = toggleRoutineIntervalFields;
+
 function handleServiceImageUpload(event) {
   const files = Array.from(event.target.files);
   files.forEach(file => {
@@ -843,7 +1078,10 @@ function saveServiceEntry(e) {
     cost: parseFloat(document.getElementById('serviceCost').value) || 0,
     performer: document.getElementById('servicePerformer').value,
     notes: document.getElementById('serviceNotes').value,
-    images: [...tempServiceImages]
+    images: [...tempServiceImages],
+    // Wiederholungs-Erinnerung (nur bei Kategorie "Wartung" befüllt, sonst leer)
+    nextKm: parseFloat(document.getElementById('nextServiceKm').value) || null,
+    nextDate: document.getElementById('nextServiceDate').value || null
   };
 
   if (!v.serviceEntries) v.serviceEntries = [];
@@ -871,6 +1109,7 @@ function resetServiceForm() {
   renderServiceImagePreviews();
   document.getElementById('serviceSubmitBtn').innerText = "Eintrag Speichern";
   document.getElementById('serviceCancelBtn').style.display = "none";
+  toggleRoutineIntervalFields();
 }
 
 // Globaler Status für die Wartungstabelle (ganz oben in app.js oder vor der Funktion)
@@ -956,6 +1195,9 @@ function editServiceEntry(id) {
   document.getElementById('serviceCost').value = entry.cost;
   document.getElementById('servicePerformer').value = entry.performer;
   document.getElementById('serviceNotes').value = entry.notes || '';
+  document.getElementById('nextServiceKm').value = entry.nextKm || '';
+  document.getElementById('nextServiceDate').value = entry.nextDate || '';
+  toggleRoutineIntervalFields();
 
   tempServiceImages = entry.images ? [...entry.images] : [];
   renderServiceImagePreviews();
@@ -1081,11 +1323,38 @@ function renderDashboard() {
   const reminderList = document.getElementById('reminderList');
   if (reminderList) {
     reminderList.innerHTML = '';
+
+    const maintenanceReminders = getUpcomingMaintenanceReminders(v);
+
+    maintenanceReminders.forEach(r => {
+      const li = document.createElement('li');
+      li.className = 'reminder-item' + (r.overdue ? ' reminder-overdue' : '');
+
+      const metaParts = [];
+      if (r.nextKm) {
+        metaParts.push(r.kmRemaining <= 0
+          ? `${Math.abs(r.kmRemaining).toLocaleString('de-DE')} km überfällig`
+          : `noch ${r.kmRemaining.toLocaleString('de-DE')} km`);
+      }
+      if (r.nextDate) {
+        const dateText = new Date(r.nextDate).toLocaleDateString('de-DE');
+        metaParts.push(r.daysRemaining <= 0
+          ? `seit ${dateText} fällig`
+          : `fällig am ${dateText}`);
+      }
+
+      li.innerHTML = `<span class="reminder-title">${r.title}</span><span class="reminder-meta">${metaParts.join(' • ')}</span>`;
+      reminderList.appendChild(li);
+    });
+
     if (v.nextTuev) {
       const li = document.createElement('li');
-      li.innerHTML = `<strong>Nächster TÜV / Inspektion:</strong> ${v.nextTuev}`;
+      li.className = 'reminder-item';
+      li.innerHTML = `<span class="reminder-title">Nächster TÜV / Inspektion</span><span class="reminder-meta">${formatTuevDate(v.nextTuev)}</span>`;
       reminderList.appendChild(li);
-    } else {
+    }
+
+    if (maintenanceReminders.length === 0 && !v.nextTuev) {
       reminderList.innerHTML = '<li>Keine anstehenden Termine eingetragen.</li>';
     }
   }
