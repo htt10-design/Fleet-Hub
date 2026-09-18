@@ -128,41 +128,174 @@ function toggleTheme() {
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
+  const iconText = theme === 'light' ? '☀️' : '🌙';
+
   const icon = document.getElementById('themeToggleIcon');
-  if (icon) icon.innerText = theme === 'light' ? '☀️' : '🌙';
+  if (icon) icon.innerText = iconText;
+
+  const iconSelection = document.getElementById('themeToggleIconSelection');
+  if (iconSelection) iconSelection.innerText = iconText;
+
   const v = getActiveVehicle();
   if (v) renderCharts(v);
 }
 
 // Variable zur Speicherung des aktuellen Modus
-let currentMode = 'eigene'; 
+let currentMode = 'eigene';
 
-function selectArea(area) {
-  currentMode = area;
-  
-  const selectionScreen = document.getElementById('selection-screen');
-  const appWrapper = document.getElementById('app-wrapper');
-
-  if (!selectionScreen || !appWrapper) {
-    console.error('Konnte #selection-screen oder #app-wrapper nicht finden!');
+// Hilfsfunktion zur Auslösung der verlangsamten Garagentor-Animation
+function triggerGarageAnimation(callback) {
+  const overlay = document.getElementById('garage-door-overlay');
+  if (!overlay) {
+    if (callback) callback();
     return;
   }
 
-  // 1. Kachel-Bildschirm ausblenden, App einblenden
-  selectionScreen.classList.add('hidden');
-  appWrapper.classList.remove('hidden');
+  overlay.classList.add('active');
 
-  // 2. Start-Tab aufrufen
-  if (area === 'kunden') {
+  // Schaltet die Ansicht nach ~600ms um (genau wenn das Tor halb oben ist)
+  setTimeout(() => {
+    if (callback) callback();
+  }, 600);
+
+  // Blendet das Overlay nach Ablauf der 1.2s Gesamtzeit wieder ab
+  setTimeout(() => {
+    overlay.classList.remove('active');
+  }, 1300);
+}
+// Bereichsauswahl steuern
+function selectArea(area) {
+  if (area === 'eigene') {
+    // Tor-Animation auslösen
+    triggerGarageAnimation(() => {
+      // 1. Erst die Hauptkacheln ausblenden und die Fahrzeugauswahl einblenden
+      const areaGrid = document.getElementById('area-selection-grid');
+      const garageSelection = document.getElementById('garage-vehicle-selection');
+      const title = document.getElementById('selection-title');
+
+      if (areaGrid) areaGrid.style.display = 'none';
+      if (garageSelection) garageSelection.style.display = 'block';
+      if (title) title.innerText = 'Wähle dein Fahrzeug';
+
+      // 2. Danach die gespeicherten Fahrzeuge als Kacheln laden
+      try {
+        renderGarageVehicleTiles();
+      } catch (err) {
+        console.error("Fehler beim Laden der Fahrzeug-Kacheln:", err);
+      }
+    });
+  } else if (area === 'kunden') {
+    // Kundenbereich bleibt wie gehabt: direkt in die App
+    currentMode = 'kunden';
+
+    document.getElementById('selection-screen').classList.add('hidden');
+    document.getElementById('app-wrapper').classList.remove('hidden');
+    document.body.classList.add('mode-kunden');
+    document.body.classList.remove('mode-eigene');
+
     showTab('customers');
-  } else {
-    showTab('dashboard');
+    if (typeof renderCustomerVehicles === 'function') renderCustomerVehicles();
   }
 }
 
+// Ermittelt den aktuellen Kilometer-/Betriebsstundenstand aus Tank- & Wartungseinträgen
+function getVehicleCurrentMileage(v) {
+  const fuelList = v.fuelEntries || [];
+  const serviceList = v.serviceEntries || [];
+  const allMileage = [
+    ...fuelList.map(f => f.mileage || 0),
+    ...serviceList.map(s => s.mileage || 0)
+  ];
+  return allMileage.length > 0 ? Math.max(...allMileage) : 0;
+}
+
+// Formatiert den TÜV-Termin (gespeichert als "YYYY-MM") als "MM/YYYY"
+function formatTuevDate(value) {
+  if (!value) return '-';
+  const parts = value.split('-');
+  if (parts.length === 2) return `${parts[1]}/${parts[0]}`;
+  return value;
+}
+
+// Rendert alle gespeicherten eigenen Fahrzeuge als Auswahlkacheln hinter "Meine Garage"
+function renderGarageVehicleTiles() {
+  const grid = document.getElementById('garageVehicleGrid');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+
+  const list = appData.vehicles || [];
+
+  if (list.length === 0) {
+    grid.innerHTML = `
+      <div class="selection-card" onclick="openVehicleModal()" style="grid-column: 1 / -1; text-align: center;">
+        <div class="kachel-icon">➕</div>
+        <h3>Noch kein Fahrzeug vorhanden</h3>
+        <p>Klicke hier, um dein erstes Fahrzeug anzulegen.</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'selection-card vehicle-tile';
+
+    const imageHtml = v.image
+      ? `<img src="${v.image}" class="vehicle-tile-image" alt="${v.name || 'Fahrzeug'}">`
+      : `<div class="vehicle-tile-icon">🏎️</div>`;
+
+    const mileage = getVehicleCurrentMileage(v);
+    const mileageUnit = v.type === 'hours' ? 'Std' : 'km';
+    const hsn = v.hsn || '-';
+    const tsn = v.tsn || '-';
+    const tuev = formatTuevDate(v.nextTuev);
+
+    card.innerHTML = `
+      ${imageHtml}
+      <h3>${v.name || 'Unbenanntes Fahrzeug'}</h3>
+      <p>${v.plate || 'Kein Kennzeichen'} ${v.fuelType ? '• ' + v.fuelType : ''}</p>
+      <div class="vehicle-tile-info">
+        <span><strong>KM-Stand:</strong> ${mileage.toLocaleString('de-DE')} ${mileageUnit}</span>
+        <span><strong>HSN/TSN:</strong> ${hsn} / ${tsn}</span>
+        <span><strong>Nächster TÜV:</strong> ${tuev}</span>
+      </div>
+    `;
+
+    card.onclick = () => chooseGarageVehicle(v.id);
+    grid.appendChild(card);
+  });
+}
+
+// Zurück zur Haupt-Bereichsauswahl ("Meine Garage" vs. "Kundenfahrzeuge")
+function showAreaSelection() {
+  document.getElementById('area-selection-grid').style.display = 'grid';
+  document.getElementById('garage-vehicle-selection').style.display = 'none';
+  
+  const title = document.getElementById('selection-title');
+  if (title) title.innerText = 'Bitte wähle deinen Bereich';
+}
+
 function backToSelection() {
-  document.getElementById('selection-screen')?.classList.remove('hidden');
-  document.getElementById('app-wrapper')?.classList.add('hidden');
+  document.getElementById('app-wrapper').classList.add('hidden');
+  document.getElementById('selection-screen').classList.remove('hidden');
+
+  if (currentMode === 'eigene') {
+    // Aus dem Tab-Modus der eigenen Fahrzeuge geht's zurück zu den Fahrzeug-Kacheln,
+    // nicht bis ganz zum Start-Bildschirm
+    const areaGrid = document.getElementById('area-selection-grid');
+    const garageSelection = document.getElementById('garage-vehicle-selection');
+    const title = document.getElementById('selection-title');
+
+    if (areaGrid) areaGrid.style.display = 'none';
+    if (garageSelection) garageSelection.style.display = 'block';
+    if (title) title.innerText = 'Wähle dein Fahrzeug';
+
+    renderGarageVehicleTiles();
+  } else {
+    // Kundenfahrzeuge: Verhalten bleibt wie gehabt
+    showAreaSelection();
+  }
 }
 
 function showTab(tabId, element) {
@@ -212,11 +345,33 @@ function showTab(tabId, element) {
   }
 }
 
+// Fahrzeug-Kachel wurde angeklickt -> aktives Fahrzeug setzen & in den Tab-Modus wechseln
+function chooseGarageVehicle(vehicleId) {
+  currentMode = 'eigene';
+  appData.activeVehicleId = vehicleId;
+  saveData();
+
+  // Auswahlbildschirm verstecken & App anzeigen
+  document.getElementById('selection-screen').classList.add('hidden');
+  document.getElementById('app-wrapper').classList.remove('hidden');
+
+  // Modus "Eigene Fahrzeuge" aktivieren
+  document.body.classList.add('mode-eigene');
+  document.body.classList.remove('mode-kunden');
+
+  // Daten des gewählten Fahrzeugs laden (Tanken, Wartung, Historie, Dashboard...)
+  renderVehicleSelect();
+  loadActiveVehicle();
+
+  const defaultNavBtn = document.querySelector('.nav-item[onclick*="dashboard"]');
+  showTab('dashboard', defaultNavBtn);
+}
+
 
 /* --- EIGENE FAHRZEUGE --- */
 function renderVehicleSelect() {
   const select = document.getElementById('vehicleSelect');
-  if (!select) return;
+  if (!select) return; // Falls das Element nicht mehr im Header existiert, abbrechen
   select.innerHTML = '';
   appData.vehicles.forEach(v => {
     const opt = document.createElement('option');
@@ -1526,21 +1681,47 @@ function printInvoice(serviceId) {
   }
 
       printContainer.innerHTML = `
-    <!-- DRUCK-STYLES BEGRENZEN AUF 1 SEITE -->
+    <!-- DRUCK-STYLES (MOBIL-OPTIMIERT, STRIKT 1 SEITE, FUSSZEILE UNTEN FIXIERT) -->
     <style>
       @media print {
         @page {
           size: A4 portrait;
-          margin: 10mm; /* Feste Ränder für den Druck */
+          margin: 6mm 8mm; /* Sehr schmaler oberer/unterer Rand */
         }
-        body {
-          margin: 0;
-          padding: 0;
-          background: #fff;
+        html, body {
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        /* Der äußere Druck-Container bekommt sonst 15mm Padding aus style.css
+           (.print-only) - das würde unsere Höhenrechnung sprengen, daher hier
+           für diesen Druck auf 0 gesetzt. */
+        #printableInvoice.print-only {
+          padding: 0 !important;
         }
         .invoice-box {
-          height: calc(100vh - 20mm) !important; /* Exakt 1 Druckseite */
+          position: relative !important;
+          height: 283mm !important; /* Druckbare A4-Höhe (297mm - 2x6mm Seitenrand, mit Puffer) */
+          min-height: 0 !important;
+          max-height: none !important;
+          display: block !important; /* Kein Flexbox im Druck, um Mobile-Bugs zu vermeiden */
+          padding: 0 0 62px 0 !important; /* Platz für die fixierte Fußzeile freihalten */
+          margin: 0 !important;
           box-sizing: border-box !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+        .invoice-footer {
+          position: absolute !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          margin-top: 0 !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
         }
       }
     </style>
@@ -1548,42 +1729,40 @@ function printInvoice(serviceId) {
     <div class="invoice-box" style="
       max-width: 800px;
       margin: 0 auto;
-      padding: 16px 20px;
-      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-      color: #1e293b;
+      padding: 4px 8px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #111827;
       background: #ffffff;
-      line-height: 1.35;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      line-height: 1.2;
       box-sizing: border-box;
     ">
-      <!-- INHALT (Header, Details, Tabelle, Summe, Notizen) -->
+      <!-- INHALT -->
       <div class="invoice-content">
         <!-- HEADER -->
         <div class="invoice-header" style="
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          border-bottom: 2px solid #2563eb;
-          padding-bottom: 8px;
-          margin-bottom: 14px;
+          border-bottom: 2px solid #111827;
+          padding-bottom: 4px;
+          margin-bottom: 8px;
         ">
           <div>
             <div class="invoice-title" style="
-              font-size: 20px;
+              font-size: 17px;
               font-weight: 700;
-              color: #0f172a;
-              letter-spacing: -0.5px;
+              color: #111827;
+              letter-spacing: -0.3px;
+              text-transform: uppercase;
             ">SGS Fahrzeug-Service</div>
             <div class="invoice-subtitle" style="
-              font-size: 11px;
-              color: #64748b;
+              font-size: 9.5px;
+              color: #4b5563;
               margin-top: 1px;
             ">Smart Garage Solutions & Werkstattdokumentation</div>
           </div>
-          <div style="text-align: right; font-size: 12px; color: #475569;">
-            <strong style="color: #0f172a;">Datum:</strong> ${cs.date}
+          <div style="text-align: right; font-size: 10.5px; color: #111827;">
+            <strong>Datum:</strong> ${cs.date}
           </div>
         </div>
 
@@ -1591,55 +1770,55 @@ function printInvoice(serviceId) {
         <div class="invoice-details-grid" style="
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
-          background-color: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          padding: 10px 12px;
-          margin-bottom: 14px;
-          font-size: 11px;
+          gap: 6px;
+          background-color: #f9fafb;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          padding: 5px 8px;
+          margin-bottom: 8px;
+          font-size: 9.5px;
         ">
           <div>
             <div style="
-              font-size: 9px;
+              font-size: 7.5px;
               text-transform: uppercase;
               letter-spacing: 0.5px;
-              color: #64748b;
+              color: #4b5563;
               font-weight: 700;
-              margin-bottom: 2px;
+              margin-bottom: 1px;
             ">Kunde / Halter</div>
-            <strong style="font-size: 12px; color: #0f172a;">${c.owner}</strong><br>
-            <span style="color: #475569;">${c.contact || ''}</span>
+            <strong style="font-size: 10.5px; color: #111827;">${c.owner}</strong><br>
+            <span style="color: #374151;">${c.contact || ''}</span>
           </div>
           <div>
             <div style="
-              font-size: 9px;
+              font-size: 7.5px;
               text-transform: uppercase;
               letter-spacing: 0.5px;
-              color: #64748b;
+              color: #4b5563;
               font-weight: 700;
-              margin-bottom: 2px;
+              margin-bottom: 1px;
             ">Fahrzeug-Daten</div>
-            <table style="width: 100%; font-size: 10.5px; border-collapse: collapse;">
+            <table style="width: 100%; font-size: 9px; border-collapse: collapse;">
               <tr>
-                <td style="color: #64748b; padding: 0;">Modell:</td>
-                <td style="text-align: right; font-weight: 600; color: #0f172a;">${c.model}</td>
+                <td style="color: #4b5563; padding: 0;">Modell:</td>
+                <td style="text-align: right; font-weight: 600; color: #111827;">${c.model}</td>
               </tr>
               <tr>
-                <td style="color: #64748b; padding: 0;">Kennzeichen:</td>
-                <td style="text-align: right; font-weight: 600; color: #0f172a;">${c.plate || '-'}</td>
+                <td style="color: #4b5563; padding: 0;">Kennzeichen:</td>
+                <td style="text-align: right; font-weight: 600; color: #111827;">${c.plate || '-'}</td>
               </tr>
               <tr>
-                <td style="color: #64748b; padding: 0;">FIN:</td>
-                <td style="text-align: right; font-weight: 500; font-family: monospace; color: #0f172a;">${c.vin || '-'}</td>
+                <td style="color: #4b5563; padding: 0;">FIN:</td>
+                <td style="text-align: right; font-weight: 500; font-family: monospace; color: #111827;">${c.vin || '-'}</td>
               </tr>
               <tr>
-                <td style="color: #64748b; padding: 0;">HSN / TSN:</td>
-                <td style="text-align: right; font-weight: 500; color: #0f172a;">${c.hsn || '-'}${c.tsn ? ' / ' + c.tsn : ''}</td>
+                <td style="color: #4b5563; padding: 0;">HSN / TSN:</td>
+                <td style="text-align: right; font-weight: 500; color: #111827;">${c.hsn || '-'}${c.tsn ? ' / ' + c.tsn : ''}</td>
               </tr>
               <tr>
-                <td style="color: #64748b; padding: 0;">KM-Stand:</td>
-                <td style="text-align: right; font-weight: 600; color: #2563eb;">${cs.mileage.toLocaleString('de-DE')} km</td>
+                <td style="color: #4b5563; padding: 0;">KM-Stand:</td>
+                <td style="text-align: right; font-weight: 600; color: #111827;">${cs.mileage.toLocaleString('de-DE')} km</td>
               </tr>
             </table>
           </div>
@@ -1647,28 +1826,30 @@ function printInvoice(serviceId) {
 
         <!-- TITEL / AUFTRAG -->
         <h3 style="
-          font-size: 14px;
-          font-weight: 600;
-          color: #0f172a;
-          margin-bottom: 10px;
+          font-size: 11.5px;
+          font-weight: 700;
+          color: #111827;
+          margin: 0 0 5px 0;
           padding-bottom: 2px;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #e5e7eb;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
         ">${cs.title}</h3>
 
         <!-- LEISTUNGSTABELLE -->
         <table class="invoice-table" style="
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 12px;
-          font-size: 12px;
+          margin-bottom: 6px;
+          font-size: 10px;
         ">
           <thead>
-            <tr style="background-color: #f1f5f9; color: #334155; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
-              <th style="padding: 6px 8px; text-align: left; border-radius: 4px 0 0 4px;">Position / Beschreibung</th>
-              <th style="padding: 6px 8px; text-align: right; border-radius: 0 4px 4px 0;">Betrag</th>
+            <tr style="background-color: #f3f4f6; color: #111827; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #d1d5db;">
+              <th style="padding: 3px 5px; text-align: left;">Position / Beschreibung</th>
+              <th style="padding: 3px 5px; text-align: right;">Betrag</th>
             </tr>
           </thead>
-          <tbody style="color: #334155;">
+          <tbody style="color: #1f2937;">
             ${itemsHtml}
           </tbody>
         </table>
@@ -1678,64 +1859,64 @@ function printInvoice(serviceId) {
           display: flex;
           justify-content: flex-end;
           align-items: center;
-          background-color: #0f172a;
+          background-color: #111827;
           color: #ffffff;
-          padding: 8px 12px;
-          border-radius: 4px;
-          font-size: 15px;
+          padding: 4px 6px;
+          border-radius: 3px;
+          font-size: 12px;
           font-weight: 700;
-          margin-top: 10px;
-          margin-bottom: 12px;
+          margin-top: 5px;
+          margin-bottom: 6px;
         ">
-          <span style="margin-right: 10px; font-weight: 400; font-size: 12px; opacity: 0.8;">Gesamtsumme:</span>
+          <span style="margin-right: 6px; font-weight: 400; font-size: 9.5px; opacity: 0.9;">Gesamtsumme:</span>
           <span>${cs.totalCost.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
         </div>
 
         <!-- ARBEITSBERICHT & ANMERKUNGEN -->
         ${cs.notes ? `
           <div class="invoice-notes" style="
-            background-color: #fffbeb;
-            border: 1px solid #fef3c7;
-            border-left: 3px solid #f59e0b;
-            border-radius: 4px;
-            padding: 8px 10px;
-            margin-bottom: 12px;
-            font-size: 11px;
-            color: #92400e;
+            background-color: #f9fafb;
+            border: 1px solid #d1d5db;
+            border-left: 3px solid #111827;
+            border-radius: 3px;
+            padding: 4px 6px;
+            margin-bottom: 6px;
+            font-size: 9.5px;
+            color: #1f2937;
           ">
-            <strong style="display: block; margin-bottom: 2px; color: #78350f;">Arbeitsbericht / Anmerkungen:</strong>
+            <strong style="display: block; margin-bottom: 1px; color: #111827; font-size: 8.5px; text-transform: uppercase;">Arbeitsbericht / Anmerkungen:</strong>
             <span style="white-space: pre-line;">${cs.notes}</span>
           </div>
         ` : ''}
 
         <!-- BILDER / DOKUMENTATION -->
         ${imagesHtml ? `
-          <div style="margin-top: 10px; margin-bottom: 10px; page-break-inside: avoid;">
-            <strong style="display: block; font-size: 11px; color: #0f172a; margin-bottom: 4px;">Fotodokumentation:</strong>
+          <div style="margin-top: 5px; margin-bottom: 5px; page-break-inside: avoid;">
+            <strong style="display: block; font-size: 8.5px; color: #111827; margin-bottom: 2px; text-transform: uppercase;">Fotodokumentation:</strong>
             ${imagesHtml}
           </div>
         ` : ''}
       </div>
 
-      <!-- FUSSZEILE (Ganz unten angepinnt) -->
+      <!-- FUSSZEILE (im Druck fest am unteren Seitenrand fixiert) -->
       <div class="invoice-footer" style="
-        padding-top: 8px;
-        border-top: 1px solid #e2e8f0;
+        padding-top: 4px;
+        border-top: 1px solid #d1d5db;
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        font-size: 9.5px;
-        color: #64748b;
-        page-break-inside: avoid;
+        gap: 6px;
+        font-size: 8px;
+        color: #4b5563;
+        margin-top: 10px;
       ">
         <div>
-          <strong style="color: #334155; font-size: 10px;">Bankverbindung (Überweisung)</strong><br>
+          <strong style="color: #111827; font-size: 8.5px;">Bankverbindung (Überweisung)</strong><br>
           Empfänger: SGS Fahrzeug-Service<br>
           IBAN: DE00 0000 0000 0000 0000 00<br>
           BIC: XXXXXXXXXXX | Bank: Musterbank
         </div>
         <div>
-          <strong style="color: #334155; font-size: 10px;">PayPal / Alternative</strong><br>
+          <strong style="color: #111827; font-size: 8.5px;">PayPal / Alternative</strong><br>
           PayPal-Me: paypal.me/SGSFahrzeugservice<br>
           E-Mail: paypal@sgs-service.de<br>
           Verwendungszweck: ${c.plate || c.owner} - ${cs.date}
@@ -1746,6 +1927,8 @@ function printInvoice(serviceId) {
 
   window.print();
 }
+
+
 
 
 /* --- EXPORT & IMPORT (BACKUP) --- */
@@ -1928,3 +2111,5 @@ function printSaleReport() {
 }
 
 window.printSaleReport = printSaleReport;
+
+

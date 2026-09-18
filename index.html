@@ -4,17 +4,35 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>SGS - Fahrzeug-Management Pro</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb'><path d='M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2'/><circle cx='7' cy='17' r='2'/><path d='M9 17h6'/><circle cx='17' cy='17' r='2'/></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f39c12' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2'/><circle cx='7' cy='17' r='2'/><path d='M9 17h6'/><circle cx='17' cy='17' r='2'/></svg>">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
+  <!-- GARAGEN-TOR OVERLAY ANIMATION -->
+<div id="garage-door-overlay" class="garage-door-overlay">
+  <div class="garage-door-panel">
+    <div class="slat"></div>
+    <div class="slat"></div>
+    <div class="slat"></div>
+    <div class="slat"></div>
+  </div>
+  <div class="garage-headlights">
+    <div class="headlight left"></div>
+    <div class="headlight right"></div>
+  </div>
+</div>
+
+
 <!-- STEP 1: KACHEL-AUSWAHL STARTBILDSCHIRM -->
 <div id="selection-screen" class="selection-container">
+  <button class="btn-theme-toggle btn-theme-toggle-floating" id="themeToggleBtnSelection" onclick="toggleTheme()" title="Design wechseln">
+    <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+  </button>
   <header class="selection-header">
     <div class="logo">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
         <circle cx="7" cy="17" r="2"/>
         <path d="M9 17h6"/>
@@ -22,21 +40,35 @@
       </svg>
       <span>SGS Pro</span>
     </div>
-    <h2>Bitte wähle deinen Bereich</h2>
+    <h2 id="selection-title">Bereichsauswahl</h2>
   </header>
 
-  <div class="kachel-grid">
+  <!-- Bereichsauswahl (Hauptkacheln) -->
+  <div class="kachel-grid" id="area-selection-grid">
     <div class="selection-card" id="card-eigene" onclick="selectArea('eigene')">
-      <div class="kachel-icon">🏎️</div>
-      <h3>Meine Garage</h3>
-      <p>Fuhrpark, private Wartung, Tankbuch & Statistiken</p>
+      <div class="kachel-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+      </div>
+      <h3>Eigenfuhrpark</h3>
+      <p>Fahrzeugkartei, Wartungsprotokolle, Kraftstofferfassung & Betriebskosten</p>
     </div>
 
     <div class="selection-card" id="card-kunden" onclick="selectArea('kunden')">
-      <div class="kachel-icon">🚗</div>
+      <div class="kachel-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      </div>
       <h3>Kundenfahrzeuge</h3>
-      <p>Werkstattaufträge, Kundenkartei & Rechnungsdruck</p>
+      <p>Werkstattaufträge, Kundenstammblatt & Rechnungsgenerierung</p>
     </div>
+  </div>
+
+  <!-- Fahrzeugauswahl -->
+  <div id="garage-vehicle-selection" style="display: none; margin-top: 1.5rem; width: 100%;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="showAreaSelection()">← Zurück</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="openVehicleModal()">+ Neues Fahrzeug</button>
+    </div>
+    <div class="kachel-grid" id="garageVehicleGrid"></div>
   </div>
 </div>
 
@@ -45,19 +77,15 @@
   <!-- Header -->
   <header class="app-header no-print">
     <div class="logo-group">
-      <button class="btn-back-selection" onclick="backToSelection()" title="Zurück zur Bereichsauswahl">← Wechseln</button>
+      <button class="btn-back-selection" onclick="backToSelection()" title="Zurück zur Bereichsauswahl">← Zurück</button>
       <div class="logo">
         <span>SGS</span>
       </div>
     </div>
     <div class="header-controls">
       <button class="btn-theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" title="Design wechseln">
-        <span id="themeToggleIcon">🌙</span>
+        <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
       </button>
-      <div class="vehicle-selector-wrapper" id="headerVehicleWrapper">
-        <select id="vehicleSelect" onchange="switchVehicle()"></select>
-        <button class="btn btn-secondary btn-sm" onclick="openVehicleModal()">+</button>
-      </div>
     </div>
   </header>
 
@@ -66,29 +94,29 @@
     <nav class="sidebar no-print">
       <!-- BUTTONS FÜR EIGENE FAHRZEUGE -->
       <button class="nav-item active nav-eigene-only" onclick="showTab('dashboard', this)">
-        <span class="nav-icon">📊</span>
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
         <span class="nav-label">Dashboard</span>
       </button>
       <button class="nav-item nav-eigene-only" onclick="showTab('fuel', this)">
-        <span class="nav-icon">⛽</span>
-        <span class="nav-label">Tanken</span>
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" x2="15" y1="22" y2="22"/><line x1="4" x2="14" y1="9" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg>
+        <span class="nav-label">Betankung</span>
       </button>
       <button class="nav-item nav-eigene-only" onclick="showTab('service', this)">
-        <span class="nav-icon">🔧</span>
-        <span class="nav-label">Wartung</span>
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <span class="nav-label">Wartung & Service</span>
       </button>
       <button class="nav-item nav-eigene-only" onclick="showTab('history', this)">
-        <span class="nav-icon">📋</span>
-        <span class="nav-label">Historie</span>
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+        <span class="nav-label">Chronik</span>
       </button>
       <button class="nav-item nav-eigene-only" onclick="showTab('settings', this)">
-        <span class="nav-icon">⚙️</span>
-        <span class="nav-label">Fahrzeug</span>
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span class="nav-label">Stammdaten</span>
       </button>
 
       <!-- BUTTONS FÜR KUNDENFAHRZEUGE -->
       <button class="nav-item nav-kunden-only" onclick="showTab('customers', this)">
-        <span class="nav-icon">👤</span>
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span class="nav-label">Kundenkartei</span>
       </button>
     </nav>
@@ -100,7 +128,10 @@
           <div class="vehicle-banner-card card">
             <div class="vehicle-banner-content">
               <div class="vehicle-image-wrapper" id="vehicleImageContainer">
-                <div class="vehicle-image-placeholder" id="vehicleImagePlaceholder">📷 Kein Bild</div>
+                <div class="vehicle-image-placeholder" id="vehicleImagePlaceholder">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                  <span>Kein Bild hinterlegt</span>
+                </div>
                 <img id="vehicleDashboardImage" class="vehicle-dash-img" src="" alt="Fahrzeugbild" style="display:none;">
               </div>
               <div class="vehicle-banner-info">
@@ -167,7 +198,7 @@
         <section id="tab-fuel" class="tab-content">
           <div class="grid-2col">
             <div class="card">
-              <h2 id="fuelFormTitle">Tankung eintragen</h2>
+              <h2 id="fuelFormTitle">Betankung erfassen</h2>
               <form id="fuelForm" onsubmit="saveFuelEntry(event)">
                 <input type="hidden" id="fuelEditId">
                 <div class="form-group">
@@ -223,7 +254,7 @@
                   <input type="text" id="fuelNotes" placeholder="z.B. Shell Hauptstraße">
                 </div>
                 <div class="form-actions">
-                  <button type="submit" class="btn btn-primary" id="fuelSubmitBtn">Tankung Speichern</button>
+                  <button type="submit" class="btn btn-primary" id="fuelSubmitBtn">Speichern</button>
                   <button type="button" class="btn btn-secondary" onclick="resetFuelForm()" id="fuelCancelBtn" style="display:none;">Abbrechen</button>
                 </div>
               </form>
@@ -263,7 +294,7 @@
         <section id="tab-service" class="tab-content">
           <div class="grid-2col">
             <div class="card">
-              <h2 id="serviceFormTitle">Wartung / Reparatur eintragen</h2>
+              <h2 id="serviceFormTitle">Service / Reparatur erfassen</h2>
               <form id="serviceForm" onsubmit="saveServiceEntry(event)">
                 <input type="hidden" id="serviceEditId">
                 <div class="form-group">
@@ -303,16 +334,16 @@
                   </div>
                 </div>
                 <div class="form-group">
-                  <label>Teilenummern & Detaillierte Notizen</label>
-                  <textarea id="serviceNotes" rows="3" placeholder="z.B. Teilenummern..."></textarea>
+                  <label>Teilenummern & Spezifikationen</label>
+                  <textarea id="serviceNotes" rows="3" placeholder="z.B. Teilenummern, Ölspezifikation..."></textarea>
                 </div>
                 <div class="form-group">
-                  <label>Bilder / Dokumente anhängen</label>
+                  <label>Dokumente & Bilder</label>
                   <input type="file" id="serviceImagesInput" accept="image/*" multiple onchange="handleServiceImageUpload(event)">
                   <div id="serviceImagePreviewContainer" class="image-preview-grid"></div>
                 </div>
                 <div class="form-actions">
-                  <button type="submit" class="btn btn-primary" id="serviceSubmitBtn">Eintrag Speichern</button>
+                  <button type="submit" class="btn btn-primary" id="serviceSubmitBtn">Speichern</button>
                   <button type="button" class="btn btn-secondary" onclick="resetServiceForm()" id="serviceCancelBtn" style="display:none;">Abbrechen</button>
                 </div>
               </form>
@@ -320,7 +351,7 @@
 
             <div class="card">
               <h3>Wartungshistorie</h3>
-              <p class="sub-text">Klicke auf einen Eintrag, um alle Details anzuzeigen.</p>
+              <p class="sub-text">Detailansicht durch Klicken auf den jeweiligen Eintrag.</p>
               <div class="table-responsive">
                 <table class="data-table">
                   <thead>
@@ -349,12 +380,12 @@
         <section id="tab-customers" class="tab-content">
           <div class="card">
             <div class="card-header-flex">
-              <h2>Kundenfahrzeuge & Werkstattaufträge</h2>
+              <h2>Kundenkartei & Werkstattaufträge</h2>
               <button class="btn btn-primary" onclick="openCustomerVehicleModal()">+ Neues Kundenfahrzeug</button>
             </div>
-            <p class="sub-text">Hier verwaltest du Reparaturen für Bekannte und Kunden sauber getrennt von deinen eigenen Fahrzeugen.</p>
+            <p class="sub-text">Verwaltung von Fremdfahrzeugen und Instandsetzungsaufträgen.</p>
 
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 1rem;">
               <label>Kundenfahrzeug auswählen</label>
               <select id="customerVehicleSelect" onchange="switchCustomerVehicle()"></select>
             </div>
@@ -367,12 +398,12 @@
                   <h2 id="custBannerName">Kunden Name - Fahrzeug</h2>
                   <span class="badge badge-plate" id="custBannerPlate">KI-XX 123</span>
                 </div>
-                <div>
-                  <button class="btn btn-secondary btn-sm" onclick="openCustomerVehicleModal(true)">✏️ Stammdaten</button>
-                  <button class="btn btn-danger btn-sm" onclick="deleteCurrentCustomerVehicle()">🗑️ Fahrzeug Löschen</button>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button class="btn btn-secondary btn-sm" onclick="openCustomerVehicleModal(true)">Stammdaten bearbeiten</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteCurrentCustomerVehicle()">Fahrzeug löschen</button>
                 </div>
               </div>
-              <div class="detail-grid">
+              <div class="detail-grid" style="margin-top: 1rem;">
                 <div><strong>Kunde:</strong> <span id="custBannerOwner">-</span></div>
                 <div><strong>Kontakt:</strong> <span id="custBannerContact">-</span></div>
                 <div><strong>VIN / FIN:</strong> <span id="custBannerVin">-</span></div>
@@ -383,13 +414,13 @@
 
             <div class="grid-2col">
               <div class="card">
-                <h2 id="custServiceFormTitle">Reparatur / Leistung eintragen</h2>
+                <h2 id="custServiceFormTitle">Werkstattauftrag erfassen</h2>
                 <form id="custServiceForm" onsubmit="saveCustomerServiceEntry(event)">
                   <input type="hidden" id="custServiceEditId">
                   
                   <div class="form-group">
-                    <label>Auftragsbezeichnung / Titel</label>
-                    <input type="text" id="custServiceTitle" required placeholder="z.B. Bremse VA erneuern & Service">
+                    <label>Auftragsbezeichnung</label>
+                    <input type="text" id="custServiceTitle" required placeholder="z.B. Bremsanlage VA erneuern & Inspektion">
                   </div>
 
                   <div class="form-row">
@@ -404,7 +435,7 @@
                   </div>
 
                   <div class="form-group">
-                    <label>Einzelpositionen & Teile (Für Rechnungs-Druck)</label>
+                    <label>Einzelpositionen (Für Rechnungsdruck)</label>
                     <div id="invoiceItemsContainer"></div>
                     <button type="button" class="btn btn-secondary btn-sm" style="margin-top:0.5rem;" onclick="addInvoiceItemRow()">+ Position hinzufügen</button>
                   </div>
@@ -415,12 +446,12 @@
                   </div>
 
                   <div class="form-group">
-                    <label>Arbeitsbericht / Notizen für den Kunden</label>
-                    <textarea id="custServiceNotes" rows="3" placeholder="z.B. Bremsscheiben und Beläge erneuert..."></textarea>
+                    <label>Arbeitsbericht / Kundennote</label>
+                    <textarea id="custServiceNotes" rows="3" placeholder="z.B. Durchführung nach Herstellervorgabe..."></textarea>
                   </div>
 
                   <div class="form-group">
-                    <label>Bilder / Dokumente anhängen</label>
+                    <label>Dokumentation & Bilder</label>
                     <input type="file" id="custServiceImagesInput" accept="image/*" multiple onchange="handleCustomerServiceImageUpload(event)">
                     <div id="custServiceImagePreviewContainer" class="image-preview-grid"></div>
                   </div>
@@ -511,21 +542,21 @@
 
               <div class="form-row">
                 <div class="form-group">
-                  <label>Fahrzeugname / Bezeichnung</label>
+                  <label>Fahrzeugbezeichnung</label>
                   <input type="text" id="vName" required>
                 </div>
                 <div class="form-group">
-                  <label>Kennzeichen / ID</label>
+                  <label>Amtliches Kennzeichen</label>
                   <input type="text" id="vPlate">
                 </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group">
-                  <label>Typ / Einheit</label>
+                  <label>Erfassungstyp</label>
                   <select id="vType" onchange="updateUnitLabels()">
                     <option value="km">Straßenfahrzeug (KM / L/100km)</option>
-                    <option value="hours">Boot / Maschine (Std / L/Std)</option>
+                    <option value="hours">Wasserfahrzeug / Maschine (Std / L/Std)</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -558,7 +589,7 @@
 
               <div class="form-row">
                 <div class="form-group">
-                  <label>Leistung in PS</label>
+                  <label>Motorleistung (PS)</label>
                   <input type="number" id="vPowerHp" inputmode="numeric" placeholder="279">
                 </div>
                 <div class="form-group">
@@ -569,19 +600,19 @@
 
               <div class="form-row">
                 <div class="form-group">
-                  <label>Nächster TÜV / Inspektion</label>
+                  <label>Nächste HU / Hauptuntersuchung</label>
                   <input type="month" id="vNextTuev">
                 </div>
               </div>
 
               <div class="form-group">
-                <label>Spezifikationen & Technische Daten</label>
+                <label>Technische Spezifikationen & Ausstattungsmerkmale</label>
                 <textarea id="vSpecs" rows="4"></textarea>
               </div>
 
               <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Stammdaten Speichern</button>
-                <button type="button" class="btn btn-secondary" onclick="printSaleReport()">📄 Verkaufsbericht (PDF) drucken</button>
+                <button type="button" class="btn btn-secondary" onclick="printSaleReport()">Dokumentation drucken (PDF)</button>
                 <button type="button" class="btn btn-danger" onclick="deleteCurrentVehicle()">Fahrzeug Löschen</button>
               </div>
             </form>
@@ -589,12 +620,12 @@
             <hr class="divider">
 
             <div class="backup-section">
-              <h3>Daten-Sicherung (Backup)</h3>
-              <p class="sub-text">Exportiere deine SGS-Daten als JSON-Datei oder stelle sie wieder her.</p>
+              <h3>Systemdaten-Sicherung</h3>
+              <p class="sub-text">Export oder Wiederherstellung des lokalen SGS-Datenbestands (JSON).</p>
               <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="exportData()">📥 Daten Exportieren</button>
+                <button type="button" class="btn btn-secondary" onclick="exportData()">Daten Exportieren</button>
                 <label class="btn btn-secondary">
-                  📤 Daten Importieren
+                  Daten Importieren
                   <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importData(event)">
                 </label>
               </div>
@@ -610,19 +641,19 @@
   <div class="modal-overlay" id="vehicleModal">
     <div class="modal">
       <div class="modal-header">
-        <h3>Neues Eigenes Fahrzeug anlegen</h3>
+        <h3>Neues Fahrzeug anlegen</h3>
         <button class="modal-close" onclick="closeVehicleModal()">✕</button>
       </div>
       <form onsubmit="createNewVehicle(event)">
         <div class="form-group">
-          <label>Fahrzeugname</label>
-          <input type="text" id="newVName" required placeholder="z.B. W124 E420">
+          <label>Fahrzeugbezeichnung</label>
+          <input type="text" id="newVName" required placeholder="z.B. W124 E320">
         </div>
         <div class="form-group">
           <label>Mess-Typ</label>
           <select id="newVType">
             <option value="km">Kilometer (Straßenfahrzeug)</option>
-            <option value="hours">Betriebsstunden (Boot / Traktor)</option>
+            <option value="hours">Betriebsstunden (Maschine / Boot)</option>
           </select>
         </div>
         <div class="form-group">
@@ -630,7 +661,7 @@
           <input type="text" id="newVFuelType" placeholder="z.B. Super Plus">
         </div>
         <div class="form-group">
-          <label>Start-Stand</label>
+          <label>Initialer Stand</label>
           <input type="number" step="0.1" id="newVMileage" inputmode="decimal" value="0" required>
         </div>
         <div class="modal-actions">
@@ -711,12 +742,12 @@
         </div>
         
         <div class="detail-section">
-          <h4>Notizen & Teilenummern:</h4>
+          <h4>Spezifikationen & Teilenummern:</h4>
           <p id="sdNotes" class="detail-notes-box">Keine Notizen vorhanden.</p>
         </div>
 
         <div class="detail-section">
-          <h4>Angehängte Bilder & Belege:</h4>
+          <h4>Angehängte Dokumente & Belege:</h4>
           <div id="sdImagesContainer" class="detail-image-gallery">
             <span class="text-muted">Keine Bilder vorhanden.</span>
           </div>
@@ -743,12 +774,12 @@
         </div>
 
         <div class="detail-section">
-          <h4>Arbeitsbericht / Notizen:</h4>
+          <h4>Arbeitsbericht / Dokumentation:</h4>
           <p id="csdNotes" class="detail-notes-box">Keine Notizen vorhanden.</p>
         </div>
 
         <div class="detail-section">
-          <h4>Angehängte Bilder & Dokumente:</h4>
+          <h4>Angehängte Dokumente & Bilder:</h4>
           <div id="csdImagesContainer" class="detail-image-gallery">
             <span class="text-muted">Keine Bilder vorhanden.</span>
           </div>
