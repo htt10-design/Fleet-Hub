@@ -1042,7 +1042,7 @@ input:focus, select:focus, textarea:focus {
   }
 }
 /* ==========================================================================
-   GARAGEN-TOR & SCHEINWERFER ANIMATION (MERCEDES EDITION - EXTRA SLOW)
+   GARAGEN-TOR ANIMATION (REALISTIC 500 E PHOTO)
    ========================================================================== */
 
 .garage-door-overlay {
@@ -1062,7 +1062,6 @@ input:focus, select:focus, textarea:focus {
   perspective: 1200px;
 }
 
-/* Aluminium-Sektionaltor - Entschleunigt auf 2.0s */
 .garage-door-panel {
   width: 100%;
   height: 100%;
@@ -1082,55 +1081,50 @@ input:focus, select:focus, textarea:focus {
   box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.6);
 }
 
-/* Responsive Front-Ensemble (Headlights + Stern) */
-.garage-headlights {
+/* Fahrzeug Container zentriert */
+.w124-real-container {
   position: absolute;
-  top: 38%;
-  left: 0;
-  width: 100%;
-  height: 220px;
-  display: flex;
-  justify-content: center; /* Zentriert die Elemente flexibel */
-  align-items: center;
-  gap: 2rem; /* Fester Abstand zwischen Scheinwerfern und Stern */
-  padding: 0 5%;
+  top: 32%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 85vw;
+  max-width: 680px;
   pointer-events: none;
   opacity: 0;
   transform-style: preserve-3d;
-  box-sizing: border-box;
 }
 
-/* Scheinwerfer skalieren auf kleineren Displays automatisch mit */
-.headlight {
-  width: clamp(100px, 20vw, 220px);
-  height: clamp(100px, 20vw, 220px);
-  flex-shrink: 0; /* Verhindert, dass der Scheinwerfer den Stern zerquetscht */
-  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(56, 189, 248, 0.45) 35%, transparent 70%);
-  filter: blur(16px);
-  border-radius: 50%;
-}
-
-/* Mercedes Stern skalierbar und geschützt vor dem Quetschen */
-.mb-star-container {
-  width: clamp(50px, 12vw, 95px);
-  height: clamp(50px, 12vw, 95px);
-  flex-shrink: 0; /* GARANTIERT, dass der Stern auf Handys sichtbar bleibt */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #f1f5f9;
-  opacity: 0.85;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)) 
-          drop-shadow(0 0 20px rgba(56, 189, 248, 0.4));
-  transition: opacity 0.3s ease;
-}
-
-.mb-star {
+/* Das Foto selbst */
+.w124-real-img {
   width: 100%;
-  height: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.9));
 }
 
-/* Aktive Zustände */
+/* Physikalische Scheinwerfer-Lichtkegel */
+.headlight-beam {
+  position: absolute;
+  top: 38%;
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(56, 189, 248, 0.6) 30%, transparent 70%);
+  mix-blend-mode: screen; /* Lässt das Licht real auf das Bild schimmern */
+  filter: blur(14px);
+  border-radius: 50%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.headlight-beam.left-beam {
+  left: 17%;
+}
+
+.headlight-beam.right-beam {
+  right: 17%;
+}
+
+/* Aktiv-Zustände */
 .garage-door-overlay.active {
   opacity: 1;
   visibility: visible;
@@ -1140,40 +1134,40 @@ input:focus, select:focus, textarea:focus {
   animation: rollUpDoor 2s cubic-bezier(0.65, 0, 0.15, 1) forwards;
 }
 
-.garage-door-overlay.active .garage-headlights {
-  animation: driveForwardFront 1.85s cubic-bezier(0.2, 0.8, 0.25, 1) 0.1s forwards;
+.garage-door-overlay.active .w124-real-container {
+  animation: driveForwardReal 1.85s cubic-bezier(0.2, 0.8, 0.25, 1) 0.1s forwards;
 }
 
-/* Keyframes */
+/* Keyframes für fotorealistische Tiefenschärfe */
 @keyframes rollUpDoor {
   0% { transform: translateY(0); }
   100% { transform: translateY(-100%); }
 }
 
-@keyframes driveForwardFront {
+@keyframes driveForwardReal {
   0% {
     opacity: 0;
-    transform: translateZ(-900px) scale(0.08);
-    filter: blur(20px);
+    transform: translateX(-50%) translateZ(-900px) scale(0.15);
+    filter: blur(20px) brightness(0.2);
   }
-  30% {
-    opacity: 0.5;
-    filter: blur(12px);
+  35% {
+    opacity: 0.6;
+    filter: blur(8px) brightness(0.6);
   }
-  75% {
-    opacity: 0.95;
-    transform: translateZ(-80px) scale(0.9);
-    filter: blur(4px);
+  78% {
+    opacity: 0.98;
+    transform: translateX(-50%) translateZ(-40px) scale(0.92);
+    filter: blur(1px) brightness(1.1);
   }
   88% {
-    /* Aufblenden der Front direkt vor dem Screen */
+    /* Aufblitzen der Xenon/LED-Lichter im echten Scheinwerfer */
     opacity: 1;
-    transform: translateZ(40px) scale(1.25);
-    filter: blur(1px);
+    transform: translateX(-50%) translateZ(30px) scale(1.1);
+    filter: blur(0px) brightness(1.35);
   }
   100% {
     opacity: 0;
-    transform: translateZ(100px) scale(1.35);
-    filter: blur(0px);
+    transform: translateX(-50%) translateZ(80px) scale(1.2);
+    filter: blur(0px) brightness(1);
   }
 }
