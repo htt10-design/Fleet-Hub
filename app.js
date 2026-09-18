@@ -142,8 +142,7 @@ function applyTheme(theme) {
 
 // Variable zur Speicherung des aktuellen Modus
 let currentMode = 'eigene';
-
-// Hilfsfunktion zur Auslösung der verlangsamten Garagentor-Animation
+// Hilfsfunktion zur Auslösung der verlangsamten Garagentor-Animation (Mercedes Edition)
 function triggerGarageAnimation(callback) {
   const overlay = document.getElementById('garage-door-overlay');
   if (!overlay) {
@@ -153,16 +152,18 @@ function triggerGarageAnimation(callback) {
 
   overlay.classList.add('active');
 
-  // Schaltet die Ansicht nach ~600ms um (genau wenn das Tor halb oben ist)
+  // Schaltet die Ansicht nach 1000ms um (genau bei der Hälfte der 2.0s)
   setTimeout(() => {
     if (callback) callback();
-  }, 600);
+  }, 1000);
 
-  // Blendet das Overlay nach Ablauf der 1.2s Gesamtzeit wieder ab
+  // Blendet das Overlay nach Ablauf der 2.0s Gesamtzeit wieder ab
   setTimeout(() => {
     overlay.classList.remove('active');
-  }, 1300);
+  }, 2050);
 }
+
+
 // Bereichsauswahl steuern
 function selectArea(area) {
   if (area === 'eigene') {

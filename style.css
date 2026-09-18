@@ -1042,7 +1042,7 @@ input:focus, select:focus, textarea:focus {
   }
 }
 /* ==========================================================================
-   GARAGEN-TOR & SCHEINWERFER-ANIMATION (VERLANGSAMT + 3D DEPTH)
+   GARAGEN-TOR & SCHEINWERFER ANIMATION (MERCEDES EDITION - EXTRA SLOW)
    ========================================================================== */
 
 .garage-door-overlay {
@@ -1059,16 +1059,16 @@ input:focus, select:focus, textarea:focus {
   overflow: hidden;
   opacity: 0;
   visibility: hidden;
-  perspective: 1000px; /* Perspective für den echten 3D-Tiefeneffekt */
+  perspective: 1200px;
 }
 
-/* Aluminium-Sektionaltor - Verlangsamte Öffnung (1.2s) */
+/* Aluminium-Sektionaltor - Entschleunigt auf 2.0s */
 .garage-door-panel {
   width: 100%;
   height: 100%;
   background: linear-gradient(180deg, #161b22 0%, #0d1117 100%);
   border-bottom: 4px solid #f39c12;
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.95);
   display: flex;
   flex-direction: column;
   justify-content: space-around;
@@ -1082,15 +1082,16 @@ input:focus, select:focus, textarea:focus {
   box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.6);
 }
 
-/* Scheinwerfer-Lichtkegel */
+/* Front-Ensemble (Headlights + Stern) */
 .garage-headlights {
   position: absolute;
-  top: 40%;
+  top: 38%;
   left: 0;
   width: 100%;
-  height: 200px;
+  height: 220px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 0 15%;
   pointer-events: none;
   opacity: 0;
@@ -1100,9 +1101,28 @@ input:focus, select:focus, textarea:focus {
 .headlight {
   width: 220px;
   height: 220px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(56, 189, 248, 0.5) 30%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(56, 189, 248, 0.45) 35%, transparent 70%);
   filter: blur(16px);
   border-radius: 50%;
+}
+
+/* Dezent, aber klargestalteter Mercedes Stern */
+.mb-star-container {
+  width: 95px;
+  height: 95px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f1f5f9;
+  opacity: 0.85; /* Etwas stärker sichtbar als vorher */
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)) 
+          drop-shadow(0 0 20px rgba(56, 189, 248, 0.4));
+  transition: opacity 0.3s ease;
+}
+
+.mb-star {
+  width: 100%;
+  height: 100%;
 }
 
 /* Aktive Zustände */
@@ -1111,14 +1131,12 @@ input:focus, select:focus, textarea:focus {
   visibility: visible;
 }
 
-/* Tor öffnet sich jetzt in 1.2 Sekunden */
 .garage-door-overlay.active .garage-door-panel {
-  animation: rollUpDoor 1.2s cubic-bezier(0.65, 0, 0.15, 1) forwards;
+  animation: rollUpDoor 2s cubic-bezier(0.65, 0, 0.15, 1) forwards;
 }
 
-/* Scheinwerfer kommen von weit hinten auf dich zu */
 .garage-door-overlay.active .garage-headlights {
-  animation: driveForwardHeadlights 1.1s cubic-bezier(0.25, 1, 0.5, 1) 0.1s forwards;
+  animation: driveForwardFront 1.85s cubic-bezier(0.2, 0.8, 0.25, 1) 0.1s forwards;
 }
 
 /* Keyframes */
@@ -1127,33 +1145,30 @@ input:focus, select:focus, textarea:focus {
   100% { transform: translateY(-100%); }
 }
 
-@keyframes driveForwardHeadlights {
+@keyframes driveForwardFront {
   0% {
     opacity: 0;
-    /* Weit im Hintergrund, eng zusammen, stark verschwommen */
-    transform: translateZ(-800px) scale(0.1);
-    filter: blur(25px);
+    transform: translateZ(-900px) scale(0.08);
+    filter: blur(20px);
   }
   30% {
-    opacity: 0.6;
-    filter: blur(15px);
+    opacity: 0.5;
+    filter: blur(12px);
   }
   75% {
-    /* Fahrzeug kommt näher, Lichthof wird größer und klarer */
-    opacity: 0.9;
-    transform: translateZ(-100px) scale(0.85);
-    filter: blur(8px);
-  }
-  88% {
-    /* Kurzes Aufblenden kurz vor dem Betrachter */
-    opacity: 1;
-    transform: translateZ(50px) scale(1.3);
+    opacity: 0.95;
+    transform: translateZ(-80px) scale(0.9);
     filter: blur(4px);
   }
+  88% {
+    /* Aufblenden der Front direkt vor dem Screen */
+    opacity: 1;
+    transform: translateZ(40px) scale(1.25);
+    filter: blur(1px);
+  }
   100% {
-    /* Blendet beim voll geöffneten Tor geschmeidig aus */
     opacity: 0;
-    transform: translateZ(100px) scale(1.4);
-    filter: blur(2px);
+    transform: translateZ(100px) scale(1.35);
+    filter: blur(0px);
   }
 }
