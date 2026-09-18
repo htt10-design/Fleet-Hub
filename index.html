@@ -72,7 +72,13 @@
   <!-- Fahrzeugauswahl -->
   <div id="garage-vehicle-selection" style="display: none; margin-top: 1.5rem; width: 100%;">
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-      <button type="button" class="btn btn-secondary btn-sm" onclick="showAreaSelection()">← Zurück</button>
+      <button type="button" class="btn-back-clean" onclick="showAreaSelection()" title="Zurück" aria-label="Zurück">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 12H5"></path>
+    <path d="M12 19l-7-7 7-7"></path>
+  </svg>
+</button>
+
       <button type="button" class="btn btn-primary btn-sm" onclick="openVehicleModal()">+ Neues Fahrzeug</button>
     </div>
     <div class="kachel-grid" id="garageVehicleGrid"></div>
@@ -84,7 +90,14 @@
   <!-- Header -->
   <header class="app-header no-print">
     <div class="logo-group">
-      <button class="btn-back-selection" onclick="backToSelection()" title="Zurück zur Bereichsauswahl">← Zurück</button>
+     <button class="btn-back-clean" onclick="backToSelection()" title="Zurück zur Bereichsauswahl" aria-label="Zurück">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 12H5"></path>
+    <path d="M12 19l-7-7 7-7"></path>
+  </svg>
+</button>
+
+
       <div class="logo">
         <span>SGS</span>
       </div>
@@ -96,7 +109,7 @@
     </div>
   </header>
 
-  <div class="app-container">
+<div class="app-container">
     <!-- Navigation -->
     <nav class="sidebar no-print">
       <!-- BUTTONS FÜR EIGENE FAHRZEUGE -->
@@ -122,9 +135,17 @@
       </button>
 
       <!-- BUTTONS FÜR KUNDENFAHRZEUGE -->
-      <button class="nav-item nav-kunden-only" onclick="showTab('customers', this)">
+      <button class="nav-item nav-kunden-only" onclick="showTab('customer-records', this)">
         <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span class="nav-label">Kundenkartei</span>
+      </button>
+      <button class="nav-item nav-kunden-only" onclick="showTab('customer-tasks', this)">
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <span class="nav-label">Arbeiten</span>
+      </button>
+      <button class="nav-item nav-kunden-only" onclick="showTab('customer-maintenance', this)">
+        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+        <span class="nav-label">Wartung</span>
       </button>
     </nav>
 
@@ -383,124 +404,7 @@
           </div>
         </section>
 
-        <!-- CUSTOMERS TAB -->
-        <section id="tab-customers" class="tab-content">
-          <div class="card">
-            <div class="card-header-flex">
-              <h2>Kundenkartei & Werkstattaufträge</h2>
-              <button class="btn btn-primary" onclick="openCustomerVehicleModal()">+ Neues Kundenfahrzeug</button>
-            </div>
-            <p class="sub-text">Verwaltung von Fremdfahrzeugen und Instandsetzungsaufträgen.</p>
-
-            <div class="form-group" style="margin-top: 1rem;">
-              <label>Kundenfahrzeug auswählen</label>
-              <select id="customerVehicleSelect" onchange="switchCustomerVehicle()"></select>
-            </div>
-          </div>
-
-          <div id="customerVehicleContent" style="display: none;">
-            <div class="card">
-              <div class="card-header-flex">
-                <div>
-                  <h2 id="custBannerName">Kunden Name - Fahrzeug</h2>
-                  <span class="badge badge-plate" id="custBannerPlate">KI-XX 123</span>
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                  <button class="btn btn-secondary btn-sm" onclick="openCustomerVehicleModal(true)">Stammdaten bearbeiten</button>
-                  <button class="btn btn-danger btn-sm" onclick="deleteCurrentCustomerVehicle()">Fahrzeug löschen</button>
-                </div>
-              </div>
-              <div class="detail-grid" style="margin-top: 1rem;">
-                <div><strong>Kunde:</strong> <span id="custBannerOwner">-</span></div>
-                <div><strong>Kontakt:</strong> <span id="custBannerContact">-</span></div>
-                <div><strong>VIN / FIN:</strong> <span id="custBannerVin">-</span></div>
-                <div><strong>HSN / TSN:</strong> <span id="custBannerHsnTsn">-</span></div>
-                <div><strong>Erstzulassung:</strong> <span id="custBannerFirstReg">-</span></div>
-              </div>
-            </div>
-
-            <div class="grid-2col">
-              <div class="card">
-                <h2 id="custServiceFormTitle">Werkstattauftrag erfassen</h2>
-                <form id="custServiceForm" onsubmit="saveCustomerServiceEntry(event)">
-                  <input type="hidden" id="custServiceEditId">
-                  
-                  <div class="form-group">
-                    <label>Auftragsbezeichnung</label>
-                    <input type="text" id="custServiceTitle" required placeholder="z.B. Bremsanlage VA erneuern & Inspektion">
-                  </div>
-
-                  <div class="form-row">
-                    <div class="form-group">
-                      <label>Datum</label>
-                      <input type="date" id="custServiceDate" required>
-                    </div>
-                    <div class="form-group">
-                      <label>KM-Stand</label>
-                      <input type="number" step="0.1" id="custServiceMileage" inputmode="decimal" required placeholder="145000">
-                    </div>
-                  </div>
-
-                  <div class="form-group">
-                    <label>Einzelpositionen (Für Rechnungsdruck)</label>
-                    <div id="invoiceItemsContainer"></div>
-                    <button type="button" class="btn btn-secondary btn-sm" style="margin-top:0.5rem;" onclick="addInvoiceItemRow()">+ Position hinzufügen</button>
-                  </div>
-
-                  <div class="form-group">
-                    <label>Gesamtsumme (€)</label>
-                    <input type="number" step="0.01" id="custServiceTotalCost" inputmode="decimal" required placeholder="0.00">
-                  </div>
-
-                  <div class="form-group">
-                    <label>Arbeitsbericht / Kundennote</label>
-                    <textarea id="custServiceNotes" rows="3" placeholder="z.B. Durchführung nach Herstellervorgabe..."></textarea>
-                  </div>
-
-                  <div class="form-group">
-                    <label>Dokumentation & Bilder</label>
-                    <input type="file" id="custServiceImagesInput" accept="image/*" multiple onchange="handleCustomerServiceImageUpload(event)">
-                    <div id="custServiceImagePreviewContainer" class="image-preview-grid"></div>
-                  </div>
-
-                  <div class="form-actions">
-                    <button type="submit" class="btn btn-primary" id="custServiceSubmitBtn">Auftrag Speichern</button>
-                    <button type="button" class="btn btn-secondary" onclick="resetCustomerServiceForm()" id="custServiceCancelBtn" style="display:none;">Abbrechen</button>
-                  </div>
-                </form>
-              </div>
-
-              <div class="card">
-                <div class="card-header-flex" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-                  <h3 style="margin: 0;">Durchgeführte Arbeiten</h3>
-                </div>
-
-                <div class="table-responsive">
-                  <table class="data-table">
-                    <thead>
-                      <tr>
-                        <th>Datum</th>
-                        <th>Titel</th>
-                        <th>KM-Stand</th>
-                        <th>Gesamt</th>
-                        <th style="text-align: right;">Aktionen</th>
-                      </tr>
-                    </thead>
-                    <tbody id="custServiceTableBody"></tbody>
-                  </table>
-                </div>
-
-                <div id="custServiceToggleBtnContainer" style="display: none; text-align: center; margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color, #eee);">
-                  <button id="custServiceToggleBtn" class="btn btn-secondary" onclick="toggleCustomerServiceEntries()">
-                    Mehr anzeigen
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- HISTORY TAB -->
+      <!-- HISTORY TAB -->
         <section id="tab-history" class="tab-content">
           <div class="card">
             <div class="card-header-flex">
@@ -532,6 +436,128 @@
             </div>
           </div>
         </section>
+
+               <!-- CUSTOMER RECORDS TAB (Kundenkartei) -->
+        <section id="tab-customer-records" class="tab-content">
+          <div class="card">
+            <div class="card-header-flex">
+              <h2>Kundenkartei & Stammdaten</h2>
+              <button class="btn btn-primary" onclick="openCustomerVehicleModal()">+ Neues Kundenfahrzeug</button>
+            </div>
+            <p class="sub-text">Verwaltung von Fremdfahrzeugen und Halterinformationen.</p>
+
+            <div class="form-group" style="margin-top: 1rem;">
+              <label>Kundenfahrzeug auswählen</label>
+              <select id="customerVehicleSelect" onchange="switchCustomerVehicle()"></select>
+            </div>
+          </div>
+
+          <div id="customerVehicleContent" style="display: none;">
+            <div class="card">
+              <div class="card-header-flex">
+                <div>
+                  <h2 id="custBannerName">Kunden Name - Fahrzeug</h2>
+                  <span class="badge badge-plate" id="custBannerPlate">KI-XX 123</span>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button class="btn btn-secondary btn-sm" onclick="openCustomerVehicleModal(true)">Stammdaten bearbeiten</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteCurrentCustomerVehicle()">Fahrzeug löschen</button>
+                </div>
+              </div>
+              <div class="detail-grid" style="margin-top: 1rem;">
+                <div><strong>Kunde:</strong> <span id="custBannerOwner">-</span></div>
+                <div><strong>Kontakt:</strong> <span id="custBannerContact">-</span></div>
+                <div><strong>VIN / FIN:</strong> <span id="custBannerVin">-</span></div>
+                <div><strong>HSN / TSN:</strong> <span id="custBannerHsnTsn">-</span></div>
+                <div><strong>Erstzulassung:</strong> <span id="custBannerFirstReg">-</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+                <!-- CUSTOMER TASKS TAB (Arbeiten - Nur Tabelle) -->
+        <section id="tab-customer-tasks" class="tab-content">
+          <div class="card">
+            <div class="card-header-flex" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+              <h3 style="margin: 0;">Durchgeführte Arbeiten</h3>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Datum</th>
+                    <th>Titel</th>
+                    <th>KM-Stand</th>
+                    <th>Gesamt</th>
+                    <th style="text-align: right;">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody id="custServiceTableBody"></tbody>
+              </table>
+            </div>
+
+            <div id="custServiceToggleBtnContainer" style="display: none; text-align: center; margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color, #eee);">
+              <button id="custServiceToggleBtn" class="btn btn-secondary" onclick="toggleCustomerServiceEntries()">
+                Mehr anzeigen
+              </button>
+            </div>
+          </div>
+        </section>
+
+             <!-- CUSTOMER MAINTENANCE TAB (Werkstattauftrag erfassen) -->
+        <section id="tab-customer-maintenance" class="tab-content">
+          <div class="card">
+            <h2 id="custServiceFormTitle">Werkstattauftrag erfassen</h2>
+            <form id="custServiceForm" onsubmit="saveCustomerServiceEntry(event)">
+              <input type="hidden" id="custServiceEditId">
+              
+              <div class="form-group">
+                <label>Auftragsbezeichnung</label>
+                <input type="text" id="custServiceTitle" required placeholder="z.B. Bremsanlage VA erneuern & Inspektion">
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Datum</label>
+                  <input type="date" id="custServiceDate" required>
+                </div>
+                <div class="form-group">
+                  <label>KM-Stand</label>
+                  <input type="number" step="0.1" id="custServiceMileage" inputmode="decimal" required placeholder="145000">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Einzelpositionen (Für Rechnungsdruck)</label>
+                <div id="invoiceItemsContainer"></div>
+                <button type="button" class="btn btn-secondary btn-sm" style="margin-top:0.5rem;" onclick="addInvoiceItemRow()">+ Position hinzufügen</button>
+              </div>
+
+              <div class="form-group">
+                <label>Gesamtsumme (€)</label>
+                <input type="number" step="0.01" id="custServiceTotalCost" inputmode="decimal" required placeholder="0.00">
+              </div>
+
+              <div class="form-group">
+                <label>Arbeitsbericht / Kundennote</label>
+                <textarea id="custServiceNotes" rows="3" placeholder="z.B. Durchführung nach Herstellervorgabe..."></textarea>
+              </div>
+
+              <div class="form-group">
+                <label>Dokumentation & Bilder</label>
+                <input type="file" id="custServiceImagesInput" accept="image/*" multiple onchange="handleCustomerServiceImageUpload(event)">
+                <div id="custServiceImagePreviewContainer" class="image-preview-grid"></div>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="custServiceSubmitBtn">Auftrag Speichern</button>
+                <button type="button" class="btn btn-secondary" onclick="resetCustomerServiceForm()" id="custServiceCancelBtn" style="display:none;">Abbrechen</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
 
         <!-- SETTINGS TAB -->
         <section id="tab-settings" class="tab-content">

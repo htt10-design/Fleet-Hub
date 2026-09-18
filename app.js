@@ -194,10 +194,34 @@ function selectArea(area) {
     document.body.classList.add('mode-kunden');
     document.body.classList.remove('mode-eigene');
 
-    showTab('customers');
-    if (typeof renderCustomerVehicles === 'function') renderCustomerVehicles();
+    // 1. Korrekten ersten Tab öffnen und Sidebar-Button aktivieren
+    const firstCustomerTabBtn = document.querySelector('.nav-kunden-only');
+    if (typeof showTab === 'function') {
+      showTab('tab-customer-records', firstCustomerTabBtn);
+    }
+
+    // 2. Kundenfahrzeuge laden und Ansicht sicher befüllen
+    try {
+      if (typeof renderCustomerVehicles === 'function') {
+        renderCustomerVehicles();
+      }
+
+      // Automatisches Auswählen des ersten Fahrzeugs, damit Stammdaten & Arbeiten sofort da sind
+      const selectElem = document.getElementById('customerVehicleSelect');
+      if (selectElem && selectElem.options.length > 0) {
+        if (!selectElem.value) {
+          selectElem.selectedIndex = 0;
+        }
+        if (typeof switchCustomerVehicle === 'function') {
+          switchCustomerVehicle();
+        }
+      }
+    } catch (err) {
+      console.error("Fehler beim Laden der Kundendaten:", err);
+    }
   }
 }
+
 
 // Ermittelt den aktuellen Kilometer-/Betriebsstundenstand aus Tank- & Wartungseinträgen
 function getVehicleCurrentMileage(v) {

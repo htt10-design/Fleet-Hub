@@ -299,22 +299,47 @@ body {
   gap: 1rem;
 }
 
-.btn-back-selection {
-  background: var(--bg-body);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  padding: 0.3rem 0.6rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  font-weight: 600;
+/* Clean Back-Button (Icon Only) */
+.btn-back-clean {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #f8fafc;
   cursor: pointer;
-  transition: all 0.15s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px); /* Für Safari */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+  -webkit-tap-highlight-color: transparent; /* Verhindert das blaue Blinken auf Touchscreens */
 }
 
-.btn-back-selection:hover {
-  color: var(--text-main);
-  border-color: var(--accent-primary);
+.btn-back-clean svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s ease;
 }
+
+/* Hover & Tap Effects */
+.btn-back-clean:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+}
+
+.btn-back-clean:hover svg {
+  transform: translateX(-3px); /* Subtiles Zurück-Gleiten des Pfeils */
+}
+
+.btn-back-clean:active {
+  transform: scale(0.92); /* Leichter Druck-Effekt beim Klicken */
+}
+
 
 .logo {
   display: flex;
@@ -468,6 +493,7 @@ body {
   color: var(--text-muted);
   margin-bottom: 0.75rem;
 }
+
 
 /* Vehicle Banner Card */
 .vehicle-banner-card {
@@ -1103,52 +1129,48 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* ==========================================================================
-   SCHEINWERFER-POSITIONIERUNG (PERFEKT AUSGERICHTET FÜR SMARTPHONES)
-   ========================================================================== */
-
-/* ==========================================================================
-   SCHLEIFENFREIE SCHEINWERFER-POSITIONIERUNG (SMARTPHONE OPTIMIERT)
+   SCHEINWERFER-POSITIONIERUNG (CENTER-ANCHORED SPOTLIGHTS)
    ========================================================================== */
 
 .headlight-beam {
   position: absolute;
-  top: 33%; /* Exakte Höhe der W124 Streuscheiben */
-  width: clamp(70px, 18vw, 160px); /* Proportional verkleinert, damit nichts überlappt */
-  height: clamp(70px, 18vw, 160px);
+  top: 34%; /* Exakt auf Höhe der W124 Scheinwerfergläser */
+  width: clamp(50px, 16vw, 130px); /* Tighterer Durchmesser für punktgenauen Fokus */
+  height: clamp(50px, 16vw, 130px);
   background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(56, 189, 248, 0.9) 30%, transparent 70%);
   mix-blend-mode: screen;
   filter: blur(8px);
   border-radius: 50%;
   z-index: 2;
   pointer-events: none;
-  transform: translateY(-20%);
 }
 
-/* Links: Exakt auf dem linken Glasbereich */
+/* Linker Scheinwerfer: Von der Mitte (50%) nach links verschoben */
 .headlight-beam.left-beam {
-  left: 3%; 
+  left: calc(50% - clamp(110px, 28vw, 220px));
+  transform: translate(-50%, -50%);
 }
 
-/* Rechts: Exakt auf dem rechten Glasbereich */
+/* Rechter Scheinwerfer: Von der Mitte (50%) nach rechts verschoben */
 .headlight-beam.right-beam {
-  right: 3%;
+  left: calc(50% + clamp(110px, 28vw, 220px));
+  transform: translate(-50%, -50%);
 }
 
-/* Spezieller Fix für hochkant gehaltene Smartphones (< 600px) */
+/* Präzise Korrektur für schmale Smartphone-Displays (< 600px) */
 @media (max-width: 600px) {
   .headlight-beam {
-    top: 31%;
-    width: clamp(55px, 22vw, 100px);
-    height: clamp(55px, 22vw, 100px);
-    filter: blur(6px); /* Etwas schärferer Fokus auf kleinerem Bildschirm */
+    top: 33%;
+    width: clamp(40px, 14vw, 80px); /* Kompakter, damit das Licht nicht den Grill streift */
+    filter: blur(5px);
   }
-  
+
   .headlight-beam.left-beam {
-    left: 1.5%; /* Zieht das Licht ganz weit an den äußeren Rand */
+    left: calc(50% - 29vw); /* Drückt das Licht starr auf das linke Glas */
   }
-  
+
   .headlight-beam.right-beam {
-    right: 1.5%;
+    left: calc(50% + 29vw); /* Drückt das Licht starr auf das rechte Glas */
   }
 }
 
