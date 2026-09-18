@@ -1160,7 +1160,7 @@ input:focus, select:focus, textarea:focus {
 /* Präzise Korrektur für schmale Smartphone-Displays (< 600px) */
 @media (max-width: 600px) {
   .headlight-beam {
-    top: 33%;
+    top: 35.5%; /* Weiter nach unten verschoben (vorher 33%) */
     width: clamp(40px, 14vw, 80px); /* Kompakter, damit das Licht nicht den Grill streift */
     filter: blur(5px);
   }
