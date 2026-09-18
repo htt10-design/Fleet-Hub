@@ -1106,40 +1106,49 @@ input:focus, select:focus, textarea:focus {
    SCHEINWERFER-POSITIONIERUNG (PERFEKT AUSGERICHTET FÜR SMARTPHONES)
    ========================================================================== */
 
+/* ==========================================================================
+   SCHLEIFENFREIE SCHEINWERFER-POSITIONIERUNG (SMARTPHONE OPTIMIERT)
+   ========================================================================== */
+
 .headlight-beam {
   position: absolute;
-  top: 32%; /* Exakt auf Höhe der Scheinwerfergläser */
-  width: clamp(90px, 22vw, 180px); /* Skaliert proportional mit dem Auto */
-  height: clamp(90px, 22vw, 180px);
-  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(56, 189, 248, 0.85) 35%, transparent 70%);
+  top: 33%; /* Exakte Höhe der W124 Streuscheiben */
+  width: clamp(70px, 18vw, 160px); /* Proportional verkleinert, damit nichts überlappt */
+  height: clamp(70px, 18vw, 160px);
+  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(56, 189, 248, 0.9) 30%, transparent 70%);
   mix-blend-mode: screen;
-  filter: blur(10px);
+  filter: blur(8px);
   border-radius: 50%;
   z-index: 2;
   pointer-events: none;
-  transform: translateY(-20%); /* Vertikale Feinjustierung */
+  transform: translateY(-20%);
 }
 
-/* Links: Sitzt exakt auf dem linken Scheinwerfer */
+/* Links: Exakt auf dem linken Glasbereich */
 .headlight-beam.left-beam {
-  left: 12%; 
+  left: 3%; 
 }
 
-/* Rechts: Sitzt exakt auf dem rechten Scheinwerfer */
+/* Rechts: Exakt auf dem rechten Glasbereich */
 .headlight-beam.right-beam {
-  right: 12%;
+  right: 3%;
 }
 
-/* Feinabstimmung für sehr kleine Smartphone-Screens (unter 480px) */
-@media (max-width: 480px) {
+/* Spezieller Fix für hochkant gehaltene Smartphones (< 600px) */
+@media (max-width: 600px) {
   .headlight-beam {
-    top: 30%;
+    top: 31%;
+    width: clamp(55px, 22vw, 100px);
+    height: clamp(55px, 22vw, 100px);
+    filter: blur(6px); /* Etwas schärferer Fokus auf kleinerem Bildschirm */
   }
+  
   .headlight-beam.left-beam {
-    left: 8%; /* Wandert auf schmalen Handys weiter nach außen */
+    left: 1.5%; /* Zieht das Licht ganz weit an den äußeren Rand */
   }
+  
   .headlight-beam.right-beam {
-    right: 8%;
+    right: 1.5%;
   }
 }
 
