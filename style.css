@@ -1102,26 +1102,45 @@ input:focus, select:focus, textarea:focus {
   filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.9));
 }
 
-/* Physikalische Scheinwerfer-Lichtkegel */
+/* ==========================================================================
+   SCHEINWERFER-POSITIONIERUNG (PERFEKT AUSGERICHTET FÜR SMARTPHONES)
+   ========================================================================== */
+
 .headlight-beam {
   position: absolute;
-  top: 38%;
-  width: 160px;
-  height: 160px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(56, 189, 248, 0.6) 30%, transparent 70%);
-  mix-blend-mode: screen; /* Lässt das Licht real auf das Bild schimmern */
-  filter: blur(14px);
+  top: 32%; /* Exakt auf Höhe der Scheinwerfergläser */
+  width: clamp(90px, 22vw, 180px); /* Skaliert proportional mit dem Auto */
+  height: clamp(90px, 22vw, 180px);
+  background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(56, 189, 248, 0.85) 35%, transparent 70%);
+  mix-blend-mode: screen;
+  filter: blur(10px);
   border-radius: 50%;
   z-index: 2;
   pointer-events: none;
+  transform: translateY(-20%); /* Vertikale Feinjustierung */
 }
 
+/* Links: Sitzt exakt auf dem linken Scheinwerfer */
 .headlight-beam.left-beam {
-  left: 17%;
+  left: 12%; 
 }
 
+/* Rechts: Sitzt exakt auf dem rechten Scheinwerfer */
 .headlight-beam.right-beam {
-  right: 17%;
+  right: 12%;
+}
+
+/* Feinabstimmung für sehr kleine Smartphone-Screens (unter 480px) */
+@media (max-width: 480px) {
+  .headlight-beam {
+    top: 30%;
+  }
+  .headlight-beam.left-beam {
+    left: 8%; /* Wandert auf schmalen Handys weiter nach außen */
+  }
+  .headlight-beam.right-beam {
+    right: 8%;
+  }
 }
 
 /* Aktiv-Zustände */
