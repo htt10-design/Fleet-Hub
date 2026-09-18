@@ -34,9 +34,14 @@
 
 <!-- STEP 1: KACHEL-AUSWAHL STARTBILDSCHIRM -->
 <div id="selection-screen" class="selection-container">
-  <button class="btn-theme-toggle btn-theme-toggle-floating" id="themeToggleBtnSelection" onclick="toggleTheme()" title="Design wechseln">
-    <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-  </button>
+  <div class="header-controls-floating">
+    <button class="btn-theme-toggle" id="themeToggleBtnSelection" onclick="toggleTheme()" title="Design wechseln">
+      <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </button>
+    <button class="btn-theme-toggle" onclick="openSettingsModal()" title="Einstellungen">
+      <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+  </div>
   <header class="selection-header">
     <div class="logo">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -105,6 +110,9 @@
     <div class="header-controls">
       <button class="btn-theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" title="Design wechseln">
         <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+      <button class="btn-theme-toggle" onclick="openSettingsModal()" title="Einstellungen">
+        <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
     </div>
   </header>
@@ -677,15 +685,7 @@
             <hr class="divider">
 
             <div class="backup-section">
-              <h3>Systemdaten-Sicherung</h3>
-              <p class="sub-text">Export oder Wiederherstellung des lokalen SGS-Datenbestands (JSON).</p>
-              <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="exportData()">Daten Exportieren</button>
-                <label class="btn btn-secondary">
-                  Daten Importieren
-                  <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importData(event)">
-                </label>
-              </div>
+              <p class="sub-text">Backup, Rechnungsdaten und weitere App-Einstellungen findest du jetzt im Einstellungen-Menü (Zahnrad-Symbol oben rechts).</p>
             </div>
           </div>
         </section>
@@ -718,6 +718,80 @@
       <div class="modal-actions">
         <button type="button" class="btn btn-primary" onclick="applyImageCrop()">Übernehmen</button>
         <button type="button" class="btn btn-secondary" onclick="closeImageCropModal()">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3>Einstellungen</h3>
+        <button class="modal-close" onclick="closeSettingsModal()">✕</button>
+      </div>
+
+      <div class="detail-section">
+        <h4>Daten-Sicherung</h4>
+        <p class="sub-text">Sichert und lädt den kompletten App-Datenbestand (alle Fahrzeuge & Kunden) als Datei.</p>
+        <p class="sub-text">Letztes Backup: <strong id="lastBackupInfo">-</strong></p>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="exportData()">Daten Exportieren</button>
+          <label class="btn btn-secondary">
+            Daten Importieren
+            <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importData(event)">
+          </label>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="detail-section">
+        <h4>Rechnungsdaten für Ausdrucke</h4>
+        <p class="sub-text">Diese Angaben erscheinen auf der gedruckten Kundenrechnung.</p>
+        <form onsubmit="saveBusinessInfo(event)">
+          <div class="form-group">
+            <label>Firmenname</label>
+            <input type="text" id="bizName">
+          </div>
+          <div class="form-group">
+            <label>Untertitel</label>
+            <input type="text" id="bizSubtitle">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>IBAN</label>
+              <input type="text" id="bizIban">
+            </div>
+            <div class="form-group">
+              <label>BIC</label>
+              <input type="text" id="bizBic">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Bank</label>
+            <input type="text" id="bizBank">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>PayPal-Me Link</label>
+              <input type="text" id="bizPaypalMe">
+            </div>
+            <div class="form-group">
+              <label>PayPal E-Mail</label>
+              <input type="text" id="bizPaypalEmail">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Rechnungsdaten Speichern</button>
+          </div>
+        </form>
+      </div>
+
+      <hr class="divider">
+
+      <div class="detail-section">
+        <h4>Gefahrenzone</h4>
+        <p class="sub-text">Löscht unwiderruflich alle Fahrzeuge, Kunden und Einstellungen von diesem Gerät.</p>
+        <button type="button" class="btn btn-danger" onclick="resetAllData()">Alle Daten löschen</button>
       </div>
     </div>
   </div>

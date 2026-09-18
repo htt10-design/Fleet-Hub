@@ -4,8 +4,23 @@ let appData = {
   activeCustomerVehicleId: null,
   theme: "dark",
   vehicles: [],
-  customerVehicles: []
+  customerVehicles: [],
+  businessInfo: null,
+  lastBackupDate: null
 };
+
+// Vorbelegung für die Rechnungsdaten (Fußzeile der Kundenrechnung), editierbar in den Einstellungen
+function getDefaultBusinessInfo() {
+  return {
+    name: "SGS Fahrzeug-Service",
+    subtitle: "Smart Garage Solutions & Werkstattdokumentation",
+    iban: "DE00 0000 0000 0000 0000 00",
+    bic: "XXXXXXXXXXX",
+    bank: "Musterbank",
+    paypalMe: "paypal.me/SGSFahrzeugservice",
+    paypalEmail: "paypal@sgs-service.de"
+  };
+}
 
 let consumptionChartInstance = null;
 let costPieChartInstance = null;
@@ -40,6 +55,14 @@ function initApp() {
 
   if (!appData.customerVehicles) {
     appData.customerVehicles = [];
+  }
+
+  // Migration: ältere Datenstände bekommen die neuen Einstellungsfelder nachgereicht
+  if (!appData.businessInfo) {
+    appData.businessInfo = getDefaultBusinessInfo();
+  }
+  if (appData.lastBackupDate === undefined) {
+    appData.lastBackupDate = null;
   }
 
   applyTheme(appData.theme || 'dark');
@@ -101,7 +124,9 @@ function loadDefaultData() {
         ]
       }
     ],
-    customerVehicles: []
+    customerVehicles: [],
+    businessInfo: getDefaultBusinessInfo(),
+    lastBackupDate: null
   };
   saveData();
 }
@@ -291,6 +316,23 @@ function getUpcomingMaintenanceReminders(v) {
   return reminders;
 }
 
+// Formatiert die verbleibende Zeit/Strecke einer Erinnerung als kurzen Text (KM • Datum)
+function formatReminderMeta(r) {
+  const metaParts = [];
+  if (r.nextKm) {
+    metaParts.push(r.kmRemaining <= 0
+      ? `${Math.abs(r.kmRemaining).toLocaleString('de-DE')} km überfällig`
+      : `noch ${r.kmRemaining.toLocaleString('de-DE')} km`);
+  }
+  if (r.nextDate) {
+    const dateText = r.isTuev ? formatTuevDate(r.nextDate) : new Date(r.nextDate).toLocaleDateString('de-DE');
+    metaParts.push(r.daysRemaining <= 0
+      ? `seit ${dateText} fällig`
+      : `fällig am ${dateText}`);
+  }
+  return metaParts.join(' • ');
+}
+
 // Rendert alle gespeicherten eigenen Fahrzeuge als Auswahlkacheln hinter "Meine Garage"
 function renderGarageVehicleTiles() {
   const grid = document.getElementById('garageVehicleGrid');
@@ -323,7 +365,23 @@ function renderGarageVehicleTiles() {
     const mileageUnit = v.type === 'hours' ? 'Std' : 'km';
     const hsn = v.hsn || '-';
     const tsn = v.tsn || '-';
-    const tuev = formatTuevDate(v.nextTuev);
+
+    // TÜV: immer anzeigen, mit Überfällig-Hinweis falls Termin überschritten
+    let tuevOverdue = false;
+    let tuevText = '-';
+    if (v.nextTuev) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const due = new Date(v.nextTuev.length === 7 ? v.nextTuev + '-01' : v.nextTuev);
+      tuevOverdue = due < today;
+      tuevText = formatTuevDate(v.nextTuev) + (tuevOverdue ? ' (überfällig)' : '');
+    }
+
+    // Nächste anstehende Routine-Wartung (dringendste zuerst)
+    const nextMaintenance = getUpcomingMaintenanceReminders(v)[0] || null;
+    const maintenanceHtml = nextMaintenance
+      ? `<span class="${nextMaintenance.overdue ? 'reminder-overdue-text' : ''}"><strong>${nextMaintenance.title}:</strong> ${formatReminderMeta(nextMaintenance)}</span>`
+      : `<span><strong>Nächste Wartung:</strong> keine eingetragen</span>`;
 
     card.innerHTML = `
       ${imageHtml}
@@ -332,7 +390,8 @@ function renderGarageVehicleTiles() {
       <div class="vehicle-tile-info">
         <span><strong>KM-Stand:</strong> ${mileage.toLocaleString('de-DE')} ${mileageUnit}</span>
         <span><strong>HSN/TSN:</strong> ${hsn} / ${tsn}</span>
-        <span><strong>Nächster TÜV:</strong> ${tuev}</span>
+        <span class="${tuevOverdue ? 'reminder-overdue-text' : ''}"><strong>Nächster TÜV:</strong> ${tuevText}</span>
+        ${maintenanceHtml}
       </div>
     `;
 
@@ -1329,21 +1388,7 @@ function renderDashboard() {
     maintenanceReminders.forEach(r => {
       const li = document.createElement('li');
       li.className = 'reminder-item' + (r.overdue ? ' reminder-overdue' : '');
-
-      const metaParts = [];
-      if (r.nextKm) {
-        metaParts.push(r.kmRemaining <= 0
-          ? `${Math.abs(r.kmRemaining).toLocaleString('de-DE')} km überfällig`
-          : `noch ${r.kmRemaining.toLocaleString('de-DE')} km`);
-      }
-      if (r.nextDate) {
-        const dateText = new Date(r.nextDate).toLocaleDateString('de-DE');
-        metaParts.push(r.daysRemaining <= 0
-          ? `seit ${dateText} fällig`
-          : `fällig am ${dateText}`);
-      }
-
-      li.innerHTML = `<span class="reminder-title">${r.title}</span><span class="reminder-meta">${metaParts.join(' • ')}</span>`;
+      li.innerHTML = `<span class="reminder-title">${r.title}</span><span class="reminder-meta">${formatReminderMeta(r)}</span>`;
       reminderList.appendChild(li);
     });
 
@@ -1974,6 +2019,8 @@ function printInvoice(serviceId) {
     `;
   }
 
+  const biz = appData.businessInfo || getDefaultBusinessInfo();
+
       printContainer.innerHTML = `
     <!-- DRUCK-STYLES (MOBIL-OPTIMIERT, STRIKT 1 SEITE, FUSSZEILE UNTEN FIXIERT) -->
     <style>
@@ -2048,12 +2095,12 @@ function printInvoice(serviceId) {
               color: #111827;
               letter-spacing: -0.3px;
               text-transform: uppercase;
-            ">SGS Fahrzeug-Service</div>
+            ">${biz.name}</div>
             <div class="invoice-subtitle" style="
               font-size: 9.5px;
               color: #4b5563;
               margin-top: 1px;
-            ">Smart Garage Solutions & Werkstattdokumentation</div>
+            ">${biz.subtitle}</div>
           </div>
           <div style="text-align: right; font-size: 10.5px; color: #111827;">
             <strong>Datum:</strong> ${cs.date}
@@ -2205,14 +2252,14 @@ function printInvoice(serviceId) {
       ">
         <div>
           <strong style="color: #111827; font-size: 8.5px;">Bankverbindung (Überweisung)</strong><br>
-          Empfänger: SGS Fahrzeug-Service<br>
-          IBAN: DE00 0000 0000 0000 0000 00<br>
-          BIC: XXXXXXXXXXX | Bank: Musterbank
+          Empfänger: ${biz.name}<br>
+          IBAN: ${biz.iban}<br>
+          BIC: ${biz.bic} | Bank: ${biz.bank}
         </div>
         <div>
           <strong style="color: #111827; font-size: 8.5px;">PayPal / Alternative</strong><br>
-          PayPal-Me: paypal.me/SGSFahrzeugservice<br>
-          E-Mail: paypal@sgs-service.de<br>
+          PayPal-Me: ${biz.paypalMe}<br>
+          E-Mail: ${biz.paypalEmail}<br>
           Verwendungszweck: ${c.plate || c.owner} - ${cs.date}
         </div>
       </div>
@@ -2227,6 +2274,10 @@ function printInvoice(serviceId) {
 
 /* --- EXPORT & IMPORT (BACKUP) --- */
 function exportData() {
+  appData.lastBackupDate = new Date().toISOString();
+  saveData();
+  updateLastBackupInfo();
+
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
   const dlAnchorElem = document.createElement('a');
   dlAnchorElem.setAttribute("href", dataStr);
@@ -2240,14 +2291,22 @@ function importData(event) {
   const file = event.target.files[0];
   if (!file) return;
 
+  if (!confirm("Achtung: Beim Import werden ALLE aktuellen Daten (Fahrzeuge, Kunden, Einstellungen) auf diesem Gerät unwiderruflich durch die Backup-Datei ersetzt. Fortfahren?")) {
+    event.target.value = '';
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
       const parsed = JSON.parse(e.target.result);
       if (parsed && parsed.vehicles) {
         appData = parsed;
+        if (!appData.businessInfo) appData.businessInfo = getDefaultBusinessInfo();
+        if (!appData.customerVehicles) appData.customerVehicles = [];
         saveData();
         initApp();
+        closeSettingsModal();
         alert("Daten erfolgreich wiederhergestellt!");
       } else {
         alert("Ungültiges Backup-Format.");
@@ -2257,7 +2316,67 @@ function importData(event) {
     }
   };
   reader.readAsText(file);
+  event.target.value = '';
 }
+
+/* --- EINSTELLUNGEN-MENÜ --- */
+function updateLastBackupInfo() {
+  const el = document.getElementById('lastBackupInfo');
+  if (!el) return;
+  el.innerText = appData.lastBackupDate
+    ? new Date(appData.lastBackupDate).toLocaleString('de-DE')
+    : 'noch nie';
+}
+
+function openSettingsModal() {
+  const info = appData.businessInfo || getDefaultBusinessInfo();
+  document.getElementById('bizName').value = info.name || '';
+  document.getElementById('bizSubtitle').value = info.subtitle || '';
+  document.getElementById('bizIban').value = info.iban || '';
+  document.getElementById('bizBic').value = info.bic || '';
+  document.getElementById('bizBank').value = info.bank || '';
+  document.getElementById('bizPaypalMe').value = info.paypalMe || '';
+  document.getElementById('bizPaypalEmail').value = info.paypalEmail || '';
+
+  updateLastBackupInfo();
+
+  document.getElementById('settingsModal').classList.add('active');
+}
+window.openSettingsModal = openSettingsModal;
+
+function closeSettingsModal() {
+  document.getElementById('settingsModal').classList.remove('active');
+}
+window.closeSettingsModal = closeSettingsModal;
+
+function saveBusinessInfo(e) {
+  e.preventDefault();
+  appData.businessInfo = {
+    name: document.getElementById('bizName').value,
+    subtitle: document.getElementById('bizSubtitle').value,
+    iban: document.getElementById('bizIban').value,
+    bic: document.getElementById('bizBic').value,
+    bank: document.getElementById('bizBank').value,
+    paypalMe: document.getElementById('bizPaypalMe').value,
+    paypalEmail: document.getElementById('bizPaypalEmail').value
+  };
+  saveData();
+  alert("Rechnungsdaten gespeichert.");
+}
+window.saveBusinessInfo = saveBusinessInfo;
+
+function resetAllData() {
+  if (!confirm("ACHTUNG: Damit werden ALLE Fahrzeuge, Kunden und Einstellungen auf diesem Gerät unwiderruflich gelöscht. Dies kann nicht rückgängig gemacht werden. Fortfahren?")) {
+    return;
+  }
+  if (!confirm("Letzte Sicherheitsabfrage: Wirklich ALLE Daten endgültig löschen?")) {
+    return;
+  }
+  localStorage.removeItem('sgs_data');
+  localStorage.removeItem('fleethub_data');
+  location.reload();
+}
+window.resetAllData = resetAllData;
 /* --- BILDER AUTOMATISCH KOMPRIMIEREN (MAX 800PX / JPEG 70%) --- */
 function compressImage(base64Str, maxWidth = 800, maxHeight = 800, quality = 0.7) {
   return new Promise((resolve) => {
@@ -2405,5 +2524,7 @@ function printSaleReport() {
 }
 
 window.printSaleReport = printSaleReport;
+
+
 
 

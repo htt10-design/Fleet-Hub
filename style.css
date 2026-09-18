@@ -142,11 +142,13 @@ body {
   width: 100%;
 }
 
-.btn-theme-toggle-floating {
+.header-controls-floating {
   position: fixed;
   top: 1rem;
   right: 1.25rem;
   z-index: 200;
+  display: flex;
+  gap: 0.5rem;
 }
 
 .selection-header {
@@ -264,6 +266,14 @@ body {
 .vehicle-tile-info span strong {
   color: var(--text-main);
   font-weight: 600;
+}
+
+.vehicle-tile-info .reminder-overdue-text {
+  color: var(--accent-danger);
+}
+
+.vehicle-tile-info .reminder-overdue-text strong {
+  color: var(--accent-danger);
 }
 
 
