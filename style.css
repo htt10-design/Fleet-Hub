@@ -5,8 +5,8 @@
 :root {
   /* Dark Mode (Motorsport-Graphit / High-Tech Blue) */
   --bg-body: #0a0d12;
-  --bg-card: #131820;
-  --bg-sidebar: #0e1218;
+  --bg-card: rgba(19, 24, 32, 0.72);
+  --bg-sidebar: rgba(14, 18, 24, 0.72);
   --border-color: #212c38;
   --border-highlight: #344659;
   
@@ -20,13 +20,39 @@
   --accent-warning: #e67e22;         /* Service-Orange */
   --accent-danger: #e74c3c;          /* Warn-Rot */
 
-  --card-gradient: linear-gradient(180deg, #161e27 0%, #0f141a 100%);
+  --card-gradient: linear-gradient(180deg, rgba(22, 30, 39, 0.72) 0%, rgba(15, 20, 26, 0.72) 100%);
   --table-header-bg: #0e1218;
   --table-hover-bg: rgba(243, 156, 18, 0.05);
 
   /* Blueprint- & Werkstatt-Raster */
   --bg-grid-line: rgba(56, 189, 248, 0.04);
   --bg-grid-line-major: rgba(56, 189, 248, 0.09);
+
+  /* Werkstatt-Beton (aktuelles Standarddesign) */
+  --concrete-bg: #1e252d;
+  --concrete-glow: rgba(255, 255, 255, 0.12);
+  --concrete-line: rgba(255, 255, 255, 0.035);
+  --concrete-noise-a: rgba(255, 255, 255, 0.08);
+  --concrete-noise-b: rgba(255, 255, 255, 0.05);
+
+  /* Werkstatt-Licht (Vignette + Lampenschein) */
+  --bg-lamp-glow: rgba(243, 156, 18, 0.07);
+  --bg-vignette-center: #161d24;
+  --bg-vignette-edge: #05070a;
+
+  /* Mercedes Modern (gebürstetes Metall, kühles Anthrazit) */
+  --merc-modern-a: #1c1f22;
+  --merc-modern-b: #2e3236;
+  --merc-modern-sheen: rgba(255, 255, 255, 0.08);
+  --merc-modern-mesh: rgba(255, 255, 255, 0.035);
+  --merc-modern-star: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23ffffff%27%20stroke-opacity%3D%270.35%27%20stroke-width%3D%271.3%27%20stroke-linecap%3D%27round%27%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%2712%27%20y2%3D%273.2%27/%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%274.7%27%20y2%3D%2716.4%27/%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%2719.3%27%20y2%3D%2716.4%27/%3E%3C/g%3E%3C/svg%3E");
+
+  /* Mercedes Klassik (warmes Leder-/Pepita-Anmuten) */
+  --merc-classic-a: #2a1f18;
+  --merc-classic-b: #1c140f;
+  --merc-classic-line: rgba(214, 178, 128, 0.05);
+  --merc-classic-line-2: rgba(214, 178, 128, 0.03);
+  --merc-classic-star: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%23d2b48c%27%20stroke-opacity%3D%270.28%27%20stroke-width%3D%271.3%27%20stroke-linecap%3D%27round%27%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%2712%27%20y2%3D%273.2%27/%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%274.7%27%20y2%3D%2716.4%27/%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%2719.3%27%20y2%3D%2716.4%27/%3E%3C/g%3E%3C/svg%3E");
   
   /* Radien & Fonts */
   --radius-sm: 4px;
@@ -40,8 +66,8 @@
 [data-theme="light"] {
   /* Light Mode (Werkstatt-Silber / Technisches Hellgrau) */
   --bg-body: #e5e9f0;
-  --bg-card: #ffffff;
-  --bg-sidebar: #edf1f5;
+  --bg-card: rgba(255, 255, 255, 0.78);
+  --bg-sidebar: rgba(237, 241, 245, 0.78);
   --border-color: #cbd5e1;
   --border-highlight: #94a3b8;
   
@@ -51,13 +77,39 @@
   --accent-primary: #d97706;
   --accent-primary-hover: #b45309;
 
-  --card-gradient: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  --card-gradient: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(248, 250, 252, 0.78) 100%);
   --table-header-bg: #edf1f5;
   --table-hover-bg: rgba(217, 119, 6, 0.06);
 
   /* Blueprint-Raster für Hell-Modus */
   --bg-grid-line: rgba(30, 58, 138, 0.04);
   --bg-grid-line-major: rgba(30, 58, 138, 0.08);
+
+  /* Werkstatt-Beton (Hell-Modus) */
+  --concrete-bg: #d7dce2;
+  --concrete-glow: rgba(255, 255, 255, 0.55);
+  --concrete-line: rgba(30, 41, 59, 0.05);
+  --concrete-noise-a: rgba(30, 41, 59, 0.07);
+  --concrete-noise-b: rgba(30, 41, 59, 0.045);
+
+  /* Werkstatt-Licht (Hell-Modus) */
+  --bg-lamp-glow: rgba(217, 119, 6, 0.05);
+  --bg-vignette-center: #ffffff;
+  --bg-vignette-edge: #ccd3da;
+
+  /* Mercedes Modern (Hell-Modus: gebürstetes Silber) */
+  --merc-modern-a: #e4e7ea;
+  --merc-modern-b: #cfd4d9;
+  --merc-modern-sheen: rgba(255, 255, 255, 0.6);
+  --merc-modern-mesh: rgba(30, 41, 59, 0.035);
+  --merc-modern-star: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%231e293b%27%20stroke-opacity%3D%270.18%27%20stroke-width%3D%271.3%27%20stroke-linecap%3D%27round%27%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%2712%27%20y2%3D%273.2%27/%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%274.7%27%20y2%3D%2716.4%27/%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%2719.3%27%20y2%3D%2716.4%27/%3E%3C/g%3E%3C/svg%3E");
+
+  /* Mercedes Klassik (Hell-Modus: warmes Creme/Beige) */
+  --merc-classic-a: #f1e6d2;
+  --merc-classic-b: #e7d8ba;
+  --merc-classic-line: rgba(101, 67, 33, 0.05);
+  --merc-classic-line-2: rgba(101, 67, 33, 0.03);
+  --merc-classic-star: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%236b4a2b%27%20stroke-opacity%3D%270.15%27%20stroke-width%3D%271.3%27%20stroke-linecap%3D%27round%27%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%2712%27%20y2%3D%273.2%27/%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%274.7%27%20y2%3D%2716.4%27/%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%2719.3%27%20y2%3D%2716.4%27/%3E%3C/g%3E%3C/svg%3E");
 }
 
 /* Base Setup */
@@ -70,43 +122,7 @@
 
 body {
   font-family: var(--font-family);
-  background-color: #1e252d; /* Deutlich helleres Graphit/Werkstatt-Grau */
-  
-  /* Werkstatt-Beton, helle Profilspuren & Ausleuchtung */
-  background-image:
-    /* 1. Helle Hallen-Ausleuchtung von oben */
-    radial-gradient(circle at 50% -10%, rgba(255, 255, 255, 0.12) 0%, transparent 60%),
-    
-    /* 2. Dezent sichtbare Profil- & Fahrspuren */
-    repeating-linear-gradient(
-      -45deg,
-      transparent,
-      transparent 18px,
-      rgba(255, 255, 255, 0.035) 18px,
-      rgba(255, 255, 255, 0.035) 22px,
-      transparent 22px,
-      transparent 28px,
-      rgba(255, 255, 255, 0.035) 28px,
-      rgba(255, 255, 255, 0.035) 32px
-    ),
-    
-    /* 3. Feine Beton- / Asphalt-Struktur (helles Rauschen) */
-    radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-
-  /* Größenraster für die Textur */
-  background-size: 
-    100% 100%,
-    160px 160px,
-    12px 12px,
-    24px 24px;
-    
-  background-position: 
-    0 0,
-    0 0,
-    0 0,
-    12px 12px;
-
+  background-color: var(--bg-body);
   background-attachment: fixed;
   color: var(--text-main);
   min-height: 100vh;
@@ -116,6 +132,80 @@ body {
   touch-action: manipulation;
   font-size: 0.92rem;
   line-height: 1.4;
+}
+
+/* ==========================================================================
+   APP-HINTERGRUND: AUSWÄHLBARE STILE (Einstellungen > Darstellung)
+   Jede Regel gilt sowohl für den echten Seitenhintergrund (body[data-bg-style])
+   als auch für die kleine Vorschau-Kachel in den Einstellungen (.bg-style-swatch)
+   ========================================================================== */
+
+/* 1. Werkstatt-Beton (aktuelles Standarddesign) */
+body[data-bg-style="concrete"],
+.bg-style-swatch[data-style="concrete"] {
+  background-color: var(--concrete-bg);
+  background-image:
+    radial-gradient(circle at 50% -10%, var(--concrete-glow) 0%, transparent 60%),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 18px,
+      var(--concrete-line) 18px,
+      var(--concrete-line) 22px,
+      transparent 22px,
+      transparent 28px,
+      var(--concrete-line) 28px,
+      var(--concrete-line) 32px
+    ),
+    radial-gradient(var(--concrete-noise-a) 1px, transparent 1px),
+    radial-gradient(var(--concrete-noise-b) 1px, transparent 1px);
+  background-size: 100% 100%, 160px 160px, 12px 12px, 24px 24px;
+  background-position: 0 0, 0 0, 0 0, 12px 12px;
+}
+
+/* 2. Werkstatt-Raster (Blueprint/Konstruktionsraster) */
+body[data-bg-style="grid"],
+.bg-style-swatch[data-style="grid"] {
+  background-color: var(--bg-body);
+  background-image:
+    linear-gradient(var(--bg-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-line) 1px, transparent 1px),
+    linear-gradient(var(--bg-grid-line-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-line-major) 1px, transparent 1px);
+  background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+}
+
+/* 3. Werkstatt-Licht (Vignette + sanfter Lampenschein) */
+body[data-bg-style="vignette"],
+.bg-style-swatch[data-style="vignette"] {
+  background-color: var(--bg-body);
+  background-image:
+    radial-gradient(1100px circle at 50% -10%, var(--bg-lamp-glow), transparent 55%),
+    radial-gradient(140% 140% at 50% 15%, var(--bg-vignette-center) 0%, var(--bg-body) 55%, var(--bg-vignette-edge) 100%);
+}
+
+/* 4. Mercedes Modern (gebürstetes Metall mit Lichtreflex + dezenten Sternen) */
+body[data-bg-style="mercedes-modern"],
+.bg-style-swatch[data-style="mercedes-modern"] {
+  background-color: var(--bg-body);
+  background-image:
+    
+    linear-gradient(120deg, transparent 35%, var(--merc-modern-sheen) 48%, var(--merc-modern-sheen) 52%, transparent 65%),
+    repeating-linear-gradient(60deg, var(--merc-modern-mesh) 0px, var(--merc-modern-mesh) 1px, transparent 1px, transparent 22px),
+    repeating-linear-gradient(-60deg, var(--merc-modern-mesh) 0px, var(--merc-modern-mesh) 1px, transparent 1px, transparent 22px),
+    linear-gradient(135deg, var(--merc-modern-a), var(--merc-modern-b), var(--merc-modern-a));
+  background-size: 70px 70px, auto, auto, auto, auto;
+}
+
+/* 5. Mercedes Klassik (warmes Leder-/Pepita-Anmuten + dezenten Sternen) */
+body[data-bg-style="mercedes-classic"],
+.bg-style-swatch[data-style="mercedes-classic"] {
+  background-color: var(--bg-body);
+  background-image:
+        repeating-linear-gradient(45deg, var(--merc-classic-line) 0px, var(--merc-classic-line) 1px, transparent 1px, transparent 16px),
+    repeating-linear-gradient(-45deg, var(--merc-classic-line-2) 0px, var(--merc-classic-line-2) 1px, transparent 1px, transparent 16px),
+    linear-gradient(160deg, var(--merc-classic-a), var(--merc-classic-b));
+  background-size: 70px 70px, auto, auto, auto;
 }
 
 
@@ -474,6 +564,22 @@ body {
    CARDS & DASHBOARD
    ========================================================================== */
 
+/* Frosted-Glass-Effekt: alle Kacheln, Leisten & Flächen, auf denen man klickt,
+   sind halbtransparent (siehe --bg-card/--bg-sidebar/--card-gradient) und
+   bekommen zusätzlich einen Weichzeichner, damit der App-Hintergrund dezent
+   durchscheint statt hart durchsichtig zu wirken. */
+.card,
+.kpi-card,
+.selection-card,
+.vehicle-banner-card,
+.app-header,
+.sidebar,
+.modal,
+.customer-select-panel {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
 .card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -772,6 +878,100 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--accent-primary);
 }
 
+/* Kundenfahrzeug-Auswahl: aufklappbarer Bereich mit Suche + scrollbarer Liste */
+.customer-select-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-body);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.customer-select-toggle:hover {
+  border-color: var(--border-highlight);
+}
+
+.customer-select-toggle-arrow {
+  color: var(--text-muted);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+  display: flex;
+}
+
+.customer-select-toggle-arrow svg {
+  width: 20px;
+  height: 20px;
+}
+
+.customer-select-group.open .customer-select-toggle-arrow {
+  transform: rotate(180deg);
+}
+
+.customer-select-panel {
+  margin-top: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem;
+  background-color: var(--bg-card);
+}
+
+.customer-select-panel input {
+  margin-bottom: 0.5rem;
+}
+
+.customer-select-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-color);
+}
+
+.customer-select-list-item {
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+}
+
+.customer-select-list-item:last-child {
+  border-bottom: none;
+}
+
+.customer-select-list-item:hover {
+  background-color: var(--table-hover-bg);
+}
+
+.customer-select-list-item.active {
+  background-color: var(--table-hover-bg);
+  border-left: 3px solid var(--accent-primary);
+  padding-left: calc(0.4rem - 3px);
+}
+
+.customer-select-list-item .cs-owner {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.customer-select-list-item .cs-meta {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.customer-select-empty {
+  padding: 0.75rem 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
 /* Compact Buttons */
 .btn {
   padding: 0.45rem 0.9rem;
@@ -1001,6 +1201,122 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.85rem;
   color: var(--text-muted);
   margin-bottom: 0.25rem;
+}
+
+/* Darstellung: Hell/Dunkel-Umschalter */
+.theme-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.theme-switch {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.theme-switch-btn {
+  background-color: var(--bg-body);
+  color: var(--text-muted);
+  border: none;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.theme-switch-btn + .theme-switch-btn {
+  border-left: 1px solid var(--border-color);
+}
+
+.theme-switch-btn.active {
+  background-color: var(--accent-primary);
+  color: #111827;
+  font-weight: 600;
+}
+
+/* Darstellung: Hintergrundstil-Auswahl mit Vorschau-Kacheln */
+.bg-style-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.6rem;
+}
+
+.bg-style-option {
+  background: none;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 0.3rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: inherit;
+}
+
+.bg-style-swatch {
+  display: block;
+  width: 100%;
+  height: 52px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.bg-style-name {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.bg-style-option.active {
+  border-color: var(--accent-primary);
+}
+
+.bg-style-option.active .bg-style-name {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.detail-section details {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.85rem;
+}
+
+.detail-section details[open] {
+  padding-bottom: 0.85rem;
+}
+
+.detail-section details summary {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+
+.detail-section details summary::-webkit-details-marker {
+  display: none;
+}
+
+.detail-section details summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.4rem;
+  transition: transform 0.15s;
+}
+
+.detail-section details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.detail-section details summary + * {
+  margin-top: 0.75rem;
 }
 
 .detail-notes-box {
@@ -1314,3 +1630,4 @@ input:focus, select:focus, textarea:focus {
     filter: blur(0px) brightness(1);
   }
 }
+

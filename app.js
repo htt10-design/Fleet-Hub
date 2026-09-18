@@ -3,6 +3,7 @@ let appData = {
   activeVehicleId: null,
   activeCustomerVehicleId: null,
   theme: "dark",
+  backgroundStyle: "concrete",
   vehicles: [],
   customerVehicles: [],
   businessInfo: null,
@@ -64,8 +65,12 @@ function initApp() {
   if (appData.lastBackupDate === undefined) {
     appData.lastBackupDate = null;
   }
+  if (!appData.backgroundStyle) {
+    appData.backgroundStyle = 'concrete';
+  }
 
   applyTheme(appData.theme || 'dark');
+  applyBackgroundStyle(appData.backgroundStyle);
 
   const fuelDateEl = document.getElementById('fuelDate');
   const serviceDateEl = document.getElementById('serviceDate');
@@ -126,7 +131,8 @@ function loadDefaultData() {
     ],
     customerVehicles: [],
     businessInfo: getDefaultBusinessInfo(),
-    lastBackupDate: null
+    lastBackupDate: null,
+    backgroundStyle: "concrete"
   };
   saveData();
 }
@@ -146,10 +152,15 @@ function getActiveCustomerVehicle() {
 /* --- THEME TOGGLE --- */
 function toggleTheme() {
   const newTheme = appData.theme === 'light' ? 'dark' : 'light';
-  appData.theme = newTheme;
-  saveData();
-  applyTheme(newTheme);
+  setTheme(newTheme);
 }
+
+function setTheme(theme) {
+  appData.theme = theme;
+  saveData();
+  applyTheme(theme);
+}
+window.setTheme = setTheme;
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -161,9 +172,32 @@ function applyTheme(theme) {
   const iconSelection = document.getElementById('themeToggleIconSelection');
   if (iconSelection) iconSelection.innerText = iconText;
 
+  const lightBtn = document.getElementById('themeSwitchLight');
+  const darkBtn = document.getElementById('themeSwitchDark');
+  if (lightBtn && darkBtn) {
+    lightBtn.classList.toggle('active', theme === 'light');
+    darkBtn.classList.toggle('active', theme !== 'light');
+  }
+
   const v = getActiveVehicle();
   if (v) renderCharts(v);
 }
+
+// Wendet den gewählten App-Hintergrund an (siehe Einstellungen > Darstellung)
+function applyBackgroundStyle(style) {
+  document.body.setAttribute('data-bg-style', style || 'concrete');
+
+  document.querySelectorAll('.bg-style-option').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-style') === (style || 'concrete'));
+  });
+}
+
+function setBackgroundStyle(style) {
+  appData.backgroundStyle = style;
+  saveData();
+  applyBackgroundStyle(style);
+}
+window.setBackgroundStyle = setBackgroundStyle;
 
 // Variable zur Speicherung des aktuellen Modus
 let currentMode = 'eigene';
@@ -232,15 +266,11 @@ function selectArea(area) {
       }
 
       // Automatisches Auswählen des ersten Fahrzeugs, damit Stammdaten & Arbeiten sofort da sind
-      const selectElem = document.getElementById('customerVehicleSelect');
-      if (selectElem && selectElem.options.length > 0) {
-        if (!selectElem.value) {
-          selectElem.selectedIndex = 0;
-        }
-        if (typeof switchCustomerVehicle === 'function') {
-          switchCustomerVehicle();
-        }
+      if (!appData.activeCustomerVehicleId && appData.customerVehicles.length > 0) {
+        appData.activeCustomerVehicleId = appData.customerVehicles[0].id;
+        saveData();
       }
+      renderCustomerSection();
     } catch (err) {
       console.error("Fehler beim Laden der Kundendaten:", err);
     }
@@ -1616,26 +1646,75 @@ function renderCustomerSection() {
 }
 
 function renderCustomerVehicleSelect() {
-  const select = document.getElementById('customerVehicleSelect');
-  if (!select) return;
-  select.innerHTML = '<option value="">-- Kundenfahrzeug wählen --</option>';
+  const toggleLabel = document.getElementById('customerSelectToggleLabel');
+  if (!toggleLabel) return;
 
-  appData.customerVehicles.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = `${c.owner} (${c.model} - ${c.plate || 'Kein KZ'})`;
-    if (c.id === appData.activeCustomerVehicleId) opt.selected = true;
-    select.appendChild(opt);
+  const active = getActiveCustomerVehicle();
+  toggleLabel.innerText = active
+    ? `${active.owner} (${active.model} - ${active.plate || 'Kein KZ'})`
+    : '-- Kundenfahrzeug wählen --';
+
+  renderCustomerVehicleList();
+}
+
+function toggleCustomerSelectPanel() {
+  const group = document.querySelector('.customer-select-group');
+  const panel = document.getElementById('customerSelectPanel');
+  if (!group || !panel) return;
+
+  const isOpen = !panel.classList.contains('hidden');
+  if (isOpen) {
+    panel.classList.add('hidden');
+    group.classList.remove('open');
+  } else {
+    panel.classList.remove('hidden');
+    group.classList.add('open');
+    document.getElementById('customerSearchInput').value = '';
+    renderCustomerVehicleList();
+    document.getElementById('customerSearchInput').focus();
+  }
+}
+window.toggleCustomerSelectPanel = toggleCustomerSelectPanel;
+
+function renderCustomerVehicleList() {
+  const list = document.getElementById('customerSelectList');
+  if (!list) return;
+
+  const searchInput = document.getElementById('customerSearchInput');
+  const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+
+  const filtered = appData.customerVehicles.filter(c => {
+    if (!query) return true;
+    const haystack = `${c.owner} ${c.model} ${c.plate || ''}`.toLowerCase();
+    return haystack.includes(query);
+  });
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="customer-select-empty">Keine Kundenfahrzeuge gefunden.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  filtered.forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'customer-select-list-item' + (c.id === appData.activeCustomerVehicleId ? ' active' : '');
+    item.innerHTML = `
+      <div class="cs-owner">${c.owner}</div>
+      <div class="cs-meta">${c.model} - ${c.plate || 'Kein Kennzeichen'}</div>
+    `;
+    item.onclick = () => selectCustomerVehicleFromList(c.id);
+    list.appendChild(item);
   });
 }
+window.renderCustomerVehicleList = renderCustomerVehicleList;
 
-function switchCustomerVehicle() {
-  const select = document.getElementById('customerVehicleSelect');
-  if (!select) return;
-  appData.activeCustomerVehicleId = select.value;
+function selectCustomerVehicleFromList(id) {
+  appData.activeCustomerVehicleId = id;
   saveData();
   renderCustomerSection();
+  toggleCustomerSelectPanel();
 }
+window.selectCustomerVehicleFromList = selectCustomerVehicleFromList;
 
 function openCustomerVehicleModal(isEdit = false) {
   const modal = document.getElementById('customerVehicleModal');
@@ -2339,6 +2418,8 @@ function openSettingsModal() {
   document.getElementById('bizPaypalEmail').value = info.paypalEmail || '';
 
   updateLastBackupInfo();
+  applyTheme(appData.theme || 'dark');
+  applyBackgroundStyle(appData.backgroundStyle || 'concrete');
 
   document.getElementById('settingsModal').classList.add('active');
 }

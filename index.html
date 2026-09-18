@@ -478,9 +478,19 @@
             </div>
             <p class="sub-text">Verwaltung von Fremdfahrzeugen und Halterinformationen.</p>
 
-            <div class="form-group" style="margin-top: 1rem;">
+            <div class="form-group customer-select-group" style="margin-top: 1rem;">
               <label>Kundenfahrzeug auswählen</label>
-              <select id="customerVehicleSelect" onchange="switchCustomerVehicle()"></select>
+              <button type="button" class="customer-select-toggle" id="customerSelectToggle" onclick="toggleCustomerSelectPanel()">
+                <span id="customerSelectToggleLabel">-- Kundenfahrzeug wählen --</span>
+                <span class="customer-select-toggle-arrow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </span>
+              </button>
+
+              <div class="customer-select-panel hidden" id="customerSelectPanel">
+                <input type="text" id="customerSearchInput" placeholder="Suche nach Name oder Kennzeichen..." oninput="renderCustomerVehicleList()">
+                <div class="customer-select-list" id="customerSelectList"></div>
+              </div>
             </div>
           </div>
 
@@ -730,6 +740,44 @@
       </div>
 
       <div class="detail-section">
+        <h4>Darstellung</h4>
+
+        <div class="theme-switch-row">
+          <span class="sub-text" style="margin: 0;">Farbschema</span>
+          <div class="theme-switch">
+            <button type="button" class="theme-switch-btn" id="themeSwitchLight" onclick="setTheme('light')">Hell</button>
+            <button type="button" class="theme-switch-btn" id="themeSwitchDark" onclick="setTheme('dark')">Dunkel</button>
+          </div>
+        </div>
+
+        <p class="sub-text">App-Hintergrund</p>
+        <div class="bg-style-grid">
+          <button type="button" class="bg-style-option" data-style="concrete" onclick="setBackgroundStyle('concrete')">
+            <span class="bg-style-swatch" data-style="concrete"></span>
+            <span class="bg-style-name">Werkstatt-Beton</span>
+          </button>
+          <button type="button" class="bg-style-option" data-style="grid" onclick="setBackgroundStyle('grid')">
+            <span class="bg-style-swatch" data-style="grid"></span>
+            <span class="bg-style-name">Werkstatt-Raster</span>
+          </button>
+          <button type="button" class="bg-style-option" data-style="vignette" onclick="setBackgroundStyle('vignette')">
+            <span class="bg-style-swatch" data-style="vignette"></span>
+            <span class="bg-style-name">Werkstatt-Licht</span>
+          </button>
+          <button type="button" class="bg-style-option" data-style="mercedes-modern" onclick="setBackgroundStyle('mercedes-modern')">
+            <span class="bg-style-swatch" data-style="mercedes-modern"></span>
+            <span class="bg-style-name">Mercedes Modern</span>
+          </button>
+          <button type="button" class="bg-style-option" data-style="mercedes-classic" onclick="setBackgroundStyle('mercedes-classic')">
+            <span class="bg-style-swatch" data-style="mercedes-classic"></span>
+            <span class="bg-style-name">Mercedes Klassik</span>
+          </button>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="detail-section">
         <h4>Daten-Sicherung</h4>
         <p class="sub-text">Sichert und lädt den kompletten App-Datenbestand (alle Fahrzeuge & Kunden) als Datei.</p>
         <p class="sub-text">Letztes Backup: <strong id="lastBackupInfo">-</strong></p>
@@ -745,45 +793,47 @@
       <hr class="divider">
 
       <div class="detail-section">
-        <h4>Rechnungsdaten für Ausdrucke</h4>
-        <p class="sub-text">Diese Angaben erscheinen auf der gedruckten Kundenrechnung.</p>
-        <form onsubmit="saveBusinessInfo(event)">
-          <div class="form-group">
-            <label>Firmenname</label>
-            <input type="text" id="bizName">
-          </div>
-          <div class="form-group">
-            <label>Untertitel</label>
-            <input type="text" id="bizSubtitle">
-          </div>
-          <div class="form-row">
+        <details id="bizDetails">
+          <summary>Rechnungsdaten für Ausdrucke (optional)</summary>
+          <p class="sub-text">Diese Angaben erscheinen auf der gedruckten Kundenrechnung.</p>
+          <form onsubmit="saveBusinessInfo(event)">
             <div class="form-group">
-              <label>IBAN</label>
-              <input type="text" id="bizIban">
+              <label>Firmenname</label>
+              <input type="text" id="bizName">
             </div>
             <div class="form-group">
-              <label>BIC</label>
-              <input type="text" id="bizBic">
+              <label>Untertitel</label>
+              <input type="text" id="bizSubtitle">
             </div>
-          </div>
-          <div class="form-group">
-            <label>Bank</label>
-            <input type="text" id="bizBank">
-          </div>
-          <div class="form-row">
+            <div class="form-row">
+              <div class="form-group">
+                <label>IBAN</label>
+                <input type="text" id="bizIban">
+              </div>
+              <div class="form-group">
+                <label>BIC</label>
+                <input type="text" id="bizBic">
+              </div>
+            </div>
             <div class="form-group">
-              <label>PayPal-Me Link</label>
-              <input type="text" id="bizPaypalMe">
+              <label>Bank</label>
+              <input type="text" id="bizBank">
             </div>
-            <div class="form-group">
-              <label>PayPal E-Mail</label>
-              <input type="text" id="bizPaypalEmail">
+            <div class="form-row">
+              <div class="form-group">
+                <label>PayPal-Me Link</label>
+                <input type="text" id="bizPaypalMe">
+              </div>
+              <div class="form-group">
+                <label>PayPal E-Mail</label>
+                <input type="text" id="bizPaypalEmail">
+              </div>
             </div>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Rechnungsdaten Speichern</button>
-          </div>
-        </form>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Rechnungsdaten Speichern</button>
+            </div>
+          </form>
+        </details>
       </div>
 
       <hr class="divider">
