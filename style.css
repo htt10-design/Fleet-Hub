@@ -1082,7 +1082,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.6);
 }
 
-/* Front-Ensemble (Headlights + Stern) */
+/* Responsive Front-Ensemble (Headlights + Stern) */
 .garage-headlights {
   position: absolute;
   top: 38%;
@@ -1090,31 +1090,36 @@ input:focus, select:focus, textarea:focus {
   width: 100%;
   height: 220px;
   display: flex;
-  justify-content: space-between;
+  justify-content: center; /* Zentriert die Elemente flexibel */
   align-items: center;
-  padding: 0 15%;
+  gap: 2rem; /* Fester Abstand zwischen Scheinwerfern und Stern */
+  padding: 0 5%;
   pointer-events: none;
   opacity: 0;
   transform-style: preserve-3d;
+  box-sizing: border-box;
 }
 
+/* Scheinwerfer skalieren auf kleineren Displays automatisch mit */
 .headlight {
-  width: 220px;
-  height: 220px;
+  width: clamp(100px, 20vw, 220px);
+  height: clamp(100px, 20vw, 220px);
+  flex-shrink: 0; /* Verhindert, dass der Scheinwerfer den Stern zerquetscht */
   background: radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(56, 189, 248, 0.45) 35%, transparent 70%);
   filter: blur(16px);
   border-radius: 50%;
 }
 
-/* Dezent, aber klargestalteter Mercedes Stern */
+/* Mercedes Stern skalierbar und geschützt vor dem Quetschen */
 .mb-star-container {
-  width: 95px;
-  height: 95px;
+  width: clamp(50px, 12vw, 95px);
+  height: clamp(50px, 12vw, 95px);
+  flex-shrink: 0; /* GARANTIERT, dass der Stern auf Handys sichtbar bleibt */
   display: flex;
   align-items: center;
   justify-content: center;
   color: #f1f5f9;
-  opacity: 0.85; /* Etwas stärker sichtbar als vorher */
+  opacity: 0.85;
   filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)) 
           drop-shadow(0 0 20px rgba(56, 189, 248, 0.4));
   transition: opacity 0.3s ease;
