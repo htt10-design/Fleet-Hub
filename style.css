@@ -335,7 +335,88 @@ body[data-bg-style="mercedes-classic"],
   gap: 1rem;
 }
 
+/* Fahrzeugart-Filter (Alle / Autos / Anhänger / Boote) über den Kacheln */
+.category-filter-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.category-filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.category-filter-chip svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.category-filter-chip:hover {
+  border-color: var(--border-highlight);
+}
+
+.category-filter-chip.active {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #111827;
+  font-weight: 600;
+}
+
+/* Kategorie-Badge auf der Fahrzeugkachel selbst */
+.vehicle-tile-category-badge {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: rgba(17, 24, 39, 0.65);
+  color: #fff;
+  backdrop-filter: blur(3px);
+}
+
+.vehicle-tile-category-badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+@media (min-width: 851px) {
+  .category-filter-row {
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .category-filter-chip {
+    padding: 0.55rem 1.1rem;
+    font-size: 0.88rem;
+  }
+
+  .category-filter-chip svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
 .vehicle-tile {
+  position: relative;
   padding: 0.9rem;
   align-items: stretch;
   text-align: left;

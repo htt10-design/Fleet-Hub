@@ -83,6 +83,7 @@ function initApp() {
   // Migration: bestehende Fahrzeuge bekommen den neuen Archiv-Status nachgereicht
   appData.vehicles.forEach(v => {
     if (v.archived === undefined) v.archived = false;
+    if (!v.category) v.category = 'auto';
   });
 
   applyTheme(appData.theme || 'dark');
@@ -116,6 +117,7 @@ function loadDefaultData() {
         id: "v1",
         name: "Mercedes E420 (W124)",
         plate: "KI-E 420",
+        category: "auto",
         type: "km",
         fuelType: "Super Plus",
         vin: "WDB1240341B******",
@@ -397,6 +399,30 @@ function formatReminderMeta(r) {
   return metaParts.join(' • ');
 }
 
+// Liefert das passende Icon-SVG (als kleiner Markup-Schnipsel) für eine Fahrzeugart
+function getCategoryIconSvg(category) {
+  switch (category) {
+    case 'anhaenger':
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="14" height="8" rx="1"/><circle cx="7" cy="18" r="1.5"/><circle cx="13" cy="18" r="1.5"/><path d="M17 11h2.5a1.5 1.5 0 0 1 1.5 1.5V16h-4"/></svg>';
+    case 'boot':
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h18l-1.5 3a2 2 0 0 1-1.8 1H6.3a2 2 0 0 1-1.8-1L3 17Z"/><path d="M12 17V3"/><path d="M12 4l5 9H12Z"/></svg>';
+    default:
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>';
+  }
+}
+
+// Filter-Status für die Fahrzeugart-Auswahl (Alle/Autos/Anhänger/Boote) auf dem Kachel-Bildschirm
+let vehicleCategoryFilter = 'all';
+
+function setVehicleCategoryFilter(category) {
+  vehicleCategoryFilter = category;
+  document.querySelectorAll('.category-filter-chip').forEach(chip => {
+    chip.classList.toggle('active', chip.getAttribute('data-category') === category);
+  });
+  renderGarageVehicleTiles();
+}
+window.setVehicleCategoryFilter = setVehicleCategoryFilter;
+
 // Rendert alle gespeicherten eigenen Fahrzeuge als Auswahlkacheln hinter "Meine Garage"
 function renderGarageVehicleTiles() {
   const grid = document.getElementById('garageVehicleGrid');
@@ -404,7 +430,9 @@ function renderGarageVehicleTiles() {
 
   grid.innerHTML = '';
 
-  const list = (appData.vehicles || []).filter(v => !v.archived);
+  const list = (appData.vehicles || [])
+    .filter(v => !v.archived)
+    .filter(v => vehicleCategoryFilter === 'all' || (v.category || 'auto') === vehicleCategoryFilter);
   const archivedCount = (appData.vehicles || []).filter(v => v.archived).length;
 
   const toggleLink = document.getElementById('archiveToggleLink');
@@ -417,11 +445,15 @@ function renderGarageVehicleTiles() {
   renderArchivedVehicleGrid();
 
   if (list.length === 0) {
+    const categoryLabels = { auto: 'Autos', anhaenger: 'Anhänger', boot: 'Boote' };
+    const emptyTitle = vehicleCategoryFilter === 'all'
+      ? 'Noch kein Fahrzeug vorhanden'
+      : `Keine ${categoryLabels[vehicleCategoryFilter] || 'Fahrzeuge'} vorhanden`;
     grid.innerHTML = `
       <div class="selection-card" onclick="openVehicleModal()" style="grid-column: 1 / -1; text-align: center;">
         <div class="kachel-icon">➕</div>
-        <h3>Noch kein Fahrzeug vorhanden</h3>
-        <p>Klicke hier, um dein erstes Fahrzeug anzulegen.</p>
+        <h3>${emptyTitle}</h3>
+        <p>Klicke hier, um ein neues Fahrzeug anzulegen.</p>
       </div>
     `;
     return;
@@ -458,9 +490,10 @@ function renderGarageVehicleTiles() {
       : `<span><strong>Nächste Wartung:</strong> keine eingetragen</span>`;
 
     card.innerHTML = `
+      <div class="vehicle-tile-category-badge">${getCategoryIconSvg(v.category)}</div>
       ${imageHtml}
       <h3>${v.name || 'Unbenanntes Fahrzeug'}</h3>
-      <p>${v.plate || 'Kein Kennzeichen'} ${v.fuelType ? '• ' + v.fuelType : ''}</p>
+      <p>${v.plate || 'Kein Kennzeichen'} ${(v.fuelType && v.category !== 'anhaenger') ? '• ' + v.fuelType : ''}</p>
       <div class="vehicle-tile-info">
         <span><strong>KM-Stand:</strong> ${mileage.toLocaleString('de-DE')} ${mileageUnit}</span>
         <span><strong>HSN/TSN:</strong> ${hsn} / ${tsn}</span>
@@ -504,7 +537,7 @@ function renderArchivedVehicleGrid() {
       <div class="vehicle-tile-archived-badge">Archiviert</div>
       ${imageHtml}
       <h3>${v.name || 'Unbenanntes Fahrzeug'}</h3>
-      <p>${v.plate || 'Kein Kennzeichen'} ${v.fuelType ? '• ' + v.fuelType : ''}</p>
+      <p>${v.plate || 'Kein Kennzeichen'} ${(v.fuelType && v.category !== 'anhaenger') ? '• ' + v.fuelType : ''}</p>
       <div class="vehicle-tile-archived-actions">
         <button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); restoreVehicleFromArchive('${v.id}')">Wiederherstellen</button>
         <button type="button" class="btn btn-danger btn-sm" onclick="event.stopPropagation(); permanentlyDeleteArchivedVehicle('${v.id}')">Endgültig löschen</button>
@@ -707,6 +740,27 @@ function updateUnitLabels() {
   if (kpiMileageUnit) kpiMileageUnit.innerText = isKm ? "Kilometerstand" : "Betriebsstunden";
 }
 
+// Blendet den "Tanken"-Bereich (Nav-Punkt + Kraftstoffart-Feld) aus, wenn die
+// aktuelle Fahrzeugart keinen eigenen Antrieb hat (z.B. Anhänger)
+function updateNavForCategory(category) {
+  const needsFuel = category !== 'anhaenger';
+
+  const navFuelBtn = document.getElementById('navFuelBtn');
+  if (navFuelBtn) navFuelBtn.style.display = needsFuel ? '' : 'none';
+
+  const fuelTypeFieldGroup = document.getElementById('fuelTypeFieldGroup');
+  if (fuelTypeFieldGroup) fuelTypeFieldGroup.style.display = needsFuel ? '' : 'none';
+
+  // Falls man gerade im Tanken-Tab ist und auf ein Fahrzeug ohne Antrieb wechselt,
+  // zurück zum Dashboard springen, statt auf einem ausgeblendeten Tab hängen zu bleiben
+  if (!needsFuel) {
+    const fuelTab = document.getElementById('tab-fuel');
+    if (fuelTab && fuelTab.classList.contains('active')) {
+      showTab('dashboard');
+    }
+  }
+}
+
 function loadActiveVehicle() {
   const vehicle = getActiveVehicle();
   if (!vehicle) return;
@@ -714,6 +768,7 @@ function loadActiveVehicle() {
   const fields = {
     'vName': vehicle.name || '',
     'vPlate': vehicle.plate || '',
+    'vCategory': vehicle.category || 'auto',
     'vType': vehicle.type || 'km',
     'vFuelType': vehicle.fuelType || '',
     'vVin': vehicle.vin || '',
@@ -732,6 +787,7 @@ function loadActiveVehicle() {
   }
 
   updateUnitLabels();
+  updateNavForCategory(vehicle.category || 'auto');
 
   const settingsImgPreview = document.getElementById('vehicleImageSettingsPreview');
   if (settingsImgPreview) {
@@ -746,6 +802,12 @@ function loadActiveVehicle() {
 function openVehicleModal() { 
   const el = document.getElementById('vehicleModal');
   if (el) el.classList.add('active'); 
+
+  // Fahrzeugart im Formular passend zum aktuell gewählten Filter vorauswählen
+  const categoryEl = document.getElementById('newVCategory');
+  if (categoryEl) {
+    categoryEl.value = (vehicleCategoryFilter === 'all') ? 'auto' : vehicleCategoryFilter;
+  }
 }
 
 function closeVehicleModal() { 
@@ -756,6 +818,7 @@ function closeVehicleModal() {
 function createNewVehicle(e) {
   e.preventDefault();
   const nameEl = document.getElementById('newVName');
+  const categoryEl = document.getElementById('newVCategory');
   const typeEl = document.getElementById('newVType');
   const fuelTypeEl = document.getElementById('newVFuelType');
   const mileageEl = document.getElementById('newVMileage');
@@ -765,6 +828,7 @@ function createNewVehicle(e) {
   const newV = {
     id: "v_" + Date.now(),
     name: nameEl ? nameEl.value : 'Neues Fahrzeug',
+    category: categoryEl ? categoryEl.value : 'auto',
     type: typeEl ? typeEl.value : 'km',
     fuelType: fuelTypeEl ? fuelTypeEl.value : 'Super',
     image: "",
@@ -1006,6 +1070,7 @@ function saveVehicleDetails(e) {
 
   v.name = document.getElementById('vName').value;
   v.plate = document.getElementById('vPlate').value;
+  v.category = document.getElementById('vCategory').value;
   v.type = document.getElementById('vType').value;
   v.fuelType = document.getElementById('vFuelType').value;
   v.vin = document.getElementById('vVin').value;
