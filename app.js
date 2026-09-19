@@ -948,7 +948,7 @@ function saveFuelEntry(e) {
   v.fuelEntries.sort((a,b) => new Date(b.date) - new Date(a.date));
 
   saveData();
-  resetFuelForm();
+  closeFuelFormModal();
   renderFuelTable();
   renderDashboard();
 }
@@ -984,7 +984,7 @@ function editFuelEntry(id) {
 
   document.getElementById('fuelSubmitBtn').innerText = "Änderungen Speichern";
   document.getElementById('fuelCancelBtn').style.display = "inline-block";
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  openFuelFormModal();
 }
 
 function deleteFuelEntry(id) {
@@ -1006,6 +1006,18 @@ function resetFuelForm() {
   document.getElementById('fuelSubmitBtn').innerText = "Tankung Speichern";
   document.getElementById('fuelCancelBtn').style.display = "none";
 }
+
+// Formular für neue/bearbeitete Tankungen als Modal öffnen/schließen (FAB-Button)
+function openFuelFormModal() {
+  document.getElementById('fuelFormModal').classList.add('active');
+}
+window.openFuelFormModal = openFuelFormModal;
+
+function closeFuelFormModal() {
+  document.getElementById('fuelFormModal').classList.remove('active');
+  resetFuelForm();
+}
+window.closeFuelFormModal = closeFuelFormModal;
 
 // Globalen Status ganz oben in der app.js halten (oder vor renderFuelTable)
 let showAllFuelEntries = false;
@@ -1185,10 +1197,22 @@ function saveServiceEntry(e) {
   v.serviceEntries.sort((a,b) => new Date(b.date) - new Date(a.date));
 
   saveData();
-  resetServiceForm();
+  closeServiceFormModal();
   renderServiceTable();
   renderDashboard();
 }
+
+// Formular für neue/bearbeitete Wartungen als Modal öffnen/schließen (FAB-Button)
+function openServiceFormModal() {
+  document.getElementById('serviceFormModal').classList.add('active');
+}
+window.openServiceFormModal = openServiceFormModal;
+
+function closeServiceFormModal() {
+  document.getElementById('serviceFormModal').classList.remove('active');
+  resetServiceForm();
+}
+window.closeServiceFormModal = closeServiceFormModal;
 
 function resetServiceForm() {
   document.getElementById('serviceEditId').value = '';
@@ -1293,7 +1317,7 @@ function editServiceEntry(id) {
 
   document.getElementById('serviceSubmitBtn').innerText = "Änderungen Speichern";
   document.getElementById('serviceCancelBtn').style.display = "inline-block";
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  openServiceFormModal();
 }
 
 function deleteServiceEntry(id) {
