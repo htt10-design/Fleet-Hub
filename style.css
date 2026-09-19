@@ -112,6 +112,36 @@
   --merc-classic-star: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27%236b4a2b%27%20stroke-opacity%3D%270.15%27%20stroke-width%3D%271.3%27%20stroke-linecap%3D%27round%27%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%2712%27%20y2%3D%273.2%27/%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%274.7%27%20y2%3D%2716.4%27/%3E%3Cline%20x1%3D%2712%27%20y1%3D%2712%27%20x2%3D%2719.3%27%20y2%3D%2716.4%27/%3E%3C/g%3E%3C/svg%3E");
 }
 
+/* ==========================================================================
+   AKZENTFARBE: AUSWÄHLBAR (Einstellungen > Darstellung)
+   "Amber" ist die Standardfarbe und braucht keine eigene Regel (siehe oben);
+   die anderen Farben überschreiben --accent-primary in beiden Themes gleich.
+   ========================================================================== */
+[data-accent="blue"] {
+  --accent-primary: #3b82f6;
+  --accent-primary-hover: #2563eb;
+}
+
+[data-accent="green"] {
+  --accent-primary: #22c55e;
+  --accent-primary-hover: #16a34a;
+}
+
+[data-accent="red"] {
+  --accent-primary: #ef4444;
+  --accent-primary-hover: #dc2626;
+}
+
+[data-accent="purple"] {
+  --accent-primary: #a855f7;
+  --accent-primary-hover: #9333ea;
+}
+
+[data-accent="teal"] {
+  --accent-primary: #14b8a6;
+  --accent-primary-hover: #0d9488;
+}
+
 /* Base Setup */
 * {
   box-sizing: border-box;
@@ -651,6 +681,113 @@ body[data-bg-style="mercedes-classic"],
   border-radius: var(--radius-md);
   padding: 1rem;
   margin-bottom: 1rem;
+}
+
+/* Schwebender "+"-Button (Tanken/Wartung): öffnet das Erfassungsformular als Modal */
+.fab-add-btn {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 5rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--accent-primary);
+  color: #111827;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  z-index: 50;
+  transition: transform 0.15s;
+}
+
+.fab-add-btn:hover {
+  transform: scale(1.06);
+}
+
+.fab-add-btn svg {
+  width: 26px;
+  height: 26px;
+}
+
+.fab-badge-plus {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #111827;
+  color: var(--accent-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-body);
+}
+
+@media (min-width: 851px) {
+  .fab-add-btn {
+    bottom: 1.5rem;
+  }
+}
+
+/* Archiv (verkaufte Fahrzeuge) */
+.archive-toggle-row {
+  text-align: center;
+  margin-top: 1.25rem;
+}
+
+.archive-toggle-link {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.archive-toggle-link:hover {
+  color: var(--text-main);
+}
+
+.archive-grid {
+  margin-top: 1rem;
+}
+
+.vehicle-tile-archived {
+  opacity: 0.6;
+}
+
+.vehicle-tile-archived-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  background: var(--bg-body);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  margin-bottom: 0.4rem;
+}
+
+.vehicle-tile-archived-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.vehicle-tile-archived-actions button {
+  flex: 1;
+  font-size: 0.72rem;
+  padding: 0.35rem 0.4rem;
 }
 
 .card-header-flex {
@@ -1343,6 +1480,48 @@ input:focus, select:focus, textarea:focus {
 }
 
 .bg-style-option.active .bg-style-name {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+/* Darstellung: Akzentfarben-Auswahl */
+.accent-color-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+}
+
+.accent-color-option {
+  background: none;
+  border: none;
+  padding: 3px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: inherit;
+}
+
+.accent-color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: block;
+  border: 2px solid transparent;
+}
+
+.accent-color-option.active .accent-color-swatch {
+  border-color: var(--text-main);
+  box-shadow: 0 0 0 2px var(--bg-card);
+}
+
+.accent-color-name {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.accent-color-option.active .accent-color-name {
   color: var(--text-main);
   font-weight: 600;
 }

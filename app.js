@@ -4,6 +4,7 @@ let appData = {
   activeCustomerVehicleId: null,
   theme: "dark",
   backgroundStyle: "concrete",
+  accentColor: "amber",
   vehicles: [],
   customerVehicles: [],
   businessInfo: null,
@@ -76,9 +77,17 @@ function initApp() {
   if (!appData.backgroundStyle) {
     appData.backgroundStyle = 'concrete';
   }
+  if (!appData.accentColor) {
+    appData.accentColor = 'amber';
+  }
+  // Migration: bestehende Fahrzeuge bekommen den neuen Archiv-Status nachgereicht
+  appData.vehicles.forEach(v => {
+    if (v.archived === undefined) v.archived = false;
+  });
 
   applyTheme(appData.theme || 'dark');
   applyBackgroundStyle(appData.backgroundStyle);
+  applyAccentColor(appData.accentColor);
 
   const fuelDateEl = document.getElementById('fuelDate');
   const serviceDateEl = document.getElementById('serviceDate');
@@ -140,7 +149,8 @@ function loadDefaultData() {
     customerVehicles: [],
     businessInfo: getDefaultBusinessInfo(),
     lastBackupDate: null,
-    backgroundStyle: "concrete"
+    backgroundStyle: "concrete",
+    accentColor: "amber"
   };
   saveData();
 }
@@ -206,6 +216,22 @@ function setBackgroundStyle(style) {
   applyBackgroundStyle(style);
 }
 window.setBackgroundStyle = setBackgroundStyle;
+
+// Wendet die gewählte Akzentfarbe an (siehe Einstellungen > Darstellung)
+function applyAccentColor(color) {
+  document.documentElement.setAttribute('data-accent', color || 'amber');
+
+  document.querySelectorAll('.accent-color-option').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-accent') === (color || 'amber'));
+  });
+}
+
+function setAccentColor(color) {
+  appData.accentColor = color;
+  saveData();
+  applyAccentColor(color);
+}
+window.setAccentColor = setAccentColor;
 
 // Variable zur Speicherung des aktuellen Modus
 let currentMode = 'eigene';
@@ -378,7 +404,17 @@ function renderGarageVehicleTiles() {
 
   grid.innerHTML = '';
 
-  const list = appData.vehicles || [];
+  const list = (appData.vehicles || []).filter(v => !v.archived);
+  const archivedCount = (appData.vehicles || []).filter(v => v.archived).length;
+
+  const toggleLink = document.getElementById('archiveToggleLink');
+  if (toggleLink) {
+    toggleLink.style.display = archivedCount > 0 ? '' : 'none';
+    toggleLink.innerText = showArchivedVehicles
+      ? `Archivierte Fahrzeuge ausblenden (${archivedCount})`
+      : `Archivierte Fahrzeuge anzeigen (${archivedCount})`;
+  }
+  renderArchivedVehicleGrid();
 
   if (list.length === 0) {
     grid.innerHTML = `
@@ -437,6 +473,102 @@ function renderGarageVehicleTiles() {
     grid.appendChild(card);
   });
 }
+
+/* --- ARCHIV (verkaufte Fahrzeuge) --- */
+let showArchivedVehicles = false;
+
+function toggleArchivedVehicles() {
+  showArchivedVehicles = !showArchivedVehicles;
+  const archiveGrid = document.getElementById('archivedVehicleGrid');
+  if (archiveGrid) archiveGrid.classList.toggle('hidden', !showArchivedVehicles);
+  renderGarageVehicleTiles();
+}
+window.toggleArchivedVehicles = toggleArchivedVehicles;
+
+function renderArchivedVehicleGrid() {
+  const grid = document.getElementById('archivedVehicleGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const archived = (appData.vehicles || []).filter(v => v.archived);
+
+  archived.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'selection-card vehicle-tile vehicle-tile-archived';
+
+    const imageHtml = v.image
+      ? `<img src="${v.image}" class="vehicle-tile-image" alt="${v.name || 'Fahrzeug'}">`
+      : `<div class="vehicle-tile-icon">🏎️</div>`;
+
+    card.innerHTML = `
+      <div class="vehicle-tile-archived-badge">Archiviert</div>
+      ${imageHtml}
+      <h3>${v.name || 'Unbenanntes Fahrzeug'}</h3>
+      <p>${v.plate || 'Kein Kennzeichen'} ${v.fuelType ? '• ' + v.fuelType : ''}</p>
+      <div class="vehicle-tile-archived-actions">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); restoreVehicleFromArchive('${v.id}')">Wiederherstellen</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="event.stopPropagation(); permanentlyDeleteArchivedVehicle('${v.id}')">Endgültig löschen</button>
+      </div>
+    `;
+
+    // Klick auf die Kachel selbst öffnet das Fahrzeug weiterhin ganz normal
+    // (z.B. um die Historie anzusehen oder das Verkaufsdossier erneut zu drucken)
+    card.onclick = () => chooseGarageVehicle(v.id);
+    grid.appendChild(card);
+  });
+}
+
+// Aktuelles Fahrzeug als verkauft archivieren: Daten bleiben erhalten,
+// verschwindet aber aus der normalen Kachel-Auswahl
+function archiveCurrentVehicle() {
+  const v = getActiveVehicle();
+  if (!v) return;
+
+  if (confirm("Möchtest du vor dem Archivieren noch das Verkaufsdossier ausdrucken?")) {
+    printSaleReport();
+  }
+
+  if (!confirm(`"${v.name}" wirklich als verkauft archivieren? Es verschwindet aus "Meine Garage", bleibt aber inkl. aller Daten erhalten und kann jederzeit wiederhergestellt werden.`)) {
+    return;
+  }
+
+  v.archived = true;
+
+  const remainingActive = appData.vehicles.filter(x => !x.archived);
+  if (remainingActive.length > 0) {
+    appData.activeVehicleId = remainingActive[0].id;
+    saveData();
+    renderVehicleSelect();
+    loadActiveVehicle();
+  } else {
+    appData.activeVehicleId = null;
+    saveData();
+    backToSelection();
+  }
+}
+window.archiveCurrentVehicle = archiveCurrentVehicle;
+
+function restoreVehicleFromArchive(id) {
+  const v = appData.vehicles.find(x => x.id === id);
+  if (!v) return;
+  if (!confirm(`"${v.name}" wieder aktivieren und zu "Meine Garage" hinzufügen?`)) return;
+
+  v.archived = false;
+  saveData();
+  renderGarageVehicleTiles();
+}
+window.restoreVehicleFromArchive = restoreVehicleFromArchive;
+
+function permanentlyDeleteArchivedVehicle(id) {
+  const v = appData.vehicles.find(x => x.id === id);
+  if (!v) return;
+  if (!confirm(`"${v.name}" inklusive ALLER Daten endgültig löschen? Das kann nicht rückgängig gemacht werden.`)) return;
+
+  appData.vehicles = appData.vehicles.filter(x => x.id !== id);
+  saveData();
+  renderGarageVehicleTiles();
+}
+window.permanentlyDeleteArchivedVehicle = permanentlyDeleteArchivedVehicle;
 
 // Zurück zur Haupt-Bereichsauswahl ("Meine Garage" vs. "Kundenfahrzeuge")
 function showAreaSelection() {
@@ -636,6 +768,7 @@ function createNewVehicle(e) {
     type: typeEl ? typeEl.value : 'km',
     fuelType: fuelTypeEl ? fuelTypeEl.value : 'Super',
     image: "",
+    archived: false,
     fuelEntries: [],
     serviceEntries: []
   };
@@ -956,7 +1089,7 @@ function saveFuelEntry(e) {
   v.fuelEntries.sort((a,b) => new Date(b.date) - new Date(a.date));
 
   saveData();
-  resetFuelForm();
+  closeFuelFormModal();
   renderFuelTable();
   renderDashboard();
 }
@@ -992,7 +1125,7 @@ function editFuelEntry(id) {
 
   document.getElementById('fuelSubmitBtn').innerText = "Änderungen Speichern";
   document.getElementById('fuelCancelBtn').style.display = "inline-block";
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  openFuelFormModal();
 }
 
 function deleteFuelEntry(id) {
@@ -1014,6 +1147,18 @@ function resetFuelForm() {
   document.getElementById('fuelSubmitBtn').innerText = "Tankung Speichern";
   document.getElementById('fuelCancelBtn').style.display = "none";
 }
+
+// Formular für neue/bearbeitete Tankungen als Modal öffnen/schließen (FAB-Button)
+function openFuelFormModal() {
+  document.getElementById('fuelFormModal').classList.add('active');
+}
+window.openFuelFormModal = openFuelFormModal;
+
+function closeFuelFormModal() {
+  document.getElementById('fuelFormModal').classList.remove('active');
+  resetFuelForm();
+}
+window.closeFuelFormModal = closeFuelFormModal;
 
 // Globalen Status ganz oben in der app.js halten (oder vor renderFuelTable)
 let showAllFuelEntries = false;
@@ -1193,7 +1338,7 @@ function saveServiceEntry(e) {
   v.serviceEntries.sort((a,b) => new Date(b.date) - new Date(a.date));
 
   saveData();
-  resetServiceForm();
+  closeServiceFormModal();
   renderServiceTable();
   renderDashboard();
 }
@@ -1208,6 +1353,18 @@ function resetServiceForm() {
   document.getElementById('serviceCancelBtn').style.display = "none";
   toggleRoutineIntervalFields();
 }
+
+// Formular für neue/bearbeitete Wartungen als Modal öffnen/schließen (FAB-Button)
+function openServiceFormModal() {
+  document.getElementById('serviceFormModal').classList.add('active');
+}
+window.openServiceFormModal = openServiceFormModal;
+
+function closeServiceFormModal() {
+  document.getElementById('serviceFormModal').classList.remove('active');
+  resetServiceForm();
+}
+window.closeServiceFormModal = closeServiceFormModal;
 
 // Globaler Status für die Wartungstabelle (ganz oben in app.js oder vor der Funktion)
 let showAllServiceEntries = false;
@@ -1301,7 +1458,7 @@ function editServiceEntry(id) {
 
   document.getElementById('serviceSubmitBtn').innerText = "Änderungen Speichern";
   document.getElementById('serviceCancelBtn').style.display = "inline-block";
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  openServiceFormModal();
 }
 
 function deleteServiceEntry(id) {
@@ -2434,6 +2591,7 @@ function openSettingsModal() {
   updateLastBackupInfo();
   applyTheme(appData.theme || 'dark');
   applyBackgroundStyle(appData.backgroundStyle || 'concrete');
+  applyAccentColor(appData.accentColor || 'amber');
 
   document.getElementById('settingsModal').classList.add('active');
 }
