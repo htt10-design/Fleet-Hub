@@ -31,6 +31,14 @@ let tempCustomerServiceImages = [];
 /* --- INITIALISIERUNG --- */
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
+
+  // Splash-Screen (Logo) kurz zeigen, dann sanft ausblenden
+  const splash = document.getElementById('splashScreen');
+  if (splash) {
+    setTimeout(() => {
+      splash.classList.add('splash-hide');
+    }, 1200);
+  }
 });
 
 function initApp() {
