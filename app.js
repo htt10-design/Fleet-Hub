@@ -489,15 +489,27 @@ function renderGarageVehicleTiles() {
       ? `<span class="${nextMaintenance.overdue ? 'reminder-overdue-text' : ''}"><strong>${nextMaintenance.title}:</strong> ${formatReminderMeta(nextMaintenance)}</span>`
       : `<span><strong>Nächste Wartung:</strong> keine eingetragen</span>`;
 
+    const hsnTsnHtml = v.category !== 'boot'
+      ? `<span><strong>HSN/TSN:</strong> ${hsn} / ${tsn}</span>`
+      : '';
+    const tuevHtml = v.category !== 'boot'
+      ? `<span class="${tuevOverdue ? 'reminder-overdue-text' : ''}"><strong>Nächster TÜV:</strong> ${tuevText}</span>`
+      : '';
+
+    const mileageLabel = v.type === 'hours' ? 'Betriebsstunden' : 'KM-Stand';
+    const mileageHtml = v.category !== 'anhaenger'
+      ? `<span><strong>${mileageLabel}:</strong> ${mileage.toLocaleString('de-DE')} ${mileageUnit}</span>`
+      : '';
+
     card.innerHTML = `
       <div class="vehicle-tile-category-badge">${getCategoryIconSvg(v.category)}</div>
       ${imageHtml}
       <h3>${v.name || 'Unbenanntes Fahrzeug'}</h3>
       <p>${v.plate || 'Kein Kennzeichen'} ${(v.fuelType && v.category !== 'anhaenger') ? '• ' + v.fuelType : ''}</p>
       <div class="vehicle-tile-info">
-        <span><strong>KM-Stand:</strong> ${mileage.toLocaleString('de-DE')} ${mileageUnit}</span>
-        <span><strong>HSN/TSN:</strong> ${hsn} / ${tsn}</span>
-        <span class="${tuevOverdue ? 'reminder-overdue-text' : ''}"><strong>Nächster TÜV:</strong> ${tuevText}</span>
+        ${mileageHtml}
+        ${hsnTsnHtml}
+        ${tuevHtml}
         ${maintenanceHtml}
       </div>
     `;
@@ -667,6 +679,17 @@ function showTab(tabId, element) {
     item.style.setProperty('display', isCustomerMode ? 'flex' : 'none', 'important');
   });
 
+  // Die obige Zeile blendet pauschal ALLE "nav-eigene-only"-Punkte wieder ein
+  // (auch den Tanken-Button) - hier direkt danach nochmal korrekt auf die
+  // Fahrzeugart des aktiven Fahrzeugs anwenden, sonst würde z.B. bei einem
+  // Anhänger der Tanken-Tab nach jedem Tab-Wechsel wieder auftauchen.
+  if (!isCustomerMode) {
+    const active = (typeof getActiveVehicle === 'function') ? getActiveVehicle() : null;
+    if (active && typeof updateNavForCategory === 'function') {
+      updateNavForCategory(active.category || 'auto');
+    }
+  }
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   // 5. Tab-Inhalte rendern
@@ -746,7 +769,7 @@ function updateNavForCategory(category) {
   const needsFuel = category !== 'anhaenger';
 
   const navFuelBtn = document.getElementById('navFuelBtn');
-  if (navFuelBtn) navFuelBtn.style.display = needsFuel ? '' : 'none';
+  if (navFuelBtn) navFuelBtn.style.display = needsFuel ? 'flex' : 'none';
 
   const fuelTypeFieldGroup = document.getElementById('fuelTypeFieldGroup');
   if (fuelTypeFieldGroup) fuelTypeFieldGroup.style.display = needsFuel ? '' : 'none';
@@ -761,6 +784,50 @@ function updateNavForCategory(category) {
   }
 }
 
+// Blendet in den Stammdaten Felder ein/aus bzw. beschriftet sie um, je nachdem
+// welche Fahrzeugart gewählt ist (Auto/Anhänger/Boot ergeben unterschiedliche
+// Angaben sinnvoll)
+function updateStammdatenFieldsForCategory(category) {
+  const powerHpGroup = document.getElementById('powerHpFieldGroup');
+  const towingBrakedGroup = document.getElementById('towingBrakedFieldGroup');
+  const towingBrakedLabel = document.getElementById('towingBrakedLabel');
+  const hsnTsnRow = document.getElementById('hsnTsnFieldRow');
+  const nextTuevRow = document.getElementById('nextTuevFieldRow');
+  const vinGroup = document.getElementById('vinFieldGroup');
+  const boatIdRow = document.getElementById('boatIdFieldRow');
+  const typeGroup = document.getElementById('vTypeFieldGroup');
+
+  if (category === 'anhaenger') {
+    if (powerHpGroup) powerHpGroup.style.display = 'none';
+    if (towingBrakedGroup) towingBrakedGroup.style.display = '';
+    if (towingBrakedLabel) towingBrakedLabel.innerText = 'Zulässiges Gesamtgewicht (kg)';
+    if (hsnTsnRow) hsnTsnRow.style.display = '';
+    if (nextTuevRow) nextTuevRow.style.display = '';
+    if (vinGroup) vinGroup.style.display = '';
+    if (boatIdRow) boatIdRow.style.display = 'none';
+    if (typeGroup) typeGroup.style.display = 'none';
+  } else if (category === 'boot') {
+    if (powerHpGroup) powerHpGroup.style.display = '';
+    if (towingBrakedGroup) towingBrakedGroup.style.display = 'none';
+    if (hsnTsnRow) hsnTsnRow.style.display = 'none';
+    if (nextTuevRow) nextTuevRow.style.display = 'none';
+    if (vinGroup) vinGroup.style.display = 'none';
+    if (boatIdRow) boatIdRow.style.display = '';
+    if (typeGroup) typeGroup.style.display = '';
+  } else {
+    // Auto (Standard)
+    if (powerHpGroup) powerHpGroup.style.display = '';
+    if (towingBrakedGroup) towingBrakedGroup.style.display = '';
+    if (towingBrakedLabel) towingBrakedLabel.innerText = 'Anhängelast gebremst (kg)';
+    if (hsnTsnRow) hsnTsnRow.style.display = '';
+    if (nextTuevRow) nextTuevRow.style.display = '';
+    if (vinGroup) vinGroup.style.display = '';
+    if (boatIdRow) boatIdRow.style.display = 'none';
+    if (typeGroup) typeGroup.style.display = '';
+  }
+}
+window.updateStammdatenFieldsForCategory = updateStammdatenFieldsForCategory;
+
 function loadActiveVehicle() {
   const vehicle = getActiveVehicle();
   if (!vehicle) return;
@@ -772,6 +839,8 @@ function loadActiveVehicle() {
     'vType': vehicle.type || 'km',
     'vFuelType': vehicle.fuelType || '',
     'vVin': vehicle.vin || '',
+    'vEngineNumber': vehicle.engineNumber || '',
+    'vHullNumber': vehicle.hullNumber || '',
     'vFirstReg': vehicle.firstReg || '',
     'vHsn': vehicle.hsn || '',
     'vTsn': vehicle.tsn || '',
@@ -788,6 +857,7 @@ function loadActiveVehicle() {
 
   updateUnitLabels();
   updateNavForCategory(vehicle.category || 'auto');
+  updateStammdatenFieldsForCategory(vehicle.category || 'auto');
 
   const settingsImgPreview = document.getElementById('vehicleImageSettingsPreview');
   if (settingsImgPreview) {
@@ -808,7 +878,29 @@ function openVehicleModal() {
   if (categoryEl) {
     categoryEl.value = (vehicleCategoryFilter === 'all') ? 'auto' : vehicleCategoryFilter;
   }
+  updateNewVehicleFieldsForCategory();
 }
+
+// Blendet im "Neues Fahrzeug"-Formular Felder aus, die für die gewählte Fahrzeugart keinen Sinn ergeben
+function updateNewVehicleFieldsForCategory() {
+  const categoryEl = document.getElementById('newVCategory');
+  const fuelGroup = document.getElementById('newVFuelTypeGroup');
+  const mileageGroup = document.getElementById('newVMileageGroup');
+  const typeGroup = document.getElementById('newVTypeGroup');
+  const typeEl = document.getElementById('newVType');
+  if (!categoryEl) return;
+
+  const isTrailer = categoryEl.value === 'anhaenger';
+  if (fuelGroup) fuelGroup.style.display = isTrailer ? 'none' : '';
+  if (mileageGroup) mileageGroup.style.display = isTrailer ? 'none' : '';
+  if (typeGroup) typeGroup.style.display = isTrailer ? 'none' : '';
+
+  // Bei Autos macht KM als Erfassungstyp praktisch immer Sinn - direkt vorauswählen
+  if (categoryEl.value === 'auto' && typeEl) {
+    typeEl.value = 'km';
+  }
+}
+window.updateNewVehicleFieldsForCategory = updateNewVehicleFieldsForCategory;
 
 function closeVehicleModal() { 
   const el = document.getElementById('vehicleModal');
@@ -857,6 +949,7 @@ function createNewVehicle(e) {
   closeVehicleModal();
   renderVehicleSelect();
   loadActiveVehicle();
+  renderGarageVehicleTiles();
 }
 
 function deleteCurrentVehicle() {
@@ -1074,6 +1167,8 @@ function saveVehicleDetails(e) {
   v.type = document.getElementById('vType').value;
   v.fuelType = document.getElementById('vFuelType').value;
   v.vin = document.getElementById('vVin').value;
+  v.engineNumber = document.getElementById('vEngineNumber').value;
+  v.hullNumber = document.getElementById('vHullNumber').value;
   v.firstReg = document.getElementById('vFirstReg').value;
   v.hsn = document.getElementById('vHsn').value;
   v.tsn = document.getElementById('vTsn').value;
@@ -1587,7 +1682,15 @@ function renderDashboard() {
   document.getElementById('dashVehiclePlate').innerText = v.plate || 'OHNE-ID';
   document.getElementById('dashVehicleFuel').innerText = `Kraftstoff: ${v.fuelType || '-'}`;
   document.getElementById('dashVehicleType').innerText = `Typ: ${v.type === 'km' ? 'KM' : 'Betriebsstunden'}`;
-  document.getElementById('dashVehicleVin').innerText = `VIN: ${v.vin || '-'}`;
+
+  // Kraftstoff & Erfassungstyp sind bei einem Anhänger (kein Motor, kein Stand) nicht relevant
+  const dashSpecsRow = document.getElementById('dashSpecsRow');
+  if (dashSpecsRow) dashSpecsRow.style.display = v.category === 'anhaenger' ? 'none' : '';
+  if (v.category === 'boot') {
+    document.getElementById('dashVehicleVin').innerText = `Rumpfnummer (HIN): ${v.hullNumber || '-'}`;
+  } else {
+    document.getElementById('dashVehicleVin').innerText = `VIN: ${v.vin || '-'}`;
+  }
   document.getElementById('dashVehicleSpecs').innerText = v.specs || 'Keine Spezifikationen eingetragen.';
   const hsn = v.hsn || '-';
   const tsn = v.tsn || '-';
@@ -1639,6 +1742,19 @@ function renderDashboard() {
   const costPerKm = totalDist > 0 ? (fuelCosts / totalDist) * 100 : 0;
   document.getElementById('kpi-cost-per-km').innerText = `${costPerKm.toFixed(2)} €`;
 
+  // KPI-Kacheln je nach Fahrzeugart ein-/ausblenden:
+  // - Anhänger hat keinen eigenen Antrieb und keinen sinnvollen KM-Stand
+  // - "Kosten/100km" passt nur bei Autos (bei Booten läuft's ja in Betriebsstunden)
+  const kpiMileageCard = document.getElementById('kpiMileageCard');
+  const kpiConsumptionCard = document.getElementById('kpiConsumptionCard');
+  const kpiCostPerKmCard = document.getElementById('kpiCostPerKmCard');
+  const hasEngine = v.category !== 'anhaenger';
+  const showMileage = v.category !== 'anhaenger';
+  const showCostPerKm = (v.category || 'auto') === 'auto';
+  if (kpiMileageCard) kpiMileageCard.style.display = showMileage ? '' : 'none';
+  if (kpiConsumptionCard) kpiConsumptionCard.style.display = hasEngine ? '' : 'none';
+  if (kpiCostPerKmCard) kpiCostPerKmCard.style.display = showCostPerKm ? '' : 'none';
+
   const reminderList = document.getElementById('reminderList');
   if (reminderList) {
     reminderList.innerHTML = '';
@@ -1652,14 +1768,17 @@ function renderDashboard() {
       reminderList.appendChild(li);
     });
 
-    if (v.nextTuev) {
+    // TÜV/HU ist für Boote nicht relevant
+    const tuevRelevant = v.category !== 'boot';
+
+    if (tuevRelevant && v.nextTuev) {
       const li = document.createElement('li');
       li.className = 'reminder-item';
       li.innerHTML = `<span class="reminder-title">Nächster TÜV / Inspektion</span><span class="reminder-meta">${formatTuevDate(v.nextTuev)}</span>`;
       reminderList.appendChild(li);
     }
 
-    if (maintenanceReminders.length === 0 && !v.nextTuev) {
+    if (maintenanceReminders.length === 0 && (!tuevRelevant || !v.nextTuev)) {
       reminderList.innerHTML = '<li>Keine anstehenden Termine eingetragen.</li>';
     }
   }
@@ -1669,6 +1788,11 @@ function renderDashboard() {
 
 function renderCharts(v) {
   if (typeof Chart === 'undefined') return;
+
+  // Verbrauchsverlauf ergibt bei einem Anhänger (kein Motor, keine Betankung) keinen Sinn
+  const hasEngineForCharts = v.category !== 'anhaenger';
+  const consumptionChartCard = document.getElementById('consumptionChartCard');
+  if (consumptionChartCard) consumptionChartCard.style.display = hasEngineForCharts ? '' : 'none';
 
   const fuelList = v.fuelEntries || [];
   const serviceList = v.serviceEntries || [];
@@ -1687,7 +1811,7 @@ function renderCharts(v) {
   }
 
   const consCanvas = document.getElementById('consumptionChart');
-  if (consCanvas) {
+  if (consCanvas && hasEngineForCharts) {
     const ctx1 = consCanvas.getContext('2d');
     if (consumptionChartInstance) consumptionChartInstance.destroy();
 
@@ -1718,6 +1842,9 @@ function renderCharts(v) {
         plugins: { legend: { labels: { color: textColor } } }
       }
     });
+  } else if (consumptionChartInstance) {
+    consumptionChartInstance.destroy();
+    consumptionChartInstance = null;
   }
 
   const fuelTotal = fuelList.reduce((sum, f) => sum + (f.totalPrice || 0), 0);
@@ -1733,13 +1860,23 @@ function renderCharts(v) {
     const isDark = appData.theme === 'dark';
     const textColor = isDark ? '#f8fafc' : '#0f172a';
 
+    const pieLabels = ['Wartung', 'Reparatur', 'TÜV'];
+    const pieData = [serviceTotal, repairTotal, tuevTotal];
+    const pieColors = ['#10b981', '#ef4444', '#f59e0b'];
+
+    if (hasEngineForCharts) {
+      pieLabels.unshift('Kraftstoff');
+      pieData.unshift(fuelTotal);
+      pieColors.unshift('#2563eb');
+    }
+
     costPieChartInstance = new Chart(ctx2, {
       type: 'doughnut',
       data: {
-        labels: ['Kraftstoff', 'Wartung', 'Reparatur', 'TÜV'],
+        labels: pieLabels,
         datasets: [{
-          data: [fuelTotal, serviceTotal, repairTotal, tuevTotal],
-          backgroundColor: ['#2563eb', '#10b981', '#ef4444', '#f59e0b']
+          data: pieData,
+          backgroundColor: pieColors
         }]
       },
       options: {
@@ -2728,7 +2865,7 @@ function compressImage(base64Str, maxWidth = 800, maxHeight = 800, quality = 0.7
 function printSaleReport() {
   const v = getActiveVehicle();
   const printContainer = document.getElementById('printableInvoice');
-  
+
   if (!v) {
     alert("Kein aktives Fahrzeug ausgewählt.");
     return;
@@ -2738,18 +2875,35 @@ function printSaleReport() {
     return;
   }
 
-  // 1. Service-Einträge nach Datum sortieren (neueste zuerst)
+  const category = v.category || 'auto';
+  const fuelList = v.fuelEntries || [];
   const serviceList = v.serviceEntries || [];
   const sortedServices = [...serviceList].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  // 2. HTML-Zeilen für die Historie aufbauen
+  // Dezente, professionelle Farbcodierung je Kategorie (helle Pastelltöne)
+  function getCategoryStyle(cat) {
+    switch (cat) {
+      case 'Wartung': return { bg: '#eaf7ef', color: '#1e7e42' };
+      case 'Reparatur': return { bg: '#fdf3e3', color: '#92400e' };
+      case 'TÜV': return { bg: '#e8f0fe', color: '#1d4ed8' };
+      default: return { bg: '#f1f1f1', color: '#52525b' };
+    }
+  }
+
+  // Historie-Zeilen inkl. Kosten & dezentem Kategorie-Badge
   let historyRowsHTML = "";
+  let totalMaintenanceCost = 0;
+
   if (sortedServices.length > 0) {
     historyRowsHTML = sortedServices.map(s => {
       const dateStr = s.date ? new Date(s.date).toLocaleDateString('de-DE') : '-';
       const mileageStr = s.mileage ? `${s.mileage.toLocaleString('de-DE')} km` : '-';
       const performerStr = s.performer ? `<small>(${s.performer})</small>` : '';
       const notesStr = s.notes ? `<div style="font-size: 0.85rem; color: #555; margin-top: 4px;">${s.notes.replace(/\n/g, '<br>')}</div>` : '';
+      const costVal = typeof s.cost === 'number' ? s.cost : 0;
+      totalMaintenanceCost += costVal;
+      const costStr = costVal > 0 ? `${costVal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : '-';
+      const catStyle = getCategoryStyle(s.category);
 
       return `
         <tr style="border-bottom: 1px solid #ddd;">
@@ -2759,47 +2913,123 @@ function printSaleReport() {
             <strong>${s.title || 'Wartung / Reparatur'}</strong> ${performerStr}
             ${notesStr}
           </td>
-          <td style="padding: 8px; vertical-align: top; text-align: right;">${s.category || 'Wartung'}</td>
+          <td style="padding: 8px; vertical-align: top;">
+            <span style="display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.78rem; font-weight:600; background:${catStyle.bg}; color:${catStyle.color};">${s.category || 'Wartung'}</span>
+          </td>
+          <td style="padding: 8px; vertical-align: top; text-align: right;">${costStr}</td>
         </tr>
       `;
     }).join('');
   } else {
-    historyRowsHTML = `<tr><td colspan="4" style="padding: 12px; text-align: center; color: #777;">Keine dokumentierten Wartungseinträge vorhanden.</td></tr>`;
+    historyRowsHTML = `<tr><td colspan="5" style="padding: 12px; text-align: center; color: #777;">Keine dokumentierten Wartungseinträge vorhanden.</td></tr>`;
   }
 
-  // 3. Formatierungs-Vorbereitung für Stammdaten
-  const firstRegStr = v.firstReg ? new Date(v.firstReg).toLocaleDateString('de-DE') : '-';
-  const currentMileageStr = v.mileage ? `${v.mileage.toLocaleString('de-DE')} km` : '-';
-  const hsnTsnStr = (v.hsn || v.tsn) ? `${v.hsn || '-'} / ${v.tsn || '-'}` : '-';
+  // Kennzahlen: KM-Stand, Verbrauch, Investitionssumme, Dokumentationszeitraum
+  const currentMileage = getVehicleCurrentMileage(v);
+  const mileageUnit = v.type === 'hours' ? 'Std' : 'km';
+  const currentMileageStr = `${currentMileage.toLocaleString('de-DE')} ${mileageUnit}`;
 
-  // 4. Druck-Layout zusammenbauen
+  const fullTankings = [...fuelList].filter(f => f.full).sort((a, b) => a.mileage - b.mileage);
+  let avgConsumption = 0;
+  if (fullTankings.length >= 2) {
+    const totalDist = fullTankings[fullTankings.length - 1].mileage - fullTankings[0].mileage;
+    let totalLiters = 0;
+    for (let i = 1; i < fullTankings.length; i++) totalLiters += fullTankings[i].liters;
+    avgConsumption = totalDist > 0 ? (totalLiters / totalDist) * 100 : 0;
+  }
+  const consumptionUnit = v.type === 'hours' ? 'L/Std' : 'L/100km';
+  const hasEngine = category !== 'anhaenger';
+
+  let documentedSinceStr = '-';
+  if (sortedServices.length > 0) {
+    const oldestYear = new Date(sortedServices[sortedServices.length - 1].date).getFullYear();
+    documentedSinceStr = `seit ${oldestYear}`;
+  }
+
+  const firstRegStr = v.firstReg ? new Date(v.firstReg).toLocaleDateString('de-DE') : '-';
+  const hsnTsnStr = (v.hsn || v.tsn) ? `${v.hsn || '-'} / ${v.tsn || '-'}` : '-';
+  const imageHtml = v.image
+    ? `<img src="${v.image}" style="width: 100%; height: 260px; object-fit: cover; border-radius: 8px; margin-bottom: 20px;">`
+    : '';
+
+  // Fahrzeugdaten-Zeilen: je nach Fahrzeugart werden nicht passende Angaben weggelassen
+  const dataRows = [
+    `<div><strong>Erstzulassung:</strong> ${firstRegStr}</div>`
+  ];
+  if (category !== 'anhaenger') {
+    dataRows.push(`<div><strong>Aktueller Stand:</strong> ${currentMileageStr}</div>`);
+  }
+  if (category === 'boot') {
+    dataRows.push(`<div><strong>Motornummer:</strong> ${v.engineNumber || '-'}</div>`);
+    dataRows.push(`<div><strong>Rumpfnummer (HIN):</strong> ${v.hullNumber || '-'}</div>`);
+  } else {
+    dataRows.push(`<div><strong>FIN / VIN:</strong> ${v.vin || '-'}</div>`);
+  }
+  if (category !== 'boot') {
+    dataRows.push(`<div><strong>HSN / TSN:</strong> ${hsnTsnStr}</div>`);
+  }
+  if (hasEngine) {
+    dataRows.push(`<div><strong>Kraftstoffart:</strong> ${v.fuelType || '-'}</div>`);
+  }
+  if (category !== 'boot') {
+    dataRows.push(`<div><strong>Nächster TÜV / HU:</strong> ${v.nextTuev || '-'}</div>`);
+  }
+  if (category !== 'anhaenger') {
+    dataRows.push(`<div><strong>Leistung:</strong> ${v.powerHp ? v.powerHp + ' PS' : '-'}</div>`);
+  }
+  if (category === 'anhaenger') {
+    dataRows.push(`<div><strong>Zulässiges Gesamtgewicht:</strong> ${v.towingBraked ? v.towingBraked + ' kg' : '-'}</div>`);
+  } else if (category === 'auto') {
+    dataRows.push(`<div><strong>Anhängelast (gebremst):</strong> ${v.towingBraked ? v.towingBraked + ' kg' : '-'}</div>`);
+  }
+
+  // Kennzahlen-Kacheln: Verbrauch nur bei Fahrzeugen mit eigenem Antrieb
+  const kpiCells = [];
+  if (category !== 'anhaenger') {
+    kpiCells.push(`<div style="background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px; text-align: center;">
+      <div style="font-size: 0.7rem; color: #777; text-transform: uppercase; margin-bottom: 4px;">Aktueller Stand</div>
+      <div style="font-size: 1.05rem; font-weight: 700;">${currentMileageStr}</div>
+    </div>`);
+  }
+  if (hasEngine) {
+    kpiCells.push(`<div style="background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px; text-align: center;">
+      <div style="font-size: 0.7rem; color: #777; text-transform: uppercase; margin-bottom: 4px;">Ø Verbrauch</div>
+      <div style="font-size: 1.05rem; font-weight: 700;">${avgConsumption > 0 ? avgConsumption.toFixed(2) + ' ' + consumptionUnit : '-'}</div>
+    </div>`);
+  }
+  kpiCells.push(`<div style="background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px; text-align: center;">
+    <div style="font-size: 0.7rem; color: #777; text-transform: uppercase; margin-bottom: 4px;">Investiert in Pflege</div>
+    <div style="font-size: 1.05rem; font-weight: 700;">${totalMaintenanceCost.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>
+  </div>`);
+  kpiCells.push(`<div style="background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px; text-align: center;">
+    <div style="font-size: 0.7rem; color: #777; text-transform: uppercase; margin-bottom: 4px;">Dokumentiert</div>
+    <div style="font-size: 1.05rem; font-weight: 700;">${sortedServices.length} Einträge<br><span style="font-size:0.8rem; font-weight:400; color:#666;">${documentedSinceStr}</span></div>
+  </div>`);
+
+  // Druck-Layout zusammenbauen
   printContainer.innerHTML = `
     <div style="padding: 20px; font-family: Arial, sans-serif; color: #222; max-width: 800px; margin: 0 auto;">
-      
+
       <!-- Kopfzeile -->
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #222; padding-bottom: 15px; margin-bottom: 20px;">
-        <div>
-          <h1 style="margin: 0; font-size: 1.8rem; text-transform: uppercase;">Fahrzeug-Verkaufsbericht</h1>
-          <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">Lückenlose Wartungs- & Historienübersicht</p>
-        </div>
-        <div style="text-align: right;">
-          <h2 style="margin: 0; font-size: 1.4rem; color: #0056b3;">${v.name || 'Fahrzeug'}</h2>
-          <span style="display: inline-block; padding: 3px 8px; background: #eee; border: 1px solid #ccc; font-weight: bold; border-radius: 4px; margin-top: 5px;">
-            ${v.plate || 'OHNE KENNZEICHEN'}
-          </span>
-        </div>
+      <div style="border-bottom: 2px solid #222; padding-bottom: 15px; margin-bottom: 20px;">
+        <h1 style="margin: 0; font-size: 1.8rem; text-transform: uppercase;">Fahrzeug-Verkaufsdossier</h1>
+        <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">Lückenlose Wartungs- & Historienübersicht</p>
+        <h2 style="margin: 10px 0 0 0; font-size: 1.4rem; color: #0056b3;">${v.name || 'Fahrzeug'}</h2>
+      </div>
+
+      <!-- Fahrzeugfoto -->
+      ${imageHtml}
+
+      <!-- Eyecatcher-Kennzahlen -->
+      <div style="display: grid; grid-template-columns: repeat(${kpiCells.length}, 1fr); gap: 10px; margin-bottom: 25px;">
+        ${kpiCells.join('')}
       </div>
 
       <!-- Stammdaten Raster -->
       <div style="background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 15px; margin-bottom: 25px;">
         <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 1.1rem; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Fahrzeugdaten</h3>
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 0.95rem;">
-          <div><strong>Erstzulassung:</strong> ${firstRegStr}</div>
-          <div><strong>Aktueller Stand:</strong> ${currentMileageStr}</div>
-          <div><strong>FIN / VIN:</strong> ${v.vin || '-'}</div>
-          <div><strong>HSN / TSN:</strong> ${hsnTsnStr}</div>
-          <div><strong>Kraftstoffart:</strong> ${v.fuelType || '-'}</div>
-          <div><strong>Nächster TÜV / HU:</strong> ${v.nextTuev || '-'}</div>
+          ${dataRows.join('')}
         </div>
       </div>
 
@@ -2820,12 +3050,21 @@ function printSaleReport() {
               <th style="padding: 8px;">Datum</th>
               <th style="padding: 8px;">KM-Stand</th>
               <th style="padding: 8px;">Arbeiten / Notizen</th>
-              <th style="padding: 8px; text-align: right;">Kategorie</th>
+              <th style="padding: 8px;">Kategorie</th>
+              <th style="padding: 8px; text-align: right;">Kosten</th>
             </tr>
           </thead>
           <tbody>
             ${historyRowsHTML}
           </tbody>
+          ${sortedServices.length > 0 ? `
+          <tfoot>
+            <tr style="border-top: 2px solid #ccc;">
+              <td colspan="4" style="padding: 8px; text-align: right; font-weight: 700;">Gesamt investiert:</td>
+              <td style="padding: 8px; text-align: right; font-weight: 700;">${totalMaintenanceCost.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
+            </tr>
+          </tfoot>
+          ` : ''}
         </table>
       </div>
 
@@ -2837,7 +3076,7 @@ function printSaleReport() {
     </div>
   `;
 
-  // 5. Druckdialog öffnen
+  // Druckdialog öffnen
   window.print();
 }
 

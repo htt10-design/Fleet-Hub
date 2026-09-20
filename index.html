@@ -205,7 +205,7 @@
                   <h1 id="dashVehicleName">Fahrzeug Name</h1>
                   <span class="badge badge-plate" id="dashVehiclePlate">KI-XX 123</span>
                 </div>
-                <div class="banner-specs-row">
+                <div class="banner-specs-row" id="dashSpecsRow">
                   <span id="dashVehicleFuel">Kraftstoff: -</span> • 
                   <span id="dashVehicleType">Typ: KM</span>
                 </div>
@@ -217,12 +217,12 @@
           </div>
 
           <div class="dashboard-grid">
-            <div class="kpi-card">
+            <div class="kpi-card" id="kpiMileageCard">
               <span class="kpi-label">Aktueller Stand</span>
               <div class="kpi-value" id="kpi-mileage">0 km</div>
               <span class="kpi-sub" id="kpi-mileage-unit">Kilometerstand</span>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card" id="kpiConsumptionCard">
               <span class="kpi-label">Durchschn. Verbrauch</span>
               <div class="kpi-value" id="kpi-consumption">0.0 <small>L/100km</small></div>
               <span class="kpi-sub">Gefilterte Vollbetankungen</span>
@@ -232,7 +232,7 @@
               <div class="kpi-value" id="kpi-total-cost">0,00 €</div>
               <span class="kpi-sub">Sprit, Service & TÜV</span>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card" id="kpiCostPerKmCard">
               <span class="kpi-label">Kosten / 100 km</span>
               <div class="kpi-value" id="kpi-cost-per-km">0,00 €</div>
               <span class="kpi-sub">Reine Kraftstoffkosten</span>
@@ -245,7 +245,7 @@
           </div>
 
           <div class="charts-grid">
-            <div class="card">
+            <div class="card" id="consumptionChartCard">
               <h3>Verbrauchsverlauf</h3>
               <div class="chart-container">
                 <canvas id="consumptionChart"></canvas>
@@ -674,13 +674,13 @@
               <div class="form-row">
                 <div class="form-group">
                   <label>Fahrzeugart</label>
-                  <select id="vCategory">
+                  <select id="vCategory" onchange="updateStammdatenFieldsForCategory(this.value)">
                     <option value="auto">Auto</option>
                     <option value="anhaenger">Anhänger</option>
                     <option value="boot">Boot</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="vTypeFieldGroup">
                   <label>Erfassungstyp</label>
                   <select id="vType" onchange="updateUnitLabels()">
                     <option value="km">Straßenfahrzeug (KM / L/100km)</option>
@@ -694,7 +694,7 @@
                   <label>Standard-Kraftstoffart</label>
                   <input type="text" id="vFuelType" placeholder="z.B. Super Plus">
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="vinFieldGroup">
                   <label>Fahrgestellnummer / FIN</label>
                   <input type="text" id="vVin" placeholder="z.B. WDB1240341B******">
                 </div>
@@ -704,7 +704,18 @@
                 </div>
               </div>
 
-              <div class="form-row">
+              <div class="form-row" id="boatIdFieldRow" style="display: none;">
+                <div class="form-group">
+                  <label>Motornummer</label>
+                  <input type="text" id="vEngineNumber" placeholder="z.B. Motornummer laut Typenschild">
+                </div>
+                <div class="form-group">
+                  <label>Rumpfnummer (HIN)</label>
+                  <input type="text" id="vHullNumber" placeholder="z.B. DE-XXXXXXX-A101">
+                </div>
+              </div>
+
+              <div class="form-row" id="hsnTsnFieldRow">
                 <div class="form-group">
                   <label>HSN</label>
                   <input type="text" id="vHsn" maxlength="4" placeholder="0708">
@@ -716,19 +727,19 @@
               </div>
 
               <div class="form-row">
-                <div class="form-group">
+                <div class="form-group" id="powerHpFieldGroup">
                   <label>Motorleistung (PS)</label>
                   <input type="number" id="vPowerHp" inputmode="numeric" placeholder="279">
                 </div>
-                <div class="form-group">
-                  <label>Anhängelast gebremst (kg)</label>
+                <div class="form-group" id="towingBrakedFieldGroup">
+                  <label id="towingBrakedLabel">Anhängelast gebremst (kg)</label>
                   <input type="number" id="vTowingBraked" inputmode="numeric" placeholder="1900">
                 </div>
               </div>
 
-              <div class="form-row">
+              <div class="form-row" id="nextTuevFieldRow">
                 <div class="form-group">
-                  <label>Nächste HU / Hauptuntersuchung</label>
+                  <label id="nextTuevLabel">Nächste HU / Hauptuntersuchung</label>
                   <input type="month" id="vNextTuev">
                 </div>
               </div>
@@ -941,24 +952,24 @@
         </div>
         <div class="form-group">
           <label>Fahrzeugart</label>
-          <select id="newVCategory">
+          <select id="newVCategory" onchange="updateNewVehicleFieldsForCategory()">
             <option value="auto">Auto</option>
             <option value="anhaenger">Anhänger</option>
             <option value="boot">Boot</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="newVTypeGroup">
           <label>Mess-Typ</label>
           <select id="newVType">
             <option value="km">Kilometer (Straßenfahrzeug)</option>
             <option value="hours">Betriebsstunden (Maschine / Boot)</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="newVFuelTypeGroup">
           <label>Standard Kraftstoffart</label>
           <input type="text" id="newVFuelType" placeholder="z.B. Super Plus">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="newVMileageGroup">
           <label>Initialer Stand</label>
           <input type="number" step="0.1" id="newVMileage" inputmode="decimal" value="0" required>
         </div>
