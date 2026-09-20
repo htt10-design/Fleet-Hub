@@ -84,6 +84,17 @@ function initApp() {
   appData.vehicles.forEach(v => {
     if (v.archived === undefined) v.archived = false;
     if (!v.category) v.category = 'auto';
+    // Migration: Boote bekommen die neuen Felder (Bootstyp, Motorenliste, Zubehör-Verknüpfung)
+    if (v.category === 'boot') {
+      if (!v.boatType) v.boatType = 'motorboot';
+      if (!v.engines) {
+        v.engines = v.engineNumber ? [{ id: 'eng_migrated_' + v.id, name: 'Motor 1', number: v.engineNumber }] : [];
+      }
+      if (v.belongsToId === undefined) v.belongsToId = null;
+      // Boote laufen praktisch immer über Betriebsstunden - bestehende, versehentlich
+      // auf "km" stehende Boote hier einmalig korrigieren
+      if (v.type !== 'hours') v.type = 'hours';
+    }
   });
 
   applyTheme(appData.theme || 'dark');
@@ -315,6 +326,29 @@ function selectArea(area) {
 
 
 // Ermittelt den aktuellen Kilometer-/Betriebsstundenstand aus Tank- & Wartungseinträgen
+// Zentrale Stelle, ob ein Fahrzeug einen eigenen Antrieb hat (steuert Tanken-Tab,
+// Verbrauchs-KPIs & -Grafiken). Anhänger nie, Boote je nach Bootstyp
+// (ein Segelboot ohne Motor braucht z.B. kein Tanken).
+function vehicleHasEngine(v) {
+  if (!v) return false;
+  if (v.category === 'anhaenger') return false;
+  if (v.category === 'boot') return (v.boatType || 'motorboot') !== 'segel_ohne_motor';
+  return true;
+}
+
+// Liefert die Motorenliste eines Boots (leeres Array, falls keine vorhanden)
+function getBoatEngines(v) {
+  return (v && v.engines) || [];
+}
+
+// Aktuelle Betriebsstunden/KM-Stand EINES bestimmten Motors (nur Wartungseinträge,
+// da Tankungen bei Booten motorunabhängig/gemeinsam erfasst werden)
+function getEngineCurrentHours(v, engineId) {
+  const serviceList = (v && v.serviceEntries) || [];
+  const relevant = serviceList.filter(s => s.engineId === engineId).map(s => s.mileage || 0);
+  return relevant.length > 0 ? Math.max(...relevant) : 0;
+}
+
 function getVehicleCurrentMileage(v) {
   const fuelList = v.fuelEntries || [];
   const serviceList = v.serviceEntries || [];
@@ -344,9 +378,14 @@ function getUpcomingMaintenanceReminders(v) {
 
   const withReminder = serviceList.filter(s => s.category === 'Wartung' && (s.nextKm || s.nextDate));
 
+  // Boote mit mehreren Motoren: Titel + Motor zusammen als Schlüssel, sonst würde
+  // z.B. "Ölwechsel" von Motor 1 und Motor 2 fälschlich zusammengeworfen
+  const boatEnginesForReminders = getBoatEngines(v);
+  const multiEngine = v.category === 'boot' && boatEnginesForReminders.length > 1;
+
   const latestByTitle = {};
   withReminder.forEach(s => {
-    const key = (s.title || 'Wartung').trim().toLowerCase();
+    const key = (s.title || 'Wartung').trim().toLowerCase() + '|' + (s.engineId || '');
     if (!latestByTitle[key] || new Date(s.date) > new Date(latestByTitle[key].date)) {
       latestByTitle[key] = s;
     }
@@ -361,8 +400,18 @@ function getUpcomingMaintenanceReminders(v) {
     }
     const overdue = (kmRemaining !== null && kmRemaining <= 0) || (daysRemaining !== null && daysRemaining <= 0);
 
+    // Bei Booten mit mehreren Motoren den Motornamen an den Titel anhängen,
+    // damit z.B. "Ölwechsel Motor 1" von "Ölwechsel Motor 2" unterscheidbar ist
+    let displayTitle = s.title || 'Wartung';
+    if (multiEngine) {
+      const engineName = s.engineId
+        ? (boatEnginesForReminders.find(e => e.id === s.engineId)?.name || 'Motor')
+        : 'Allgemein/Rumpf';
+      displayTitle = `${displayTitle} (${engineName})`;
+    }
+
     return {
-      title: s.title || 'Wartung',
+      title: displayTitle,
       nextKm: s.nextKm || null,
       nextDate: s.nextDate || null,
       kmRemaining,
@@ -383,12 +432,13 @@ function getUpcomingMaintenanceReminders(v) {
 }
 
 // Formatiert die verbleibende Zeit/Strecke einer Erinnerung als kurzen Text (KM • Datum)
-function formatReminderMeta(r) {
+function formatReminderMeta(r, unitLabel) {
+  const unit = unitLabel || 'km';
   const metaParts = [];
   if (r.nextKm) {
     metaParts.push(r.kmRemaining <= 0
-      ? `${Math.abs(r.kmRemaining).toLocaleString('de-DE')} km überfällig`
-      : `noch ${r.kmRemaining.toLocaleString('de-DE')} km`);
+      ? `${Math.abs(r.kmRemaining).toLocaleString('de-DE')} ${unit} überfällig`
+      : `noch ${r.kmRemaining.toLocaleString('de-DE')} ${unit}`);
   }
   if (r.nextDate) {
     const dateText = r.isTuev ? formatTuevDate(r.nextDate) : new Date(r.nextDate).toLocaleDateString('de-DE');
@@ -424,15 +474,50 @@ function setVehicleCategoryFilter(category) {
 window.setVehicleCategoryFilter = setVehicleCategoryFilter;
 
 // Rendert alle gespeicherten eigenen Fahrzeuge als Auswahlkacheln hinter "Meine Garage"
+// Sortiert eine Fahrzeugliste so um, dass ein Dingi direkt nach seinem
+// zugehörigen Hauptboot einsortiert wird (statt irgendwo verstreut zu liegen)
+function sortWithDinghiesGrouped(vehicles) {
+  const consumed = new Set();
+  const result = [];
+
+  vehicles.forEach(v => {
+    if (consumed.has(v.id)) return;
+    // Dingis werden erst behandelt, wenn ihr Hauptboot an der Reihe ist
+    if (v.belongsToId && vehicles.some(x => x.id === v.belongsToId)) return;
+
+    result.push(v);
+    consumed.add(v.id);
+
+    vehicles.forEach(child => {
+      if (child.belongsToId === v.id && !consumed.has(child.id)) {
+        result.push(child);
+        consumed.add(child.id);
+      }
+    });
+  });
+
+  // Übrig gebliebene Dingis (z.B. Hauptboot gerade rausgefiltert) am Ende anhängen
+  vehicles.forEach(v => {
+    if (!consumed.has(v.id)) {
+      result.push(v);
+      consumed.add(v.id);
+    }
+  });
+
+  return result;
+}
+
 function renderGarageVehicleTiles() {
   const grid = document.getElementById('garageVehicleGrid');
   if (!grid) return;
 
   grid.innerHTML = '';
 
-  const list = (appData.vehicles || [])
-    .filter(v => !v.archived)
-    .filter(v => vehicleCategoryFilter === 'all' || (v.category || 'auto') === vehicleCategoryFilter);
+  const list = sortWithDinghiesGrouped(
+    (appData.vehicles || [])
+      .filter(v => !v.archived)
+      .filter(v => vehicleCategoryFilter === 'all' || (v.category || 'auto') === vehicleCategoryFilter)
+  );
   const archivedCount = (appData.vehicles || []).filter(v => v.archived).length;
 
   const toggleLink = document.getElementById('archiveToggleLink');
@@ -486,7 +571,7 @@ function renderGarageVehicleTiles() {
     // Nächste anstehende Routine-Wartung (dringendste zuerst)
     const nextMaintenance = getUpcomingMaintenanceReminders(v)[0] || null;
     const maintenanceHtml = nextMaintenance
-      ? `<span class="${nextMaintenance.overdue ? 'reminder-overdue-text' : ''}"><strong>${nextMaintenance.title}:</strong> ${formatReminderMeta(nextMaintenance)}</span>`
+      ? `<span class="${nextMaintenance.overdue ? 'reminder-overdue-text' : ''}"><strong>${nextMaintenance.title}:</strong> ${formatReminderMeta(nextMaintenance, v.type === 'hours' ? 'Std' : 'km')}</span>`
       : `<span><strong>Nächste Wartung:</strong> keine eingetragen</span>`;
 
     const hsnTsnHtml = v.category !== 'boot'
@@ -501,15 +586,25 @@ function renderGarageVehicleTiles() {
       ? `<span><strong>${mileageLabel}:</strong> ${mileage.toLocaleString('de-DE')} ${mileageUnit}</span>`
       : '';
 
+    // Dingi/Beiboot: Hinweis, zu welchem Hauptboot es gehört
+    let belongsToHtml = '';
+    if (v.category === 'boot' && v.belongsToId) {
+      const parentBoat = appData.vehicles.find(x => x.id === v.belongsToId);
+      if (parentBoat) {
+        belongsToHtml = `<span><strong>Gehört zu:</strong> ${parentBoat.name || 'Unbenanntes Boot'}</span>`;
+      }
+    }
+
     card.innerHTML = `
       <div class="vehicle-tile-category-badge">${getCategoryIconSvg(v.category)}</div>
       ${imageHtml}
       <h3>${v.name || 'Unbenanntes Fahrzeug'}</h3>
-      <p>${v.plate || 'Kein Kennzeichen'} ${(v.fuelType && v.category !== 'anhaenger') ? '• ' + v.fuelType : ''}</p>
+      <p>${v.plate || 'Kein Kennzeichen'} ${(v.fuelType && vehicleHasEngine(v)) ? '• ' + v.fuelType : ''}</p>
       <div class="vehicle-tile-info">
         ${mileageHtml}
         ${hsnTsnHtml}
         ${tuevHtml}
+        ${belongsToHtml}
         ${maintenanceHtml}
       </div>
     `;
@@ -549,7 +644,7 @@ function renderArchivedVehicleGrid() {
       <div class="vehicle-tile-archived-badge">Archiviert</div>
       ${imageHtml}
       <h3>${v.name || 'Unbenanntes Fahrzeug'}</h3>
-      <p>${v.plate || 'Kein Kennzeichen'} ${(v.fuelType && v.category !== 'anhaenger') ? '• ' + v.fuelType : ''}</p>
+      <p>${v.plate || 'Kein Kennzeichen'} ${(v.fuelType && vehicleHasEngine(v)) ? '• ' + v.fuelType : ''}</p>
       <div class="vehicle-tile-archived-actions">
         <button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); restoreVehicleFromArchive('${v.id}')">Wiederherstellen</button>
         <button type="button" class="btn btn-danger btn-sm" onclick="event.stopPropagation(); permanentlyDeleteArchivedVehicle('${v.id}')">Endgültig löschen</button>
@@ -686,7 +781,7 @@ function showTab(tabId, element) {
   if (!isCustomerMode) {
     const active = (typeof getActiveVehicle === 'function') ? getActiveVehicle() : null;
     if (active && typeof updateNavForCategory === 'function') {
-      updateNavForCategory(active.category || 'auto');
+      updateNavForCategory(active);
     }
   }
 
@@ -757,16 +852,22 @@ function updateUnitLabels() {
   const fuelKmLabel = document.getElementById('fuelKmLabel');
   const serviceKmLabel = document.getElementById('serviceKmLabel');
   const kpiMileageUnit = document.getElementById('kpi-mileage-unit');
+  const nextServiceKmLabel = document.getElementById('nextServiceKmLabel');
+  const nextServiceKmInput = document.getElementById('nextServiceKm');
 
   if (fuelKmLabel) fuelKmLabel.innerText = isKm ? "KM-Stand" : "Betriebsstunden";
   if (serviceKmLabel) serviceKmLabel.innerText = isKm ? "KM-Stand" : "Betriebsstunden";
   if (kpiMileageUnit) kpiMileageUnit.innerText = isKm ? "Kilometerstand" : "Betriebsstunden";
+  if (nextServiceKmLabel) nextServiceKmLabel.innerText = isKm ? "Bei KM-Stand" : "Bei Betriebsstunden";
+  if (nextServiceKmInput) nextServiceKmInput.placeholder = isKm ? "z.B. 160000" : "z.B. 250";
 }
 
 // Blendet den "Tanken"-Bereich (Nav-Punkt + Kraftstoffart-Feld) aus, wenn die
 // aktuelle Fahrzeugart keinen eigenen Antrieb hat (z.B. Anhänger)
-function updateNavForCategory(category) {
-  const needsFuel = category !== 'anhaenger';
+function updateNavForCategory(vehicleOrCategory) {
+  // Kompatibel mit Aufrufen, die noch die reine Kategorie (String) übergeben
+  const vehicle = (typeof vehicleOrCategory === 'object' && vehicleOrCategory) ? vehicleOrCategory : { category: vehicleOrCategory };
+  const needsFuel = vehicleHasEngine(vehicle);
 
   const navFuelBtn = document.getElementById('navFuelBtn');
   if (navFuelBtn) navFuelBtn.style.display = needsFuel ? 'flex' : 'none';
@@ -807,13 +908,15 @@ function updateStammdatenFieldsForCategory(category) {
     if (boatIdRow) boatIdRow.style.display = 'none';
     if (typeGroup) typeGroup.style.display = 'none';
   } else if (category === 'boot') {
-    if (powerHpGroup) powerHpGroup.style.display = '';
+    if (powerHpGroup) powerHpGroup.style.display = 'none';
     if (towingBrakedGroup) towingBrakedGroup.style.display = 'none';
     if (hsnTsnRow) hsnTsnRow.style.display = 'none';
     if (nextTuevRow) nextTuevRow.style.display = 'none';
     if (vinGroup) vinGroup.style.display = 'none';
     if (boatIdRow) boatIdRow.style.display = '';
     if (typeGroup) typeGroup.style.display = '';
+    populateBoatParentOptions();
+    updateBoatTypeFields();
   } else {
     // Auto (Standard)
     if (powerHpGroup) powerHpGroup.style.display = '';
@@ -828,6 +931,74 @@ function updateStammdatenFieldsForCategory(category) {
 }
 window.updateStammdatenFieldsForCategory = updateStammdatenFieldsForCategory;
 
+/* --- BOOTE: Bootstyp, Motorenverwaltung & Zubehör-Boote ("Gehört zu") --- */
+
+// Zwischenspeicher für die Motorenliste, während die Stammdaten bearbeitet werden
+let tempBoatEngines = [];
+
+// Blendet Motoren-Abschnitt & "Gehört zu"-Auswahl je nach gewähltem Bootstyp ein/aus
+function updateBoatTypeFields() {
+  const boatTypeEl = document.getElementById('vBoatType');
+  const enginesSection = document.getElementById('boatEnginesSection');
+  const parentGroup = document.getElementById('boatParentFieldGroup');
+  if (!boatTypeEl) return;
+
+  const boatType = boatTypeEl.value;
+  if (enginesSection) enginesSection.style.display = boatType === 'segel_ohne_motor' ? 'none' : '';
+  if (parentGroup) parentGroup.style.display = boatType === 'dingi' ? '' : 'none';
+}
+window.updateBoatTypeFields = updateBoatTypeFields;
+
+// Füllt die "Gehört zu"-Auswahl mit allen anderen Booten (nicht sich selbst)
+function populateBoatParentOptions() {
+  const select = document.getElementById('vBelongsTo');
+  if (!select) return;
+
+  const currentVehicle = getActiveVehicle();
+  const currentId = currentVehicle ? currentVehicle.id : null;
+  const otherBoats = (appData.vehicles || []).filter(x => x.category === 'boot' && x.id !== currentId);
+
+  select.innerHTML = '<option value="">- Kein -</option>' +
+    otherBoats.map(b => `<option value="${b.id}">${b.name || 'Unbenanntes Boot'}</option>`).join('');
+
+  if (currentVehicle) select.value = currentVehicle.belongsToId || '';
+}
+
+function renderBoatEnginesList() {
+  const list = document.getElementById('boatEnginesList');
+  if (!list) return;
+
+  list.innerHTML = '';
+  tempBoatEngines.forEach(engine => {
+    const row = document.createElement('div');
+    row.className = 'boat-engine-row';
+    row.innerHTML = `
+      <input type="text" placeholder="Bezeichnung, z.B. Motor 1 / Backbord" value="${engine.name || ''}" oninput="updateBoatEngineField('${engine.id}', 'name', this.value)">
+      <input type="text" placeholder="Motornummer (optional)" value="${engine.number || ''}" oninput="updateBoatEngineField('${engine.id}', 'number', this.value)">
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeBoatEngineRow('${engine.id}')">✕</button>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function updateBoatEngineField(id, field, value) {
+  const engine = tempBoatEngines.find(e => e.id === id);
+  if (engine) engine[field] = value;
+}
+window.updateBoatEngineField = updateBoatEngineField;
+
+function addBoatEngineRow() {
+  tempBoatEngines.push({ id: 'eng_' + Date.now() + '_' + Math.floor(Math.random() * 1000), name: '', number: '' });
+  renderBoatEnginesList();
+}
+window.addBoatEngineRow = addBoatEngineRow;
+
+function removeBoatEngineRow(id) {
+  tempBoatEngines = tempBoatEngines.filter(e => e.id !== id);
+  renderBoatEnginesList();
+}
+window.removeBoatEngineRow = removeBoatEngineRow;
+
 function loadActiveVehicle() {
   const vehicle = getActiveVehicle();
   if (!vehicle) return;
@@ -839,7 +1010,7 @@ function loadActiveVehicle() {
     'vType': vehicle.type || 'km',
     'vFuelType': vehicle.fuelType || '',
     'vVin': vehicle.vin || '',
-    'vEngineNumber': vehicle.engineNumber || '',
+    'vBoatType': vehicle.boatType || 'motorboot',
     'vHullNumber': vehicle.hullNumber || '',
     'vFirstReg': vehicle.firstReg || '',
     'vHsn': vehicle.hsn || '',
@@ -856,8 +1027,12 @@ function loadActiveVehicle() {
   }
 
   updateUnitLabels();
-  updateNavForCategory(vehicle.category || 'auto');
+  updateNavForCategory(vehicle);
   updateStammdatenFieldsForCategory(vehicle.category || 'auto');
+
+  // Motorenliste für Boote in den Zwischenspeicher laden & anzeigen
+  tempBoatEngines = (vehicle.engines || []).map(e => ({ ...e }));
+  renderBoatEnginesList();
 
   const settingsImgPreview = document.getElementById('vehicleImageSettingsPreview');
   if (settingsImgPreview) {
@@ -899,6 +1074,10 @@ function updateNewVehicleFieldsForCategory() {
   if (categoryEl.value === 'auto' && typeEl) {
     typeEl.value = 'km';
   }
+  // Boote laufen praktisch immer über Betriebsstunden statt Kilometer
+  if (categoryEl.value === 'boot' && typeEl) {
+    typeEl.value = 'hours';
+  }
 }
 window.updateNewVehicleFieldsForCategory = updateNewVehicleFieldsForCategory;
 
@@ -925,6 +1104,9 @@ function createNewVehicle(e) {
     fuelType: fuelTypeEl ? fuelTypeEl.value : 'Super',
     image: "",
     archived: false,
+    boatType: "motorboot",
+    engines: [],
+    belongsToId: null,
     fuelEntries: [],
     serviceEntries: []
   };
@@ -1167,8 +1349,16 @@ function saveVehicleDetails(e) {
   v.type = document.getElementById('vType').value;
   v.fuelType = document.getElementById('vFuelType').value;
   v.vin = document.getElementById('vVin').value;
-  v.engineNumber = document.getElementById('vEngineNumber').value;
   v.hullNumber = document.getElementById('vHullNumber').value;
+
+  // Boot-spezifische Angaben (Bootstyp, Motorenliste, Zubehör-Boot-Verknüpfung)
+  const boatTypeEl = document.getElementById('vBoatType');
+  if (boatTypeEl) v.boatType = boatTypeEl.value;
+  const belongsToEl = document.getElementById('vBelongsTo');
+  if (belongsToEl) v.belongsToId = belongsToEl.value || null;
+  v.engines = tempBoatEngines
+    .map(e => ({ id: e.id, name: (e.name || '').trim(), number: (e.number || '').trim() }))
+    .filter(e => e.name || e.number);
   v.firstReg = document.getElementById('vFirstReg').value;
   v.hsn = document.getElementById('vHsn').value;
   v.tsn = document.getElementById('vTsn').value;
@@ -1324,6 +1514,7 @@ window.closeFuelFormModal = closeFuelFormModal;
 let showAllFuelEntries = false;
 
 function renderFuelTable() {
+  if (typeof renderHistoryTable === 'function') renderHistoryTable();
   const v = getActiveVehicle();
   const tbody = document.getElementById('fuelTableBody');
   if (!tbody) return;
@@ -1470,9 +1661,11 @@ function saveServiceEntry(e) {
   if (!v) return;
 
   const editId = document.getElementById('serviceEditId').value;
+  const existingEntry = editId ? (v.serviceEntries || []).find(s => s.id === editId) : null;
 
   const entry = {
     id: editId ? editId : "s_" + Date.now(),
+    isStandEntry: existingEntry ? !!existingEntry.isStandEntry : false,
     category: document.getElementById('serviceCategory').value,
     title: document.getElementById('serviceTitle').value,
     date: document.getElementById('serviceDate').value,
@@ -1483,7 +1676,9 @@ function saveServiceEntry(e) {
     images: [...tempServiceImages],
     // Wiederholungs-Erinnerung (nur bei Kategorie "Wartung" befüllt, sonst leer)
     nextKm: parseFloat(document.getElementById('nextServiceKm').value) || null,
-    nextDate: document.getElementById('nextServiceDate').value || null
+    nextDate: document.getElementById('nextServiceDate').value || null,
+    // Bei Booten mit mehreren Motoren: welcher Motor betroffen ist (leer = Allgemein/Rumpf)
+    engineId: document.getElementById('serviceEngineSelect') ? (document.getElementById('serviceEngineSelect').value || null) : null
   };
 
   if (!v.serviceEntries) v.serviceEntries = [];
@@ -1515,10 +1710,154 @@ function resetServiceForm() {
 }
 
 // Formular für neue/bearbeitete Wartungen als Modal öffnen/schließen (FAB-Button)
+// Zeigt die "Betrifft"-Auswahl (Motor 1 / Motor 2 / Allgemein) nur bei Booten
+// mit mehreren erfassten Motoren; sonst bleibt sie versteckt (Wert bleibt leer).
+function updateServiceEngineFieldForActiveVehicle() {
+  const group = document.getElementById('serviceEngineFieldGroup');
+  const select = document.getElementById('serviceEngineSelect');
+  if (!group || !select) return;
+
+  const v = getActiveVehicle();
+  const engines = (v && v.category === 'boot') ? getBoatEngines(v) : [];
+
+  if (engines.length > 0) {
+    select.innerHTML = '<option value="">Allgemein / Rumpf</option>' +
+      engines.map(e => `<option value="${e.id}">${e.name || 'Motor'}</option>`).join('');
+    group.style.display = '';
+  } else {
+    select.innerHTML = '<option value="">Allgemein / Rumpf</option>';
+    group.style.display = 'none';
+  }
+}
+
+/* --- STANDERFASSUNG (KM-Stand / Betriebsstunden ohne Tankung/Wartung eintragen) --- */
+function openStandEntryModal() {
+  const v = getActiveVehicle();
+  if (!v) return;
+
+  document.getElementById('standEntryDate').value = new Date().toISOString().split('T')[0];
+
+  const unitLabel = v.type === 'hours' ? 'Betriebsstunden' : 'KM-Stand';
+  const engines = getBoatEngines(v);
+  const singleGroup = document.getElementById('standEntrySingleGroup');
+  const enginesContainer = document.getElementById('standEntryEnginesContainer');
+  const singleLabel = document.getElementById('standEntrySingleLabel');
+  const singleValue = document.getElementById('standEntrySingleValue');
+
+  if (v.category === 'boot' && engines.length > 1) {
+    // Mehrere Motoren: pro Motor ein eigenes Eingabefeld
+    singleGroup.style.display = 'none';
+    singleValue.value = '';
+    enginesContainer.innerHTML = engines.map(e => `
+      <div class="form-group">
+        <label>${e.name || 'Motor'} - Betriebsstunden</label>
+        <input type="number" step="0.1" inputmode="decimal" class="stand-entry-engine-input" data-engine-id="${e.id}" placeholder="z.B. 320">
+      </div>
+    `).join('');
+  } else {
+    singleGroup.style.display = '';
+    singleLabel.innerText = unitLabel;
+    singleValue.value = '';
+    enginesContainer.innerHTML = '';
+  }
+
+  document.getElementById('standEntryModal').classList.add('active');
+}
+window.openStandEntryModal = openStandEntryModal;
+
+function closeStandEntryModal() {
+  document.getElementById('standEntryModal').classList.remove('active');
+}
+window.closeStandEntryModal = closeStandEntryModal;
+
+function saveStandEntry(e) {
+  e.preventDefault();
+  const v = getActiveVehicle();
+  if (!v) return;
+
+  const date = document.getElementById('standEntryDate').value;
+  if (!v.serviceEntries) v.serviceEntries = [];
+
+  const engineInputs = document.querySelectorAll('.stand-entry-engine-input');
+
+  if (engineInputs.length > 0) {
+    // Standmeldung pro Motor (nur ausgefüllte Felder übernehmen)
+    let savedAny = false;
+    engineInputs.forEach(input => {
+      const val = parseFloat(input.value);
+      if (!val && val !== 0) return;
+      const engineId = input.getAttribute('data-engine-id');
+      const engine = getBoatEngines(v).find(x => x.id === engineId);
+      v.serviceEntries.push({
+        id: "s_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+        category: "Sonstiges",
+        title: `Standmeldung (${engine ? engine.name : 'Motor'})`,
+        date: date,
+        mileage: val,
+        cost: 0,
+        performer: "Eigenleistung",
+        notes: "Formlose Standmeldung.",
+        images: [],
+        engineId: engineId,
+        isStandEntry: true
+      });
+      savedAny = true;
+    });
+    if (!savedAny) {
+      alert("Bitte mindestens ein Feld ausfüllen.");
+      return;
+    }
+  } else {
+    const val = parseFloat(document.getElementById('standEntrySingleValue').value);
+    if (!val && val !== 0) {
+      alert("Bitte einen Stand eingeben.");
+      return;
+    }
+    v.serviceEntries.push({
+      id: "s_" + Date.now(),
+      category: "Sonstiges",
+      title: "Standmeldung",
+      date: date,
+      mileage: val,
+      cost: 0,
+      performer: "Eigenleistung",
+      notes: "Formlose Standmeldung.",
+      images: [],
+      engineId: null,
+      isStandEntry: true
+    });
+  }
+
+  v.serviceEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+  saveData();
+  closeStandEntryModal();
+  renderServiceTable();
+  renderDashboard();
+}
+window.saveStandEntry = saveStandEntry;
+
 function openServiceFormModal() {
+  updateServiceEngineFieldForActiveVehicle();
+  updateServiceCategoryOptionsForActiveVehicle();
   document.getElementById('serviceFormModal').classList.add('active');
 }
 window.openServiceFormModal = openServiceFormModal;
+
+// Bei Booten ergibt der TÜV/HU-Eintrag keinen Sinn - Option ausblenden
+// (und ggf. eine bereits gewählte TÜV-Kategorie auf "Sonstiges" umstellen)
+function updateServiceCategoryOptionsForActiveVehicle() {
+  const tuevOption = document.getElementById('serviceTuevOption');
+  const categorySelect = document.getElementById('serviceCategory');
+  if (!tuevOption || !categorySelect) return;
+
+  const v = getActiveVehicle();
+  const isBoat = v && v.category === 'boot';
+
+  tuevOption.style.display = isBoat ? 'none' : '';
+  if (isBoat && categorySelect.value === 'TÜV') {
+    categorySelect.value = 'Sonstiges';
+  }
+}
 
 function closeServiceFormModal() {
   document.getElementById('serviceFormModal').classList.remove('active');
@@ -1530,6 +1869,7 @@ window.closeServiceFormModal = closeServiceFormModal;
 let showAllServiceEntries = false;
 
 function renderServiceTable() {
+  if (typeof renderHistoryTable === 'function') renderHistoryTable();
   const v = getActiveVehicle();
   const tbody = document.getElementById('serviceTableBody');
   if (!tbody) return;
@@ -1538,13 +1878,16 @@ function renderServiceTable() {
   const toggleContainer = document.getElementById('serviceToggleBtnContainer');
   const toggleBtn = document.getElementById('serviceToggleBtn');
 
-  if (!v || !v.serviceEntries || v.serviceEntries.length === 0) {
+  // Formlose Standmeldungen gehören nur in die Chronik, nicht in die Wartungsliste
+  const relevantEntries = (v && v.serviceEntries) ? v.serviceEntries.filter(s => !s.isStandEntry) : [];
+
+  if (!v || relevantEntries.length === 0) {
     if (toggleContainer) toggleContainer.style.display = 'none';
     return;
   }
 
   // 1. Nach Datum sortieren (neueste Einträge zuerst)
-  const sortedServices = [...v.serviceEntries].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sortedServices = [...relevantEntries].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   // 2. Auf max. 5 Einträge begrenzen (falls nicht ausgeklappt)
   const hasMoreThan5 = sortedServices.length > 5;
@@ -1562,10 +1905,19 @@ function renderServiceTable() {
 
     const costVal = typeof s.cost === 'number' ? s.cost.toFixed(2) + ' €' : '-';
 
+    // Bei Booten mit mehreren Motoren: zeigen, welcher Motor betroffen war
+    let engineTagHtml = '';
+    if (v.category === 'boot' && getBoatEngines(v).length > 0) {
+      const engineName = s.engineId
+        ? (getBoatEngines(v).find(e => e.id === s.engineId)?.name || 'Motor')
+        : 'Allgemein / Rumpf';
+      engineTagHtml = `<div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">${engineName}</div>`;
+    }
+
     tr.innerHTML = `
       <td data-label="Datum">${s.date || '-'}</td>
       <td data-label="Kategorie"><span class="badge">${s.category || 'Allgemein'}</span></td>
-      <td data-label="Titel"><strong>${s.title || 'Wartung'}</strong></td>
+      <td data-label="Titel"><strong>${s.title || 'Wartung'}</strong>${engineTagHtml}</td>
       <td data-label="Kosten">${costVal}</td>
       <td>
         <button class="btn btn-secondary btn-sm" onclick="editServiceEntry('${s.id}')">✏️</button>
@@ -1619,6 +1971,9 @@ function editServiceEntry(id) {
   document.getElementById('serviceSubmitBtn').innerText = "Änderungen Speichern";
   document.getElementById('serviceCancelBtn').style.display = "inline-block";
   openServiceFormModal();
+
+  const engineSelect = document.getElementById('serviceEngineSelect');
+  if (engineSelect) engineSelect.value = entry.engineId || '';
 }
 
 function deleteServiceEntry(id) {
@@ -1644,6 +1999,31 @@ function openServiceDetailModal(id) {
   document.getElementById('sdCost').innerText = `${s.cost.toFixed(2)} €`;
   document.getElementById('sdPerformer').innerText = s.performer;
   document.getElementById('sdNotes').innerText = s.notes || 'Keine Notizen vorhanden.';
+
+  // Motor-Zuordnung (nur bei Booten mit mehreren erfassten Motoren relevant)
+  const sdEngineRow = document.getElementById('sdEngineRow');
+  const boatEnginesForDetail = getBoatEngines(v);
+  if (v.category === 'boot' && boatEnginesForDetail.length > 0) {
+    const engineName = s.engineId
+      ? (boatEnginesForDetail.find(e => e.id === s.engineId)?.name || 'Motor')
+      : 'Allgemein / Rumpf';
+    document.getElementById('sdEngine').innerText = engineName;
+    if (sdEngineRow) sdEngineRow.style.display = '';
+  } else if (sdEngineRow) {
+    sdEngineRow.style.display = 'none';
+  }
+
+  // Wiederholungs-Erinnerung (nur bei Routine-Wartungen mit gesetztem Intervall)
+  const sdReminderRow = document.getElementById('sdReminderRow');
+  const reminderParts = [];
+  if (s.nextKm) reminderParts.push(`bei ${s.nextKm.toLocaleString('de-DE')} ${v.type === 'hours' ? 'Std' : 'km'}`);
+  if (s.nextDate) reminderParts.push(`am ${new Date(s.nextDate).toLocaleDateString('de-DE')}`);
+  if (reminderParts.length > 0) {
+    document.getElementById('sdReminder').innerText = reminderParts.join(' / ');
+    if (sdReminderRow) sdReminderRow.style.display = '';
+  } else if (sdReminderRow) {
+    sdReminderRow.style.display = 'none';
+  }
 
   const container = document.getElementById('sdImagesContainer');
   if (container) {
@@ -1748,12 +2128,43 @@ function renderDashboard() {
   const kpiMileageCard = document.getElementById('kpiMileageCard');
   const kpiConsumptionCard = document.getElementById('kpiConsumptionCard');
   const kpiCostPerKmCard = document.getElementById('kpiCostPerKmCard');
-  const hasEngine = v.category !== 'anhaenger';
-  const showMileage = v.category !== 'anhaenger';
+  const hasEngine = vehicleHasEngine(v);
+  const boatEnginesForDash = getBoatEngines(v);
+  const multiEngineBoat = v.category === 'boot' && boatEnginesForDash.length > 1;
+  const showMileage = v.category !== 'anhaenger' && !multiEngineBoat;
   const showCostPerKm = (v.category || 'auto') === 'auto';
   if (kpiMileageCard) kpiMileageCard.style.display = showMileage ? '' : 'none';
   if (kpiConsumptionCard) kpiConsumptionCard.style.display = hasEngine ? '' : 'none';
   if (kpiCostPerKmCard) kpiCostPerKmCard.style.display = showCostPerKm ? '' : 'none';
+
+  // "Stand erfassen"-Button: bei Anhängern (kein sinnvoller Stand) ausblenden,
+  // sonst Beschriftung passend zu KM/Betriebsstunden setzen
+  const standEntryBtnWrapper = document.getElementById('standEntryBtnWrapper');
+  const standEntryBtn = document.getElementById('standEntryBtn');
+  if (standEntryBtnWrapper) standEntryBtnWrapper.style.display = (v.category === 'anhaenger') ? 'none' : '';
+  if (standEntryBtn) standEntryBtn.innerText = v.type === 'hours' ? 'Betriebsstunden erfassen' : 'KM-Stand erfassen';
+
+  // Bei Booten mit mehreren Motoren: eine eigene Betriebsstunden-Kachel pro Motor
+  // statt nur einem gemeinsamen "Aktueller Stand"
+  const engineHoursGrid = document.getElementById('engineHoursGrid');
+  if (engineHoursGrid) {
+    if (multiEngineBoat) {
+      engineHoursGrid.innerHTML = boatEnginesForDash.map(engine => {
+        const hours = getEngineCurrentHours(v, engine.id);
+        return `
+          <div class="kpi-card">
+            <span class="kpi-label">${engine.name || 'Motor'}</span>
+            <div class="kpi-value">${hours.toLocaleString('de-DE')} Std</div>
+            <span class="kpi-sub">Betriebsstunden</span>
+          </div>
+        `;
+      }).join('');
+      engineHoursGrid.style.display = 'grid';
+    } else {
+      engineHoursGrid.innerHTML = '';
+      engineHoursGrid.style.display = 'none';
+    }
+  }
 
   const reminderList = document.getElementById('reminderList');
   if (reminderList) {
@@ -1764,7 +2175,7 @@ function renderDashboard() {
     maintenanceReminders.forEach(r => {
       const li = document.createElement('li');
       li.className = 'reminder-item' + (r.overdue ? ' reminder-overdue' : '');
-      li.innerHTML = `<span class="reminder-title">${r.title}</span><span class="reminder-meta">${formatReminderMeta(r)}</span>`;
+      li.innerHTML = `<span class="reminder-title">${r.title}</span><span class="reminder-meta">${formatReminderMeta(r, v.type === 'hours' ? 'Std' : 'km')}</span>`;
       reminderList.appendChild(li);
     });
 
@@ -1790,7 +2201,7 @@ function renderCharts(v) {
   if (typeof Chart === 'undefined') return;
 
   // Verbrauchsverlauf ergibt bei einem Anhänger (kein Motor, keine Betankung) keinen Sinn
-  const hasEngineForCharts = v.category !== 'anhaenger';
+  const hasEngineForCharts = vehicleHasEngine(v);
   const consumptionChartCard = document.getElementById('consumptionChartCard');
   if (consumptionChartCard) consumptionChartCard.style.display = hasEngineForCharts ? '' : 'none';
 
@@ -1912,6 +2323,8 @@ function renderHistoryTable() {
   // 1. Alle Einträge zusammenführen
   let combined = [
     ...fuelList.map(f => ({
+      id: f.id,
+      sourceType: 'fuel',
       type: '⛽ Tanken',
       date: f.date,
       mileage: f.mileage || 0,
@@ -1919,7 +2332,9 @@ function renderHistoryTable() {
       amount: f.totalPrice || 0
     })),
     ...serviceList.map(s => ({
-      type: `🔧 ${s.category}`,
+      id: s.id,
+      sourceType: 'service',
+      type: s.isStandEntry ? '📍 Standmeldung' : `🔧 ${s.category}`,
       date: s.date,
       mileage: s.mileage || 0,
       desc: `${s.title} - ${s.notes || ''}`,
@@ -1953,13 +2368,18 @@ function renderHistoryTable() {
   // 5. Tabelle befüllen
   entriesToRender.forEach(item => {
     const tr = document.createElement('tr');
+    const editFn = item.sourceType === 'fuel' ? 'editFuelEntry' : 'editServiceEntry';
+    const deleteFn = item.sourceType === 'fuel' ? 'deleteFuelEntry' : 'deleteServiceEntry';
     tr.innerHTML = `
       <td data-label="Typ">${item.type}</td>
       <td data-label="Datum">${item.date || '-'}</td>
       <td data-label="Stand">${item.mileage.toLocaleString()}</td>
       <td data-label="Beschreibung">${item.desc}</td>
       <td data-label="Betrag"><strong>${item.amount.toFixed(2)} €</strong></td>
-      <td style="text-align: right;">-</td>
+      <td style="text-align: right; white-space: nowrap;">
+        <button class="btn btn-secondary btn-sm" onclick="${editFn}('${item.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="${deleteFn}('${item.id}')">🗑️</button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -2938,7 +3358,8 @@ function printSaleReport() {
     avgConsumption = totalDist > 0 ? (totalLiters / totalDist) * 100 : 0;
   }
   const consumptionUnit = v.type === 'hours' ? 'L/Std' : 'L/100km';
-  const hasEngine = category !== 'anhaenger';
+  const hasEngine = vehicleHasEngine(v);
+  const boatEngines = getBoatEngines(v);
 
   let documentedSinceStr = '-';
   if (sortedServices.length > 0) {
@@ -2960,8 +3381,11 @@ function printSaleReport() {
     dataRows.push(`<div><strong>Aktueller Stand:</strong> ${currentMileageStr}</div>`);
   }
   if (category === 'boot') {
-    dataRows.push(`<div><strong>Motornummer:</strong> ${v.engineNumber || '-'}</div>`);
     dataRows.push(`<div><strong>Rumpfnummer (HIN):</strong> ${v.hullNumber || '-'}</div>`);
+    if (boatEngines.length > 0) {
+      const engineListStr = boatEngines.map(e => e.name + (e.number ? ' (Nr. ' + e.number + ')' : '')).join(', ');
+      dataRows.push(`<div><strong>Motor(en):</strong> ${engineListStr}</div>`);
+    }
   } else {
     dataRows.push(`<div><strong>FIN / VIN:</strong> ${v.vin || '-'}</div>`);
   }
@@ -2974,7 +3398,7 @@ function printSaleReport() {
   if (category !== 'boot') {
     dataRows.push(`<div><strong>Nächster TÜV / HU:</strong> ${v.nextTuev || '-'}</div>`);
   }
-  if (category !== 'anhaenger') {
+  if (category === 'auto') {
     dataRows.push(`<div><strong>Leistung:</strong> ${v.powerHp ? v.powerHp + ' PS' : '-'}</div>`);
   }
   if (category === 'anhaenger') {

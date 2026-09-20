@@ -1129,6 +1129,27 @@ body[data-bg-style="mercedes-classic"],
   margin: 0;
 }
 
+/* Motorenverwaltung bei Booten (Stammdaten) */
+#boatEnginesSection {
+  margin-bottom: 1rem;
+}
+
+.boat-engine-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.boat-engine-row input {
+  flex: 1;
+}
+
+.boat-engine-row .btn-danger {
+  flex-shrink: 0;
+  padding: 0.45rem 0.65rem;
+}
+
 label {
   display: block;
   font-size: 0.78rem;

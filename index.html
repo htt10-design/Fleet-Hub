@@ -216,6 +216,12 @@
             </div>
           </div>
 
+          <div style="text-align: right; margin-bottom: 0.75rem;" id="standEntryBtnWrapper">
+            <button type="button" class="btn btn-secondary btn-sm" id="standEntryBtn" onclick="openStandEntryModal()">KM-Stand erfassen</button>
+          </div>
+
+          <div class="dashboard-grid" id="engineHoursGrid" style="display: none;"></div>
+
           <div class="dashboard-grid">
             <div class="kpi-card" id="kpiMileageCard">
               <span class="kpi-label">Aktueller Stand</span>
@@ -410,8 +416,15 @@
         <select id="serviceCategory" required onchange="toggleRoutineIntervalFields()">
           <option value="Wartung">Routine-Wartung (Öl, Filter, Zündkerzen)</option>
           <option value="Reparatur">Reparatur / Instandsetzung</option>
-          <option value="TÜV">HU / AU / TÜV</option>
+          <option value="TÜV" id="serviceTuevOption">HU / AU / TÜV</option>
           <option value="Sonstiges">Sonstiges / Pflege</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="serviceEngineFieldGroup" style="display: none;">
+        <label>Betrifft</label>
+        <select id="serviceEngineSelect">
+          <option value="">Allgemein / Rumpf</option>
         </select>
       </div>
 
@@ -436,7 +449,7 @@
         <div class="routine-interval-title">Wiederholung / Erinnerung</div>
         <div class="form-row">
           <div class="form-group">
-            <label>Bei KM-Stand</label>
+            <label id="nextServiceKmLabel">Bei KM-Stand</label>
             <input type="number" step="0.1" id="nextServiceKm" inputmode="decimal" placeholder="z.B. 160000">
           </div>
           <div class="form-group">
@@ -706,13 +719,32 @@
 
               <div class="form-row" id="boatIdFieldRow" style="display: none;">
                 <div class="form-group">
-                  <label>Motornummer</label>
-                  <input type="text" id="vEngineNumber" placeholder="z.B. Motornummer laut Typenschild">
+                  <label>Bootstyp</label>
+                  <select id="vBoatType" onchange="updateBoatTypeFields()">
+                    <option value="segel_ohne_motor">Segelboot (ohne Motor)</option>
+                    <option value="segel_mit_motor">Segelboot (mit Hilfsmotor)</option>
+                    <option value="motorboot">Motorboot</option>
+                    <option value="jetski">Jetski</option>
+                    <option value="dingi">Dingi / Beiboot</option>
+                  </select>
                 </div>
                 <div class="form-group">
                   <label>Rumpfnummer (HIN)</label>
                   <input type="text" id="vHullNumber" placeholder="z.B. DE-XXXXXXX-A101">
                 </div>
+              </div>
+
+              <div class="form-group" id="boatParentFieldGroup" style="display: none;">
+                <label>Gehört zu (Hauptboot)</label>
+                <select id="vBelongsTo">
+                  <option value="">- Kein -</option>
+                </select>
+              </div>
+
+              <div id="boatEnginesSection" style="display: none;">
+                <label style="display: block; margin-bottom: 0.4rem;">Motoren</label>
+                <div id="boatEnginesList"></div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addBoatEngineRow()">+ Motor hinzufügen</button>
               </div>
 
               <div class="form-row" id="hsnTsnFieldRow">
@@ -1035,6 +1067,31 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="standEntryModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Stand erfassen</h3>
+        <button class="modal-close" onclick="closeStandEntryModal()">✕</button>
+      </div>
+      <p class="sub-text">Trägt eine formlose Standmeldung in die Historie ein (Kategorie "Sonstiges"), ohne dass eine Tankung oder Wartung nötig ist.</p>
+      <form onsubmit="saveStandEntry(event)">
+        <div class="form-group">
+          <label>Datum</label>
+          <input type="date" id="standEntryDate" required>
+        </div>
+        <div id="standEntrySingleGroup" class="form-group">
+          <label id="standEntrySingleLabel">Aktueller Stand</label>
+          <input type="number" step="0.1" id="standEntrySingleValue" inputmode="decimal" placeholder="z.B. 185500">
+        </div>
+        <div id="standEntryEnginesContainer"></div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Speichern</button>
+          <button type="button" class="btn btn-secondary" onclick="closeStandEntryModal()">Abbrechen</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="serviceDetailModal">
     <div class="modal modal-lg">
       <div class="modal-header">
@@ -1048,6 +1105,8 @@
           <div><strong>Stand:</strong> <span id="sdMileage">-</span></div>
           <div><strong>Kosten:</strong> <span id="sdCost">-</span></div>
           <div><strong>Ausführung:</strong> <span id="sdPerformer">-</span></div>
+          <div id="sdEngineRow" style="display:none;"><strong>Betrifft:</strong> <span id="sdEngine">-</span></div>
+          <div id="sdReminderRow" style="display:none;"><strong>Wiederholung:</strong> <span id="sdReminder">-</span></div>
         </div>
         
         <div class="detail-section">
