@@ -293,6 +293,14 @@ body[data-bg-style="mercedes-classic"],
   gap: 1.5rem;
 }
 
+/* Wenn "Kundenfahrzeuge" in den Einstellungen deaktiviert ist, bleibt nur
+   noch eine Kachel übrig - dann schön mittig statt halbleer */
+#area-selection-grid.single-area {
+  grid-template-columns: 1fr;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
 .selection-card {
   background: var(--card-gradient);
   border: 1px solid var(--border-color);
@@ -1806,6 +1814,26 @@ input:focus, select:focus, textarea:focus {
 
 .detail-section details summary + * {
   margin-top: 0.75rem;
+}
+
+.settings-summary-icon {
+  display: inline-flex;
+  vertical-align: -3px;
+  margin-right: 0.4rem;
+  color: var(--accent-primary);
+}
+
+.settings-summary-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.settings-accordion-danger summary {
+  color: var(--accent-danger);
+}
+
+.settings-accordion-danger .settings-summary-icon {
+  color: var(--accent-danger);
 }
 
 .detail-notes-box {

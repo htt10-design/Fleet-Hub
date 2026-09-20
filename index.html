@@ -837,89 +837,104 @@
       </div>
 
       <div class="detail-section">
-        <h4>Darstellung</h4>
+        <details class="settings-accordion">
+          <summary><span class="settings-summary-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>Darstellung</summary>
 
-        <div class="theme-switch-row">
-          <span class="sub-text" style="margin: 0;">Farbschema</span>
-          <div class="theme-switch">
-            <button type="button" class="theme-switch-btn" id="themeSwitchLight" onclick="setTheme('light')">Hell</button>
-            <button type="button" class="theme-switch-btn" id="themeSwitchDark" onclick="setTheme('dark')">Dunkel</button>
+          <div class="theme-switch-row">
+            <span class="sub-text" style="margin: 0;">Farbschema</span>
+            <div class="theme-switch">
+              <button type="button" class="theme-switch-btn" id="themeSwitchLight" onclick="setTheme('light')">Hell</button>
+              <button type="button" class="theme-switch-btn" id="themeSwitchDark" onclick="setTheme('dark')">Dunkel</button>
+            </div>
           </div>
-        </div>
 
-        <p class="sub-text">App-Hintergrund</p>
-        <div class="bg-style-grid">
-          <button type="button" class="bg-style-option" data-style="concrete" onclick="setBackgroundStyle('concrete')">
-            <span class="bg-style-swatch" data-style="concrete"></span>
-            <span class="bg-style-name">Werkstatt-Beton</span>
-          </button>
-          <button type="button" class="bg-style-option" data-style="grid" onclick="setBackgroundStyle('grid')">
-            <span class="bg-style-swatch" data-style="grid"></span>
-            <span class="bg-style-name">Werkstatt-Raster</span>
-          </button>
-          <button type="button" class="bg-style-option" data-style="vignette" onclick="setBackgroundStyle('vignette')">
-            <span class="bg-style-swatch" data-style="vignette"></span>
-            <span class="bg-style-name">Werkstatt-Licht</span>
-          </button>
-          <button type="button" class="bg-style-option" data-style="mercedes-modern" onclick="setBackgroundStyle('mercedes-modern')">
-            <span class="bg-style-swatch" data-style="mercedes-modern"></span>
-            <span class="bg-style-name">Mercedes Modern</span>
-          </button>
-          <button type="button" class="bg-style-option" data-style="mercedes-classic" onclick="setBackgroundStyle('mercedes-classic')">
-            <span class="bg-style-swatch" data-style="mercedes-classic"></span>
-            <span class="bg-style-name">Mercedes Klassik</span>
-          </button>
-        </div>
+          <p class="sub-text">App-Hintergrund</p>
+          <div class="bg-style-grid">
+            <button type="button" class="bg-style-option" data-style="concrete" onclick="setBackgroundStyle('concrete')">
+              <span class="bg-style-swatch" data-style="concrete"></span>
+              <span class="bg-style-name">Werkstatt-Beton</span>
+            </button>
+            <button type="button" class="bg-style-option" data-style="grid" onclick="setBackgroundStyle('grid')">
+              <span class="bg-style-swatch" data-style="grid"></span>
+              <span class="bg-style-name">Werkstatt-Raster</span>
+            </button>
+            <button type="button" class="bg-style-option" data-style="vignette" onclick="setBackgroundStyle('vignette')">
+              <span class="bg-style-swatch" data-style="vignette"></span>
+              <span class="bg-style-name">Werkstatt-Licht</span>
+            </button>
+            <button type="button" class="bg-style-option" data-style="mercedes-modern" onclick="setBackgroundStyle('mercedes-modern')">
+              <span class="bg-style-swatch" data-style="mercedes-modern"></span>
+              <span class="bg-style-name">Mercedes Modern</span>
+            </button>
+            <button type="button" class="bg-style-option" data-style="mercedes-classic" onclick="setBackgroundStyle('mercedes-classic')">
+              <span class="bg-style-swatch" data-style="mercedes-classic"></span>
+              <span class="bg-style-name">Mercedes Klassik</span>
+            </button>
+          </div>
 
-        <p class="sub-text" style="margin-top: 1rem;">Akzentfarbe</p>
-        <div class="accent-color-grid">
-          <button type="button" class="accent-color-option" data-accent="amber" onclick="setAccentColor('amber')">
-            <span class="accent-color-swatch" style="background:#f39c12;"></span>
-            <span class="accent-color-name">Amber</span>
-          </button>
-          <button type="button" class="accent-color-option" data-accent="blue" onclick="setAccentColor('blue')">
-            <span class="accent-color-swatch" style="background:#3b82f6;"></span>
-            <span class="accent-color-name">Blau</span>
-          </button>
-          <button type="button" class="accent-color-option" data-accent="green" onclick="setAccentColor('green')">
-            <span class="accent-color-swatch" style="background:#22c55e;"></span>
-            <span class="accent-color-name">Grün</span>
-          </button>
-          <button type="button" class="accent-color-option" data-accent="red" onclick="setAccentColor('red')">
-            <span class="accent-color-swatch" style="background:#ef4444;"></span>
-            <span class="accent-color-name">Rot</span>
-          </button>
-          <button type="button" class="accent-color-option" data-accent="purple" onclick="setAccentColor('purple')">
-            <span class="accent-color-swatch" style="background:#a855f7;"></span>
-            <span class="accent-color-name">Lila</span>
-          </button>
-          <button type="button" class="accent-color-option" data-accent="teal" onclick="setAccentColor('teal')">
-            <span class="accent-color-swatch" style="background:#14b8a6;"></span>
-            <span class="accent-color-name">Türkis</span>
-          </button>
-        </div>
+          <p class="sub-text" style="margin-top: 1rem;">Akzentfarbe</p>
+          <div class="accent-color-grid">
+            <button type="button" class="accent-color-option" data-accent="amber" onclick="setAccentColor('amber')">
+              <span class="accent-color-swatch" style="background:#f39c12;"></span>
+              <span class="accent-color-name">Amber</span>
+            </button>
+            <button type="button" class="accent-color-option" data-accent="blue" onclick="setAccentColor('blue')">
+              <span class="accent-color-swatch" style="background:#3b82f6;"></span>
+              <span class="accent-color-name">Blau</span>
+            </button>
+            <button type="button" class="accent-color-option" data-accent="green" onclick="setAccentColor('green')">
+              <span class="accent-color-swatch" style="background:#22c55e;"></span>
+              <span class="accent-color-name">Grün</span>
+            </button>
+            <button type="button" class="accent-color-option" data-accent="red" onclick="setAccentColor('red')">
+              <span class="accent-color-swatch" style="background:#ef4444;"></span>
+              <span class="accent-color-name">Rot</span>
+            </button>
+            <button type="button" class="accent-color-option" data-accent="purple" onclick="setAccentColor('purple')">
+              <span class="accent-color-swatch" style="background:#a855f7;"></span>
+              <span class="accent-color-name">Lila</span>
+            </button>
+            <button type="button" class="accent-color-option" data-accent="teal" onclick="setAccentColor('teal')">
+              <span class="accent-color-swatch" style="background:#14b8a6;"></span>
+              <span class="accent-color-name">Türkis</span>
+            </button>
+          </div>
+        </details>
       </div>
 
-      <hr class="divider">
-
       <div class="detail-section">
-        <h4>Daten-Sicherung</h4>
-        <p class="sub-text">Sichert und lädt den kompletten App-Datenbestand (alle Fahrzeuge & Kunden) als Datei.</p>
-        <p class="sub-text">Letztes Backup: <strong id="lastBackupInfo">-</strong></p>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="exportData()">Daten Exportieren</button>
-          <label class="btn btn-secondary">
-            Daten Importieren
-            <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importData(event)">
-          </label>
-        </div>
+        <details class="settings-accordion">
+          <summary><span class="settings-summary-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>Funktionen</summary>
+
+          <div class="theme-switch-row">
+            <span class="sub-text" style="margin: 0;">Kundenfahrzeuge verwenden</span>
+            <div class="theme-switch">
+              <button type="button" class="theme-switch-btn" id="customerToggleOn" onclick="setCustomerVehiclesEnabled(true)">An</button>
+              <button type="button" class="theme-switch-btn" id="customerToggleOff" onclick="setCustomerVehiclesEnabled(false)">Aus</button>
+            </div>
+          </div>
+          <p class="sub-text" style="margin-top: 0.5rem;">Blendet die Kachel "Kundenfahrzeuge" auf dem Startbildschirm ein oder aus. Bereits vorhandene Kundendaten bleiben dabei erhalten und sind wieder da, sobald du es erneut aktivierst.</p>
+        </details>
       </div>
 
-      <hr class="divider">
+      <div class="detail-section">
+        <details class="settings-accordion">
+          <summary><span class="settings-summary-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 0-3-6.7 5.5 5.5 0 0 0-10.6 1.7A4.5 4.5 0 0 0 5 18h13a3 3 0 0 0 3-3Z"/></svg></span>Daten-Sicherung</summary>
+          <p class="sub-text">Sichert und lädt den kompletten App-Datenbestand (alle Fahrzeuge & Kunden) als Datei.</p>
+          <p class="sub-text">Letztes Backup: <strong id="lastBackupInfo">-</strong></p>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="exportData()">Daten Exportieren</button>
+            <label class="btn btn-secondary">
+              Daten Importieren
+              <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importData(event)">
+            </label>
+          </div>
+        </details>
+      </div>
 
       <div class="detail-section">
-        <details id="bizDetails">
-          <summary>Rechnungsdaten für Ausdrucke (optional)</summary>
+        <details class="settings-accordion" id="bizDetails">
+          <summary><span class="settings-summary-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>Rechnungsdaten für Ausdrucke</summary>
           <p class="sub-text">Diese Angaben erscheinen auf der gedruckten Kundenrechnung.</p>
           <form onsubmit="saveBusinessInfo(event)">
             <div class="form-group">
@@ -961,12 +976,12 @@
         </details>
       </div>
 
-      <hr class="divider">
-
       <div class="detail-section">
-        <h4>Gefahrenzone</h4>
-        <p class="sub-text">Löscht unwiderruflich alle Fahrzeuge, Kunden und Einstellungen von diesem Gerät.</p>
-        <button type="button" class="btn btn-danger" onclick="resetAllData()">Alle Daten löschen</button>
+        <details class="settings-accordion settings-accordion-danger">
+          <summary><span class="settings-summary-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>Gefahrenzone</summary>
+          <p class="sub-text">Löscht unwiderruflich alle Fahrzeuge, Kunden und Einstellungen von diesem Gerät.</p>
+          <button type="button" class="btn btn-danger" onclick="resetAllData()">Alle Daten löschen</button>
+        </details>
       </div>
     </div>
   </div>

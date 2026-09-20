@@ -5,6 +5,7 @@ let appData = {
   theme: "dark",
   backgroundStyle: "concrete",
   accentColor: "amber",
+  customerVehiclesEnabled: true,
   vehicles: [],
   customerVehicles: [],
   businessInfo: null,
@@ -80,6 +81,9 @@ function initApp() {
   if (!appData.accentColor) {
     appData.accentColor = 'amber';
   }
+  if (appData.customerVehiclesEnabled === undefined) {
+    appData.customerVehiclesEnabled = true;
+  }
   // Migration: bestehende Fahrzeuge bekommen den neuen Archiv-Status nachgereicht
   appData.vehicles.forEach(v => {
     if (v.archived === undefined) v.archived = false;
@@ -100,6 +104,7 @@ function initApp() {
   applyTheme(appData.theme || 'dark');
   applyBackgroundStyle(appData.backgroundStyle);
   applyAccentColor(appData.accentColor);
+  applyCustomerVehiclesVisibility();
 
   const fuelDateEl = document.getElementById('fuelDate');
   const serviceDateEl = document.getElementById('serviceDate');
@@ -245,6 +250,35 @@ function setAccentColor(color) {
   applyAccentColor(color);
 }
 window.setAccentColor = setAccentColor;
+
+// Blendet die Kachel "Kundenfahrzeuge" auf dem Startbildschirm ein/aus,
+// je nachdem ob die Funktion in den Einstellungen aktiviert ist
+function applyCustomerVehiclesVisibility() {
+  const enabled = appData.customerVehiclesEnabled !== false;
+
+  const cardKunden = document.getElementById('card-kunden');
+  const areaGrid = document.getElementById('area-selection-grid');
+  if (cardKunden) cardKunden.style.display = enabled ? '' : 'none';
+  if (areaGrid) areaGrid.classList.toggle('single-area', !enabled);
+
+  const onBtn = document.getElementById('customerToggleOn');
+  const offBtn = document.getElementById('customerToggleOff');
+  if (onBtn) onBtn.classList.toggle('active', enabled);
+  if (offBtn) offBtn.classList.toggle('active', !enabled);
+
+  // Falls man gerade im Kundenmodus ist und die Funktion deaktiviert wird,
+  // zurück zur Bereichsauswahl springen statt in einem ausgeblendeten Bereich hängen zu bleiben
+  if (!enabled && currentMode === 'kunden') {
+    backToSelection();
+  }
+}
+
+function setCustomerVehiclesEnabled(enabled) {
+  appData.customerVehiclesEnabled = enabled;
+  saveData();
+  applyCustomerVehiclesVisibility();
+}
+window.setCustomerVehiclesEnabled = setCustomerVehiclesEnabled;
 
 // Variable zur Speicherung des aktuellen Modus
 let currentMode = 'eigene';
@@ -3392,6 +3426,7 @@ function openSettingsModal() {
   applyTheme(appData.theme || 'dark');
   applyBackgroundStyle(appData.backgroundStyle || 'concrete');
   applyAccentColor(appData.accentColor || 'amber');
+  applyCustomerVehiclesVisibility();
 
   document.getElementById('settingsModal').classList.add('active');
 }
