@@ -336,6 +336,11 @@ function vehicleHasEngine(v) {
   return true;
 }
 
+// Wiederverwendbare Bearbeiten-/Löschen-Icons (Vektor statt Emoji)
+const ICON_EDIT_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+const ICON_DELETE_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+const ICON_ARCHIVE_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></svg>';
+
 // Liefert die Motorenliste eines Boots (leeres Array, falls keine vorhanden)
 function getBoatEngines(v) {
   return (v && v.engines) || [];
@@ -507,11 +512,117 @@ function sortWithDinghiesGrouped(vehicles) {
   return result;
 }
 
+/* --- LANGES DRÜCKEN AUF EINE FAHRZEUGKACHEL: KONTEXTMENÜ --- */
+let tileLongPressTimer = null;
+let tileLongPressTriggered = false;
+
+function attachTileLongPress(card, vehicleId) {
+  let startX = 0;
+  let startY = 0;
+
+  const start = (e) => {
+    tileLongPressTriggered = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    tileLongPressTimer = setTimeout(() => {
+      tileLongPressTriggered = true;
+      openTileContextMenu(vehicleId, card);
+    }, 500);
+  };
+  const cancel = () => {
+    clearTimeout(tileLongPressTimer);
+  };
+  // Kleine Bewegungstoleranz, damit natürliches leichtes Zittern beim
+  // Gedrückthalten auf dem Handy den Timer nicht sofort abbricht
+  const moveCheck = (e) => {
+    const dx = Math.abs(e.clientX - startX);
+    const dy = Math.abs(e.clientY - startY);
+    if (dx > 10 || dy > 10) cancel();
+  };
+
+  card.addEventListener('pointerdown', start);
+  card.addEventListener('pointerup', cancel);
+  card.addEventListener('pointerleave', cancel);
+  card.addEventListener('pointercancel', cancel);
+  card.addEventListener('pointermove', moveCheck);
+}
+
+function openTileContextMenu(vehicleId, cardEl) {
+  closeTileContextMenu();
+
+  const menu = document.createElement('div');
+  menu.className = 'tile-context-menu';
+  menu.id = 'tileContextMenu';
+  menu.innerHTML = `
+    <button type="button" onclick="event.stopPropagation(); closeTileContextMenu(); chooseGarageVehicle('${vehicleId}', 'settings')">
+      ${ICON_EDIT_SVG}<span>Bearbeiten</span>
+    </button>
+    <button type="button" onclick="event.stopPropagation(); closeTileContextMenu(); archiveVehicleById('${vehicleId}')">
+      ${ICON_ARCHIVE_SVG}<span>Als verkauft archivieren</span>
+    </button>
+    <button type="button" class="tile-context-menu-danger" onclick="event.stopPropagation(); closeTileContextMenu(); deleteVehicleById('${vehicleId}')">
+      ${ICON_DELETE_SVG}<span>Löschen</span>
+    </button>
+  `;
+  document.body.appendChild(menu);
+
+  // Position dicht an der Kachel, aber innerhalb des sichtbaren Bereichs
+  const rect = cardEl.getBoundingClientRect();
+  const menuWidth = 230;
+  let left = rect.left + window.scrollX;
+  if (left + menuWidth > window.innerWidth - 10) {
+    left = window.innerWidth - menuWidth - 10;
+  }
+  menu.style.top = (rect.top + window.scrollY + 16) + 'px';
+  menu.style.left = Math.max(10, left) + 'px';
+
+  setTimeout(() => {
+    document.addEventListener('click', closeTileContextMenuOnOutsideClick);
+    document.addEventListener('scroll', closeTileContextMenu, true);
+  }, 0);
+}
+window.openTileContextMenu = openTileContextMenu;
+
+function closeTileContextMenuOnOutsideClick(e) {
+  const menu = document.getElementById('tileContextMenu');
+  if (menu && !menu.contains(e.target)) {
+    closeTileContextMenu();
+  }
+}
+
+function closeTileContextMenu() {
+  const menu = document.getElementById('tileContextMenu');
+  if (menu) menu.remove();
+  document.removeEventListener('click', closeTileContextMenuOnOutsideClick);
+  document.removeEventListener('scroll', closeTileContextMenu, true);
+}
+window.closeTileContextMenu = closeTileContextMenu;
+
+// Archivieren/Löschen eines bestimmten Fahrzeugs (aus dem Kontextmenü heraus),
+// unabhängig davon, welches Fahrzeug gerade "aktiv" ist
+function archiveVehicleById(id) {
+  appData.activeVehicleId = id;
+  archiveCurrentVehicle();
+  renderGarageVehicleTiles();
+}
+window.archiveVehicleById = archiveVehicleById;
+
+function deleteVehicleById(id) {
+  appData.activeVehicleId = id;
+  deleteCurrentVehicle();
+  renderGarageVehicleTiles();
+}
+window.deleteVehicleById = deleteVehicleById;
+
 function renderGarageVehicleTiles() {
   const grid = document.getElementById('garageVehicleGrid');
   if (!grid) return;
 
   grid.innerHTML = '';
+
+  // Beim Reiter "Alle" auf dem Smartphone: kompaktere 2-Spalten-Ansicht
+  const isAllFilter = vehicleCategoryFilter === 'all';
+  grid.classList.toggle('kachel-grid-compact', isAllFilter);
 
   const list = sortWithDinghiesGrouped(
     (appData.vehicles || [])
@@ -546,7 +657,7 @@ function renderGarageVehicleTiles() {
 
   list.forEach(v => {
     const card = document.createElement('div');
-    card.className = 'selection-card vehicle-tile';
+    card.className = 'selection-card vehicle-tile' + (isAllFilter ? ' vehicle-tile-compact' : '');
 
     const imageHtml = v.image
       ? `<img src="${v.image}" class="vehicle-tile-image" alt="${v.name || 'Fahrzeug'}">`
@@ -609,7 +720,14 @@ function renderGarageVehicleTiles() {
       </div>
     `;
 
-    card.onclick = () => chooseGarageVehicle(v.id);
+    card.onclick = () => {
+      if (tileLongPressTriggered) {
+        tileLongPressTriggered = false;
+        return;
+      }
+      chooseGarageVehicle(v.id);
+    };
+    attachTileLongPress(card, v.id);
     grid.appendChild(card);
   });
 }
@@ -800,7 +918,7 @@ function showTab(tabId, element) {
 }
 
 // Fahrzeug-Kachel wurde angeklickt -> aktives Fahrzeug setzen & in den Tab-Modus wechseln
-function chooseGarageVehicle(vehicleId) {
+function chooseGarageVehicle(vehicleId, startTab) {
   currentMode = 'eigene';
   appData.activeVehicleId = vehicleId;
   saveData();
@@ -817,8 +935,9 @@ function chooseGarageVehicle(vehicleId) {
   renderVehicleSelect();
   loadActiveVehicle();
 
-  const defaultNavBtn = document.querySelector('.nav-item[onclick*="dashboard"]');
-  showTab('dashboard', defaultNavBtn);
+  const targetTab = startTab || 'dashboard';
+  const targetNavBtn = document.querySelector(`.nav-item[onclick*="'${targetTab}'"]`);
+  showTab(targetTab, targetNavBtn);
 }
 
 
@@ -1572,8 +1691,8 @@ function renderFuelTable() {
       <td data-label="Zusatz">${additiveBadge}</td>
       <td data-label="Gesamt"><strong>${f.totalPrice.toFixed(2)} €</strong></td>
       <td>
-        <button class="btn btn-secondary btn-sm" onclick="editFuelEntry('${f.id}')">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteFuelEntry('${f.id}')">🗑️</button>
+        <button class="btn btn-secondary btn-sm" onclick="editFuelEntry('${f.id}')">${ICON_EDIT_SVG}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteFuelEntry('${f.id}')">${ICON_DELETE_SVG}</button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -1920,8 +2039,8 @@ function renderServiceTable() {
       <td data-label="Titel"><strong>${s.title || 'Wartung'}</strong>${engineTagHtml}</td>
       <td data-label="Kosten">${costVal}</td>
       <td>
-        <button class="btn btn-secondary btn-sm" onclick="editServiceEntry('${s.id}')">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteServiceEntry('${s.id}')">🗑️</button>
+        <button class="btn btn-secondary btn-sm" onclick="editServiceEntry('${s.id}')">${ICON_EDIT_SVG}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteServiceEntry('${s.id}')">${ICON_DELETE_SVG}</button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -2334,7 +2453,9 @@ function renderHistoryTable() {
     ...serviceList.map(s => ({
       id: s.id,
       sourceType: 'service',
-      type: s.isStandEntry ? '📍 Standmeldung' : `🔧 ${s.category}`,
+      type: s.isStandEntry
+        ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:3px;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> Standmeldung'
+        : `🔧 ${s.category}`,
       date: s.date,
       mileage: s.mileage || 0,
       desc: `${s.title} - ${s.notes || ''}`,
@@ -2377,8 +2498,8 @@ function renderHistoryTable() {
       <td data-label="Beschreibung">${item.desc}</td>
       <td data-label="Betrag"><strong>${item.amount.toFixed(2)} €</strong></td>
       <td style="text-align: right; white-space: nowrap;">
-        <button class="btn btn-secondary btn-sm" onclick="${editFn}('${item.id}')">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="${deleteFn}('${item.id}')">🗑️</button>
+        <button class="btn btn-secondary btn-sm" onclick="${editFn}('${item.id}')">${ICON_EDIT_SVG}</button>
+        <button class="btn btn-danger btn-sm" onclick="${deleteFn}('${item.id}')">${ICON_DELETE_SVG}</button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -2740,9 +2861,9 @@ function renderCustomerServiceTable() {
       <td data-label="KM-Stand">${mileageVal}</td>
       <td data-label="Gesamt">${totalCostVal}</td>
       <td>
-        <button class="btn btn-secondary btn-sm" onclick="editCustomerServiceEntry('${cs.id}')">✏️</button>
+        <button class="btn btn-secondary btn-sm" onclick="editCustomerServiceEntry('${cs.id}')">${ICON_EDIT_SVG}</button>
         <button class="btn btn-primary btn-sm" onclick="printInvoice('${cs.id}')">🖨️ Drucken</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteCustomerServiceEntry('${cs.id}')">🗑️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCustomerServiceEntry('${cs.id}')">${ICON_DELETE_SVG}</button>
       </td>
     `;
     tbody.appendChild(tr);

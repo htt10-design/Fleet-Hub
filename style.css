@@ -335,6 +335,59 @@ body[data-bg-style="mercedes-classic"],
   gap: 1rem;
 }
 
+/* Kompakte 2-Spalten-Ansicht auf dem Smartphone, nur beim Reiter "Alle" */
+@media (max-width: 600px) {
+  #garageVehicleGrid.kachel-grid-compact {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+
+  .vehicle-tile-compact {
+    padding: 0.5rem;
+  }
+
+  .vehicle-tile-compact .vehicle-tile-image,
+  .vehicle-tile-compact .vehicle-tile-icon {
+    height: 64px;
+    margin-bottom: 0.4rem;
+  }
+
+  .vehicle-tile-compact .vehicle-tile-icon {
+    font-size: 1.6rem;
+  }
+
+  .vehicle-tile-compact h3 {
+    font-size: 0.8rem;
+    margin-bottom: 0.1rem;
+  }
+
+  .vehicle-tile-compact > p {
+    font-size: 0.68rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .vehicle-tile-compact .vehicle-tile-info {
+    gap: 0.1rem;
+    padding-top: 0.3rem;
+  }
+
+  .vehicle-tile-compact .vehicle-tile-info span {
+    font-size: 0.62rem;
+  }
+
+  .vehicle-tile-compact .vehicle-tile-category-badge {
+    width: 20px;
+    height: 20px;
+    top: 0.4rem;
+    left: 0.4rem;
+  }
+
+  .vehicle-tile-compact .vehicle-tile-category-badge svg {
+    width: 11px;
+    height: 11px;
+  }
+}
+
 /* Fahrzeugart-Filter (Alle / Autos / Anhänger / Boote) über den Kacheln */
 .category-filter-row {
   display: flex;
@@ -420,6 +473,9 @@ body[data-bg-style="mercedes-classic"],
   padding: 0.9rem;
   align-items: stretch;
   text-align: left;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .vehicle-tile-image {
@@ -869,6 +925,61 @@ body[data-bg-style="mercedes-classic"],
   flex: 1;
   font-size: 0.72rem;
   padding: 0.35rem 0.4rem;
+}
+
+/* Kontextmenü bei langem Drücken auf eine Fahrzeugkachel */
+.tile-context-menu {
+  position: fixed;
+  z-index: 500;
+  background-color: var(--bg-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 0.4rem;
+  min-width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  animation: tileContextMenuAppear 0.12s ease;
+}
+
+@keyframes tileContextMenuAppear {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.tile-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: none;
+  border: none;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  font-family: inherit;
+  text-align: left;
+  padding: 0.55rem 0.6rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.tile-context-menu button:hover {
+  background-color: var(--table-hover-bg);
+}
+
+.tile-context-menu button svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.tile-context-menu-danger {
+  color: var(--accent-danger) !important;
+}
+
+.tile-context-menu-danger svg {
+  color: var(--accent-danger) !important;
 }
 
 .card-header-flex {
