@@ -927,6 +927,32 @@ body[data-bg-style="mercedes-classic"],
   padding: 0.35rem 0.4rem;
 }
 
+/* Kleine Spielerei: Icon fährt beim Filterwechsel quer über den Bildschirm */
+.category-drive-by-icon {
+  position: fixed;
+  top: 50%;
+  left: 0;
+  width: 34px;
+  height: 34px;
+  color: var(--accent-primary);
+  opacity: 0.55;
+  z-index: 40;
+  pointer-events: none;
+  animation: categoryDriveBy 2.4s ease-in-out forwards;
+}
+
+.category-drive-by-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes categoryDriveBy {
+  0% { transform: translate(-40px, -50%); opacity: 0; }
+  15% { opacity: 0.55; }
+  85% { opacity: 0.55; }
+  100% { transform: translate(calc(100vw + 10px), -50%); opacity: 0; }
+}
+
 /* Kontextmenü bei langem Drücken auf eine Fahrzeugkachel */
 .tile-context-menu {
   position: fixed;
@@ -1070,6 +1096,12 @@ body[data-bg-style="mercedes-classic"],
   background-color: var(--border-color);
   color: var(--text-main);
   border: 1px solid var(--border-highlight);
+}
+
+.badge-partial {
+  background-color: rgba(230, 126, 34, 0.15);
+  color: var(--accent-warning);
+  white-space: nowrap;
 }
 
 .badge-plate {

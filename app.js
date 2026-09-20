@@ -475,6 +475,23 @@ function setVehicleCategoryFilter(category) {
     chip.classList.toggle('active', chip.getAttribute('data-category') === category);
   });
   renderGarageVehicleTiles();
+  playCategoryDriveByAnimation(category);
+}
+
+// Kleine, dezente Spielerei: beim Wechsel des Fahrzeugart-Filters fährt/schwimmt
+// das passende Icon einmal quer über den Bildschirm
+function playCategoryDriveByAnimation(category) {
+  if (category === 'all') return;
+
+  const existing = document.querySelector('.category-drive-by-icon');
+  if (existing) existing.remove();
+
+  const icon = document.createElement('div');
+  icon.className = 'category-drive-by-icon';
+  icon.innerHTML = getCategoryIconSvg(category);
+  document.body.appendChild(icon);
+
+  setTimeout(() => icon.remove(), 2500);
 }
 window.setVehicleCategoryFilter = setVehicleCategoryFilter;
 
@@ -1645,24 +1662,42 @@ function renderFuelTable() {
   }
 
   // 1. Sortierung für die Verbrauchsberechnung (aufsteigend nach Kilometerstand)
+  // Verbrauch wird nach der "Voll-zu-Voll"-Methode berechnet: von einer Volltankung
+  // bis zur nächsten, wobei die Literzahl ALLER Tankungen dazwischen (auch
+  // Teilbetankungen) zusammengezählt wird - nur so stimmt die Strecke zur Menge.
   const sortedFuel = [...v.fuelEntries].sort((a, b) => a.mileage - b.mileage);
   const consumptionMap = {};
   const unitLabel = v.type === 'km' ? 'L/100km' : 'L/Std';
+  let lastFullIndex = -1;
 
   for (let i = 0; i < sortedFuel.length; i++) {
     const current = sortedFuel[i];
-    if (i === 0 || !current.full) {
+
+    if (!current.full) {
       consumptionMap[current.id] = '-';
       continue;
     }
-    const previous = sortedFuel[i - 1];
-    const dist = current.mileage - previous.mileage;
-    if (dist > 0) {
-      const consumption = (current.liters / dist) * 100;
-      consumptionMap[current.id] = `${consumption.toFixed(2)} ${unitLabel}`;
-    } else {
+
+    if (lastFullIndex === -1) {
       consumptionMap[current.id] = '-';
+    } else {
+      const previousFull = sortedFuel[lastFullIndex];
+      const dist = current.mileage - previousFull.mileage;
+
+      let totalLiters = 0;
+      for (let j = lastFullIndex + 1; j <= i; j++) {
+        totalLiters += sortedFuel[j].liters || 0;
+      }
+
+      if (dist > 0) {
+        const consumption = (totalLiters / dist) * 100;
+        consumptionMap[current.id] = `${consumption.toFixed(2)} ${unitLabel}`;
+      } else {
+        consumptionMap[current.id] = '-';
+      }
     }
+
+    lastFullIndex = i;
   }
 
   // 2. Sortierung für die Anzeige in der Tabelle (neueste Einträge zuerst)
@@ -1678,7 +1713,9 @@ function renderFuelTable() {
   entriesToRender.forEach(f => {
     const tr = document.createElement('tr');
     const additiveBadge = f.hasAdditive ? `<span class="badge-additive" title="${f.additiveName || ''}">🧪 ${f.additiveName || 'Zusatz'}</span>` : '-';
-    const consumptionVal = consumptionMap[f.id] || '-';
+    const consumptionVal = f.full
+      ? (consumptionMap[f.id] || '-')
+      : '<span class="badge badge-partial" title="Teilbetankung – fließt erst in die nächste Volltankung mit ein">Teilbetankung</span>';
     const pricePerLiterVal = f.pricePerLiter ? `${f.pricePerLiter.toFixed(3)} €` : '-';
 
     tr.innerHTML = `
@@ -2218,15 +2255,20 @@ function renderDashboard() {
   const maxMileage = allMileage.length > 0 ? Math.max(...allMileage) : 0;
   document.getElementById('kpi-mileage').innerText = `${maxMileage.toLocaleString()} ${v.type === 'km' ? 'km' : 'Std'}`;
 
-  const fullTankings = [...fuelList].filter(f => f.full).sort((a,b) => a.mileage - b.mileage);
+  // Voll-zu-Voll-Methode: Strecke zwischen erster & letzter Volltankung, aber die
+  // Literzahl ALLER Tankungen (auch Teilbetankungen) dazwischen zusammenzählen
+  const sortedFuelForAvg = [...fuelList].sort((a, b) => a.mileage - b.mileage);
+  const fullTankings = sortedFuelForAvg.filter(f => f.full);
   let totalLiters = 0;
   let totalDist = 0;
 
   if (fullTankings.length >= 2) {
-    totalDist = fullTankings[fullTankings.length - 1].mileage - fullTankings[0].mileage;
-    for (let i = 1; i < fullTankings.length; i++) {
-      totalLiters += fullTankings[i].liters;
-    }
+    const firstFull = fullTankings[0];
+    const lastFull = fullTankings[fullTankings.length - 1];
+    totalDist = lastFull.mileage - firstFull.mileage;
+    totalLiters = sortedFuelForAvg
+      .filter(f => f.mileage > firstFull.mileage && f.mileage <= lastFull.mileage)
+      .reduce((sum, f) => sum + (f.liters || 0), 0);
   }
 
   const avgConsumption = totalDist > 0 ? (totalLiters / totalDist) * 100 : 0;
@@ -2327,17 +2369,32 @@ function renderCharts(v) {
   const fuelList = v.fuelEntries || [];
   const serviceList = v.serviceEntries || [];
 
-  const fullTankings = [...fuelList].filter(f => f.full).sort((a,b) => a.mileage - b.mileage);
+  // Voll-zu-Voll-Methode wie in der Tankliste: Teilbetankungen fließen in die
+  // jeweils nächste Volltankung mit ein, statt ignoriert zu werden
+  const sortedFuelForChart = [...fuelList].sort((a, b) => a.mileage - b.mileage);
   const labels = [];
   const dataPoints = [];
+  let lastFullIdxChart = -1;
 
-  for (let i = 1; i < fullTankings.length; i++) {
-    const dist = fullTankings[i].mileage - fullTankings[i-1].mileage;
-    if (dist > 0) {
-      const cons = (fullTankings[i].liters / dist) * 100;
-      labels.push(fullTankings[i].date);
-      dataPoints.push(cons.toFixed(2));
+  for (let i = 0; i < sortedFuelForChart.length; i++) {
+    const current = sortedFuelForChart[i];
+    if (!current.full) continue;
+
+    if (lastFullIdxChart !== -1) {
+      const previousFull = sortedFuelForChart[lastFullIdxChart];
+      const dist = current.mileage - previousFull.mileage;
+      if (dist > 0) {
+        let totalLitersChart = 0;
+        for (let j = lastFullIdxChart + 1; j <= i; j++) {
+          totalLitersChart += sortedFuelForChart[j].liters || 0;
+        }
+        const cons = (totalLitersChart / dist) * 100;
+        labels.push(current.date);
+        dataPoints.push(cons.toFixed(2));
+      }
     }
+
+    lastFullIdxChart = i;
   }
 
   const consCanvas = document.getElementById('consumptionChart');
@@ -3470,12 +3527,17 @@ function printSaleReport() {
   const mileageUnit = v.type === 'hours' ? 'Std' : 'km';
   const currentMileageStr = `${currentMileage.toLocaleString('de-DE')} ${mileageUnit}`;
 
-  const fullTankings = [...fuelList].filter(f => f.full).sort((a, b) => a.mileage - b.mileage);
+  // Voll-zu-Voll-Methode: Teilbetankungen fließen mit ein statt ignoriert zu werden
+  const sortedFuelForReport = [...fuelList].sort((a, b) => a.mileage - b.mileage);
+  const fullTankings = sortedFuelForReport.filter(f => f.full);
   let avgConsumption = 0;
   if (fullTankings.length >= 2) {
-    const totalDist = fullTankings[fullTankings.length - 1].mileage - fullTankings[0].mileage;
-    let totalLiters = 0;
-    for (let i = 1; i < fullTankings.length; i++) totalLiters += fullTankings[i].liters;
+    const firstFull = fullTankings[0];
+    const lastFull = fullTankings[fullTankings.length - 1];
+    const totalDist = lastFull.mileage - firstFull.mileage;
+    const totalLiters = sortedFuelForReport
+      .filter(f => f.mileage > firstFull.mileage && f.mileage <= lastFull.mileage)
+      .reduce((sum, f) => sum + (f.liters || 0), 0);
     avgConsumption = totalDist > 0 ? (totalLiters / totalDist) * 100 : 0;
   }
   const consumptionUnit = v.type === 'hours' ? 'L/Std' : 'L/100km';
