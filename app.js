@@ -5,6 +5,7 @@ let appData = {
   theme: "dark",
   backgroundStyle: "concrete",
   accentColor: "amber",
+  uiStyle: "standard",
   customerVehiclesEnabled: true,
   vehicles: [],
   customerVehicles: [],
@@ -84,6 +85,9 @@ function initApp() {
   if (appData.customerVehiclesEnabled === undefined) {
     appData.customerVehiclesEnabled = true;
   }
+  if (!appData.uiStyle) {
+    appData.uiStyle = 'standard';
+  }
   // Migration: bestehende Fahrzeuge bekommen den neuen Archiv-Status nachgereicht
   appData.vehicles.forEach(v => {
     if (v.archived === undefined) v.archived = false;
@@ -104,6 +108,7 @@ function initApp() {
   applyTheme(appData.theme || 'dark');
   applyBackgroundStyle(appData.backgroundStyle);
   applyAccentColor(appData.accentColor);
+  applyUiStyle(appData.uiStyle);
   applyCustomerVehiclesVisibility();
 
   const fuelDateEl = document.getElementById('fuelDate');
@@ -243,6 +248,25 @@ function applyAccentColor(color) {
     btn.classList.toggle('active', btn.getAttribute('data-accent') === (color || 'amber'));
   });
 }
+
+// Wendet den gewählten Design-Stil an (Standard oder Cockpit-Design)
+function applyUiStyle(style) {
+  document.documentElement.setAttribute('data-ui-style', style || 'standard');
+
+  const standardBtn = document.getElementById('uiStyleStandard');
+  const cockpitBtn = document.getElementById('uiStyleCockpit');
+  if (standardBtn && cockpitBtn) {
+    standardBtn.classList.toggle('active', (style || 'standard') === 'standard');
+    cockpitBtn.classList.toggle('active', style === 'cockpit');
+  }
+}
+
+function setUiStyle(style) {
+  appData.uiStyle = style;
+  saveData();
+  applyUiStyle(style);
+}
+window.setUiStyle = setUiStyle;
 
 function setAccentColor(color) {
   appData.accentColor = color;
@@ -3426,6 +3450,7 @@ function openSettingsModal() {
   applyTheme(appData.theme || 'dark');
   applyBackgroundStyle(appData.backgroundStyle || 'concrete');
   applyAccentColor(appData.accentColor || 'amber');
+  applyUiStyle(appData.uiStyle || 'standard');
   applyCustomerVehiclesVisibility();
 
   document.getElementById('settingsModal').classList.add('active');

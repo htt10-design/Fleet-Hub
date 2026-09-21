@@ -2148,3 +2148,73 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
+
+/* ==========================================================================
+   COCKPIT-DESIGN (Einstellungen > Darstellung > Design-Stil)
+   Detaillierte 3D-Kippschalter mit Leucht-LED für Navigation & Filter,
+   Halbkreis-Rundinstrumente fürs Dashboard. Der Rest der App (Formulare,
+   Tabellen, Listen) bleibt bewusst unverändert.
+   ========================================================================== */
+
+/* --- Gemeinsame Kippschalter-Optik (Navigation + Fahrzeugart-Filter) --- */
+[data-ui-style="cockpit"] .nav-item,
+[data-ui-style="cockpit"] .category-filter-chip {
+  position: relative;
+  border: 1px solid var(--border-color);
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-body) 55%, var(--bg-card) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.3),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-ui-style="cockpit"] .nav-item.active,
+[data-ui-style="cockpit"] .category-filter-chip.active {
+  background: linear-gradient(180deg, var(--bg-body) 0%, var(--bg-card) 60%, var(--bg-body) 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+}
+
+[data-ui-style="cockpit"] .nav-item::after,
+[data-ui-style="cockpit"] .category-filter-chip::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #4a4a4a, #101010 75%);
+  box-shadow:
+    inset 0 0 2px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-ui-style="cockpit"] .nav-item.active::after,
+[data-ui-style="cockpit"] .category-filter-chip.active::after {
+  background: radial-gradient(circle at 35% 30%, #fff8dc, var(--accent-primary) 70%);
+  box-shadow:
+    inset 0 0 1px rgba(255, 255, 255, 0.5),
+    0 0 2px 1px var(--accent-primary),
+    0 0 5px 1px var(--accent-primary);
+}
+
+[data-ui-style="cockpit"] .nav-item {
+  padding-right: 1.8rem;
+}
+
+[data-ui-style="cockpit"] .nav-item::after {
+  right: 0.75rem;
+}
+
+[data-ui-style="cockpit"] .category-filter-chip {
+  padding-right: 1.7rem;
+  border-radius: 6px;
+}
+
+[data-ui-style="cockpit"] .category-filter-chip::after {
+  right: 0.55rem;
+}
