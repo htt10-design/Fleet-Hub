@@ -412,6 +412,50 @@ function getEngineCurrentHours(v, engineId) {
   return relevant.length > 0 ? Math.max(...relevant) : 0;
 }
 
+/* --- KM-/STUNDEN-EINGABEFELDER: AUTOMATISCHE TAUSENDERPUNKTE --- */
+// Live-Formatierung während der Eingabe (z.B. "333200" -> "333.200").
+// Erlaubt ein Komma für Nachkommastellen (z.B. Betriebsstunden "145,5").
+function formatMileageInput(input) {
+  let raw = input.value.replace(/[^\d,]/g, '');
+
+  const commaIndex = raw.indexOf(',');
+  let intPart = commaIndex === -1 ? raw : raw.slice(0, commaIndex);
+  let decPart = commaIndex === -1 ? undefined : raw.slice(commaIndex + 1).replace(/,/g, '').slice(0, 2);
+
+  intPart = intPart.replace(/^0+(?=\d)/, '');
+  intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  input.value = decPart !== undefined ? `${intPart},${decPart}` : intPart;
+}
+window.formatMileageInput = formatMileageInput;
+
+// Wandelt einen formatierten Wert ("333.200" oder "145,5") in eine echte Zahl um
+function parseFormattedNumber(str) {
+  if (!str) return 0;
+  const normalized = str.toString().replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(normalized);
+  return isNaN(num) ? 0 : num;
+}
+window.parseFormattedNumber = parseFormattedNumber;
+
+// Wandelt eine echte Zahl in die formatierte Anzeige um ("333200" -> "333.200"),
+// z.B. zum Vorbefüllen eines Feldes beim Bearbeiten eines Eintrags
+function formatNumberForDisplay(num) {
+  if (num === null || num === undefined || num === '' || isNaN(num)) return '';
+  const parts = num.toString().split('.');
+  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return parts[1] ? `${intPart},${parts[1].slice(0, 2)}` : intPart;
+}
+window.formatNumberForDisplay = formatNumberForDisplay;
+
+// Sortiert Einträge nach Datum (neueste zuerst); bei gleichem Datum kommt
+// der Eintrag mit dem höheren KM-Stand/Betriebsstunden zuerst
+function compareByDateThenMileageDesc(a, b) {
+  const dateDiff = new Date(b.date) - new Date(a.date);
+  if (dateDiff !== 0) return dateDiff;
+  return (b.mileage || 0) - (a.mileage || 0);
+}
+
 function getVehicleCurrentMileage(v) {
   const fuelList = v.fuelEntries || [];
   const serviceList = v.serviceEntries || [];
@@ -1053,7 +1097,7 @@ function updateUnitLabels() {
   if (serviceKmLabel) serviceKmLabel.innerText = isKm ? "KM-Stand" : "Betriebsstunden";
   if (kpiMileageUnit) kpiMileageUnit.innerText = isKm ? "Kilometerstand" : "Betriebsstunden";
   if (nextServiceKmLabel) nextServiceKmLabel.innerText = isKm ? "Bei KM-Stand" : "Bei Betriebsstunden";
-  if (nextServiceKmInput) nextServiceKmInput.placeholder = isKm ? "z.B. 160000" : "z.B. 250";
+  if (nextServiceKmInput) nextServiceKmInput.placeholder = isKm ? "z.B. 160.000" : "z.B. 250";
 }
 
 // Blendet den "Tanken"-Bereich (Nav-Punkt + Kraftstoffart-Feld) aus, wenn die
@@ -1288,7 +1332,7 @@ function createNewVehicle(e) {
   const fuelTypeEl = document.getElementById('newVFuelType');
   const mileageEl = document.getElementById('newVMileage');
 
-  const startMileage = parseFloat(mileageEl ? mileageEl.value : 0) || 0;
+  const startMileage = mileageEl ? parseFormattedNumber(mileageEl.value) : 0;
   
   const newV = {
     id: "v_" + Date.now(),
@@ -1611,7 +1655,7 @@ function saveFuelEntry(e) {
     id: editId ? editId : "f_" + Date.now(),
     date: document.getElementById('fuelDate').value,
     fuelType: finalFuelType,
-    mileage: parseFloat(document.getElementById('fuelMileage').value) || 0,
+    mileage: parseFormattedNumber(document.getElementById('fuelMileage').value) || 0,
     liters: parseFloat(document.getElementById('fuelLiters').value) || 0,
     totalPrice: parseFloat(document.getElementById('fuelTotalPrice').value) || 0,
     pricePerLiter: parseFloat(document.getElementById('fuelPricePerLiter').value) || 0,
@@ -1630,7 +1674,7 @@ function saveFuelEntry(e) {
     v.fuelEntries.push(entry);
   }
 
-  v.fuelEntries.sort((a,b) => new Date(b.date) - new Date(a.date));
+  v.fuelEntries.sort(compareByDateThenMileageDesc);
 
   saveData();
   closeFuelFormModal();
@@ -1657,7 +1701,7 @@ function editFuelEntry(id) {
     document.getElementById('fuelCustomType').value = entry.fuelType || '';
   }
 
-  document.getElementById('fuelMileage').value = entry.mileage;
+  document.getElementById('fuelMileage').value = formatNumberForDisplay(entry.mileage);
   document.getElementById('fuelLiters').value = entry.liters;
   document.getElementById('fuelTotalPrice').value = entry.totalPrice;
   document.getElementById('fuelPricePerLiter').value = entry.pricePerLiter;
@@ -1759,7 +1803,7 @@ function renderFuelTable() {
   }
 
   // 2. Sortierung für die Anzeige in der Tabelle (neueste Einträge zuerst)
-  const displaySorted = [...v.fuelEntries].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const displaySorted = [...v.fuelEntries].sort(compareByDateThenMileageDesc);
 
   // 3. Auf max. 5 Einträge begrenzen (falls nicht ausgeklappt)
   const hasMoreThan10 = displaySorted.length > 5;
@@ -1883,13 +1927,13 @@ function saveServiceEntry(e) {
     category: document.getElementById('serviceCategory').value,
     title: document.getElementById('serviceTitle').value,
     date: document.getElementById('serviceDate').value,
-    mileage: parseFloat(document.getElementById('serviceMileage').value) || 0,
+    mileage: parseFormattedNumber(document.getElementById('serviceMileage').value) || 0,
     cost: parseFloat(document.getElementById('serviceCost').value) || 0,
     performer: document.getElementById('servicePerformer').value,
     notes: document.getElementById('serviceNotes').value,
     images: [...tempServiceImages],
     // Wiederholungs-Erinnerung (nur bei Kategorie "Wartung" befüllt, sonst leer)
-    nextKm: parseFloat(document.getElementById('nextServiceKm').value) || null,
+    nextKm: parseFormattedNumber(document.getElementById('nextServiceKm').value) || null,
     nextDate: document.getElementById('nextServiceDate').value || null,
     // Bei Booten mit mehreren Motoren: welcher Motor betroffen ist (leer = Allgemein/Rumpf)
     engineId: document.getElementById('serviceEngineSelect') ? (document.getElementById('serviceEngineSelect').value || null) : null
@@ -1904,7 +1948,7 @@ function saveServiceEntry(e) {
     v.serviceEntries.push(entry);
   }
 
-  v.serviceEntries.sort((a,b) => new Date(b.date) - new Date(a.date));
+  v.serviceEntries.sort(compareByDateThenMileageDesc);
 
   saveData();
   closeServiceFormModal();
@@ -1965,7 +2009,7 @@ function openStandEntryModal() {
     enginesContainer.innerHTML = engines.map(e => `
       <div class="form-group">
         <label>${e.name || 'Motor'} - Betriebsstunden</label>
-        <input type="number" step="0.1" inputmode="decimal" class="stand-entry-engine-input" data-engine-id="${e.id}" placeholder="z.B. 320">
+        <input type="text" inputmode="decimal" class="stand-entry-engine-input" data-engine-id="${e.id}" placeholder="z.B. 320" oninput="formatMileageInput(this)">
       </div>
     `).join('');
   } else {
@@ -1998,8 +2042,8 @@ function saveStandEntry(e) {
     // Standmeldung pro Motor (nur ausgefüllte Felder übernehmen)
     let savedAny = false;
     engineInputs.forEach(input => {
-      const val = parseFloat(input.value);
-      if (!val && val !== 0) return;
+      if (!input.value || input.value.trim() === '') return;
+      const val = parseFormattedNumber(input.value);
       const engineId = input.getAttribute('data-engine-id');
       const engine = getBoatEngines(v).find(x => x.id === engineId);
       v.serviceEntries.push({
@@ -2022,11 +2066,12 @@ function saveStandEntry(e) {
       return;
     }
   } else {
-    const val = parseFloat(document.getElementById('standEntrySingleValue').value);
-    if (!val && val !== 0) {
+    const rawStandValue = document.getElementById('standEntrySingleValue').value;
+    if (!rawStandValue || rawStandValue.trim() === '') {
       alert("Bitte einen Stand eingeben.");
       return;
     }
+    const val = parseFormattedNumber(rawStandValue);
     v.serviceEntries.push({
       id: "s_" + Date.now(),
       category: "Sonstiges",
@@ -2042,7 +2087,7 @@ function saveStandEntry(e) {
     });
   }
 
-  v.serviceEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+  v.serviceEntries.sort(compareByDateThenMileageDesc);
   saveData();
   closeStandEntryModal();
   renderServiceTable();
@@ -2101,7 +2146,7 @@ function renderServiceTable() {
   }
 
   // 1. Nach Datum sortieren (neueste Einträge zuerst)
-  const sortedServices = [...relevantEntries].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sortedServices = [...relevantEntries].sort(compareByDateThenMileageDesc);
 
   // 2. Auf max. 5 Einträge begrenzen (falls nicht ausgeklappt)
   const hasMoreThan5 = sortedServices.length > 5;
@@ -2171,11 +2216,11 @@ function editServiceEntry(id) {
   document.getElementById('serviceCategory').value = entry.category;
   document.getElementById('serviceTitle').value = entry.title;
   document.getElementById('serviceDate').value = entry.date;
-  document.getElementById('serviceMileage').value = entry.mileage;
+  document.getElementById('serviceMileage').value = formatNumberForDisplay(entry.mileage);
   document.getElementById('serviceCost').value = entry.cost;
   document.getElementById('servicePerformer').value = entry.performer;
   document.getElementById('serviceNotes').value = entry.notes || '';
-  document.getElementById('nextServiceKm').value = entry.nextKm || '';
+  document.getElementById('nextServiceKm').value = formatNumberForDisplay(entry.nextKm);
   document.getElementById('nextServiceDate').value = entry.nextDate || '';
   toggleRoutineIntervalFields();
 
@@ -2593,7 +2638,7 @@ function renderHistoryTable() {
   }
 
   // 3. Nach Datum sortieren (neueste zuerst)
-  combined.sort((a, b) => new Date(b.date) - new Date(a.date));
+  combined.sort(compareByDateThenMileageDesc);
 
   // 4. Auf max. 5 Einträge begrenzen (sofern nicht ausgeklappt und keine Suche aktiv ist)
   const hasMoreThan5 = combined.length > 5;
@@ -2915,7 +2960,7 @@ function saveCustomerServiceEntry(e) {
     c.services.push(entry);
   }
 
-  c.services.sort((a,b) => new Date(b.date) - new Date(a.date));
+  c.services.sort(compareByDateThenMileageDesc);
 
   saveData();
   resetCustomerServiceForm();
@@ -2951,7 +2996,7 @@ function renderCustomerServiceTable() {
   }
 
   // 1. Nach Datum sortieren (neueste Einträge zuerst)
-  const sortedServices = [...c.services].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sortedServices = [...c.services].sort(compareByDateThenMileageDesc);
 
   // 2. Auf max. 5 Einträge begrenzen (falls nicht ausgeklappt)
   const hasMoreThan5 = sortedServices.length > 5;
@@ -3536,7 +3581,7 @@ function printSaleReport() {
   const category = v.category || 'auto';
   const fuelList = v.fuelEntries || [];
   const serviceList = v.serviceEntries || [];
-  const sortedServices = [...serviceList].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sortedServices = [...serviceList].sort(compareByDateThenMileageDesc);
 
   // Dezente, professionelle Farbcodierung je Kategorie (helle Pastelltöne)
   function getCategoryStyle(cat) {

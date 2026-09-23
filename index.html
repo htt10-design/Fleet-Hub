@@ -331,7 +331,7 @@
               <div class="form-row">
                 <div class="form-group">
                   <label id="fuelKmLabel">KM-Stand / Betr.-Std.</label>
-                  <input type="number" step="0.1" id="fuelMileage" inputmode="decimal" required placeholder="185000">
+                  <input type="text" id="fuelMileage" inputmode="decimal" required placeholder="185.000" oninput="formatMileageInput(this)">
                 </div>
                 <div class="form-group">
                   <label>Getankte Menge (Liter)</label>
@@ -440,7 +440,7 @@
         </div>
         <div class="form-group">
           <label id="serviceKmLabel">KM-Stand / Betr.-Std.</label>
-          <input type="number" step="0.1" id="serviceMileage" inputmode="decimal" required>
+          <input type="text" id="serviceMileage" inputmode="decimal" required oninput="formatMileageInput(this)">
         </div>
       </div>
 
@@ -450,7 +450,7 @@
         <div class="form-row">
           <div class="form-group">
             <label id="nextServiceKmLabel">Bei KM-Stand</label>
-            <input type="number" step="0.1" id="nextServiceKm" inputmode="decimal" placeholder="z.B. 160000">
+            <input type="text" id="nextServiceKm" inputmode="decimal" placeholder="z.B. 160.000" oninput="formatMileageInput(this)">
           </div>
           <div class="form-group">
             <label>Am Datum</label>
@@ -1027,7 +1027,7 @@
         </div>
         <div class="form-group" id="newVMileageGroup">
           <label>Initialer Stand</label>
-          <input type="number" step="0.1" id="newVMileage" inputmode="decimal" value="0" required>
+          <input type="text" id="newVMileage" inputmode="decimal" value="0" required oninput="formatMileageInput(this)">
         </div>
         <div class="modal-actions">
           <button type="submit" class="btn btn-primary">Anlegen</button>
@@ -1105,7 +1105,7 @@
         </div>
         <div id="standEntrySingleGroup" class="form-group">
           <label id="standEntrySingleLabel">Aktueller Stand</label>
-          <input type="number" step="0.1" id="standEntrySingleValue" inputmode="decimal" placeholder="z.B. 185500">
+          <input type="text" id="standEntrySingleValue" inputmode="decimal" placeholder="z.B. 185.500" oninput="formatMileageInput(this)">
         </div>
         <div id="standEntryEnginesContainer"></div>
         <div class="form-actions">
