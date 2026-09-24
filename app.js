@@ -474,6 +474,88 @@ function formatTuevDate(value) {
   return value;
 }
 
+// Ermittelt Daten für die kleine TÜV-Plaketten-Grafik auf der Fahrzeugkachel:
+// echte 6-Jahres-Farbrotation (Braun/Rosa/Grün/Orange/Blau/Gelb), Monat & Jahr
+// zur Anzeige, sowie ob der Termin überfällig ist. Bei Booten gibt's keine
+// Plakette (TÜV nicht relevant); ohne eingetragenes Datum eine leere Plakette.
+function getTuevPlaketteData(v, compact) {
+  if (v.category === 'boot') return null;
+
+  if (!v.nextTuev) {
+    return { empty: true, overdue: false, month: '', year: '', colorClass: '' };
+  }
+
+  const tuevColors = ['braun', 'rosa', 'gruen', 'orange', 'blau', 'gelb'];
+  const parts = v.nextTuev.split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parts[1];
+  const colorClass = 'color-' + tuevColors[((year % 6) + 6) % 6];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(v.nextTuev + '-01');
+  const overdue = due < today;
+
+  return {
+    empty: false,
+    overdue,
+    month,
+    year: (year % 100).toString().padStart(2, '0'),
+    colorClass,
+    monthRingHtml: buildTuevMonthRing(parseInt(month, 10), compact)
+  };
+}
+
+// Baut das fertige HTML für eine TÜV-Plakette aus den Daten von getTuevPlaketteData()
+// (wird sowohl auf der Fahrzeugkachel als auch im Dashboard verwendet)
+function renderTuevPlaketteHtml(plakette) {
+  if (!plakette) return '';
+  if (plakette.empty) return `<div class="tuev-plakette tuev-plakette-empty"></div>`;
+  return `
+    <div class="tuev-plakette ${plakette.colorClass}">
+      <div class="tuev-plakette-ring">${plakette.monthRingHtml}</div>
+      <div class="tuev-plakette-center">
+        <span class="tuev-plakette-year">${plakette.year}</span>
+      </div>
+      ${plakette.overdue ? '<span class="tuev-plakette-overdue-badge">!</span>' : ''}
+    </div>
+  `;
+}
+
+// Baut den Zahlenkranz mit allen 12 Monaten am Rand der Plakette (wie beim
+// echten Vorbild): jede Zahl radial ausgerichtet (wie ein Uhrzeiger gedreht)
+// und so positioniert, dass der fällige Monat oben (12-Uhr) steht
+function buildTuevMonthRing(dueMonth, compact) {
+  let html = '';
+  const numRadius = compact ? 11 : 17; // Abstand der Zahlen vom Mittelpunkt (mittig zwischen innerem & äußerem Strich)
+  const tickRadius = compact ? 16 : 24; // Abstand der äußeren Strichmarken (näher am Rand)
+  const innerTickRadius = compact ? 8 : 12; // Abstand der kurzen inneren Striche (knapp außerhalb des Jahreskreises, bis zur Zahl)
+
+  // Je Monat: kurzer Strich innen, Zahl in der Mitte, langer Strich außen -
+  // alle drei auf derselben Linie/Winkel ausgerichtet.
+  // Bei Monat 12 gibt's zusätzlich die spezielle, breitere Markierung wie beim Original.
+  for (let m = 1; m <= 12; m++) {
+    const angleDeg = (m - dueMonth) * 30; // 0° = oben, im Uhrzeigersinn
+    const isTwoDigit = m >= 10;
+
+    // Kurzer Strich von innen kommend (gleiche Stärke wie der äußere Strich)
+    html += `<span class="tuev-plakette-tick tuev-plakette-tick-inner" style="transform: translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${innerTickRadius}px);"></span>`;
+
+    if (m === 12) {
+      // Spezialmarkierung: sitzt weiter außen und ragt NICHT in die Zahl hinein -
+      // wirkt wie ein an dieser Stelle dickerer Rand
+      html += `<span class="tuev-plakette-tick tuev-plakette-tick-special" style="transform: translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${tickRadius + 2}px);"></span>`;
+    } else {
+      html += `<span class="tuev-plakette-tick" style="transform: translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${tickRadius}px);"></span>`;
+    }
+
+    const numClass = isTwoDigit ? 'tuev-plakette-ring-num tuev-plakette-ring-num-narrow' : 'tuev-plakette-ring-num';
+    html += `<span class="${numClass}" style="transform: translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${numRadius}px);">${m}</span>`;
+  }
+
+  return html;
+}
+
 // Ermittelt anstehende Routine-Wartungen anhand der hinterlegten KM-/Datums-Erinnerung.
 // Pro Titel wird nur der jeweils neueste Wartungseintrag berücksichtigt (eine neue
 // Wartung zum selben Thema ersetzt die alte Erinnerung).
@@ -787,15 +869,23 @@ function renderGarageVehicleTiles() {
     const hsn = v.hsn || '-';
     const tsn = v.tsn || '-';
 
-    // TÜV: immer anzeigen, mit Überfällig-Hinweis falls Termin überschritten
-    let tuevOverdue = false;
-    let tuevText = '-';
-    if (v.nextTuev) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const due = new Date(v.nextTuev.length === 7 ? v.nextTuev + '-01' : v.nextTuev);
-      tuevOverdue = due < today;
-      tuevText = formatTuevDate(v.nextTuev) + (tuevOverdue ? ' (überfällig)' : '');
+    // TÜV-Plakette (rechts auf der Kachel) statt Textzeile
+    const tuevPlakette = getTuevPlaketteData(v, isAllFilter);
+    let tuevBadgeHtml = '';
+    if (tuevPlakette) {
+      if (tuevPlakette.empty) {
+        tuevBadgeHtml = `<div class="tuev-plakette tuev-plakette-empty"></div>`;
+      } else {
+        tuevBadgeHtml = `
+          <div class="tuev-plakette ${tuevPlakette.colorClass}">
+            <div class="tuev-plakette-ring">${tuevPlakette.monthRingHtml}</div>
+            <div class="tuev-plakette-center">
+              <span class="tuev-plakette-year">${tuevPlakette.year}</span>
+            </div>
+            ${tuevPlakette.overdue ? '<span class="tuev-plakette-overdue-badge">!</span>' : ''}
+          </div>
+        `;
+      }
     }
 
     // Nächste anstehende Routine-Wartung (dringendste zuerst)
@@ -806,9 +896,6 @@ function renderGarageVehicleTiles() {
 
     const hsnTsnHtml = v.category !== 'boot'
       ? `<span><strong>HSN/TSN:</strong> ${hsn} / ${tsn}</span>`
-      : '';
-    const tuevHtml = v.category !== 'boot'
-      ? `<span class="${tuevOverdue ? 'reminder-overdue-text' : ''}"><strong>Nächster TÜV:</strong> ${tuevText}</span>`
       : '';
 
     const mileageLabel = v.type === 'hours' ? 'Betriebsstunden' : 'KM-Stand';
@@ -827,13 +914,13 @@ function renderGarageVehicleTiles() {
 
     card.innerHTML = `
       <div class="vehicle-tile-category-badge">${getCategoryIconSvg(v.category)}</div>
+      ${tuevBadgeHtml}
       ${imageHtml}
       <h3>${v.name || 'Unbenanntes Fahrzeug'}</h3>
       <p>${v.plate || 'Kein Kennzeichen'} ${(v.fuelType && vehicleHasEngine(v)) ? '• ' + v.fuelType : ''}</p>
       <div class="vehicle-tile-info">
         ${mileageHtml}
         ${hsnTsnHtml}
-        ${tuevHtml}
         ${belongsToHtml}
         ${maintenanceHtml}
       </div>
@@ -2331,6 +2418,28 @@ function renderDashboard() {
     document.getElementById('dashVehicleVin').innerText = `VIN: ${v.vin || '-'}`;
   }
   document.getElementById('dashVehicleSpecs').innerText = v.specs || 'Keine Spezifikationen eingetragen.';
+
+  // TÜV-Plakette auf dem Fahrzeugfoto im Dashboard (wie auf der Kachel)
+  const dashPlaketteContainer = document.getElementById('dashTuevPlakette');
+  if (dashPlaketteContainer) {
+    const dashTuevPlakette = getTuevPlaketteData(v, false);
+    if (!dashTuevPlakette) {
+      dashPlaketteContainer.innerHTML = '';
+    } else if (dashTuevPlakette.empty) {
+      dashPlaketteContainer.innerHTML = `<div class="tuev-plakette tuev-plakette-empty"></div>`;
+    } else {
+      dashPlaketteContainer.innerHTML = `
+        <div class="tuev-plakette ${dashTuevPlakette.colorClass}">
+          <div class="tuev-plakette-ring">${dashTuevPlakette.monthRingHtml}</div>
+          <div class="tuev-plakette-center">
+            <span class="tuev-plakette-year">${dashTuevPlakette.year}</span>
+          </div>
+          ${dashTuevPlakette.overdue ? '<span class="tuev-plakette-overdue-badge">!</span>' : ''}
+        </div>
+      `;
+    }
+  }
+
   const hsn = v.hsn || '-';
   const tsn = v.tsn || '-';
   document.getElementById('dashVehicleHsnTsn').innerText = `HSN/TSN: ${hsn} / ${tsn}`;

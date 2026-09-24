@@ -459,6 +459,147 @@ body[data-bg-style="mercedes-classic"],
   height: 14px;
 }
 
+/* TÜV-Plakette rechts auf der Fahrzeugkachel (Autos & Anhänger) */
+.tuev-plakette {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 0, 0, 0.85);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  font-family: Arial, Helvetica, sans-serif;
+  z-index: 2;
+}
+
+.tuev-plakette-ring {
+  position: absolute;
+  inset: 0;
+}
+
+.tuev-plakette-ring-num {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #14110c;
+}
+
+/* Kurze Strichmarken nur am äußeren Rand (wie Minutenstriche einer Uhr),
+   nicht bis zur Mitte durchgehend - genau zwischen zwei Monatszahlen */
+.tuev-plakette-tick {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1.6px;
+  height: 11%;
+  background-color: #14110c;
+  border-radius: 1px;
+}
+
+/* Spezielle Markierung bei Monat 12: sitzt nur außen am Rand (wie ein an
+   dieser Stelle dickerer Rand), ragt aber nicht in die Zahl hinein */
+.tuev-plakette-tick-special {
+  width: 16%;
+  height: 12%;
+  border-radius: 1px;
+}
+
+/* Kurzer Strich von innen kommend, gleiche Stärke wie der äußere Strich,
+   auf derselben Linie wie Zahl und äußerer Strich - reicht nur knapp bis zur
+   Zahl heran, ragt aber nicht in den Jahreskreis hinein */
+.tuev-plakette-tick-inner {
+  height: 6%;
+}
+
+/* Zweistellige Monate (10/11/12) enger/schmaler, damit sie sich nicht
+   mit den Nachbarzahlen überschneiden */
+.tuev-plakette-ring-num-narrow {
+  letter-spacing: -1.2px;
+  font-size: 0.5rem;
+}
+
+.tuev-plakette-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32%;
+  height: 32%;
+  border-radius: 50%;
+  border: 1.6px solid rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tuev-plakette-year {
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #14110c;
+}
+
+.tuev-plakette.color-braun { background-color: rgba(138, 90, 46, 0.8); }
+.tuev-plakette.color-rosa { background-color: rgba(226, 143, 174, 0.8); }
+.tuev-plakette.color-gruen { background-color: rgba(79, 158, 74, 0.8); }
+.tuev-plakette.color-orange { background-color: rgba(239, 125, 26, 0.8); }
+.tuev-plakette.color-blau { background-color: rgba(63, 127, 193, 0.8); }
+.tuev-plakette.color-gelb { background-color: rgba(242, 197, 24, 0.8); }
+
+.tuev-plakette-empty {
+  background-color: #cfcfcf;
+  border-style: dashed;
+}
+
+.tuev-plakette-overdue-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: #e11d1d;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.vehicle-tile-compact .tuev-plakette {
+  width: 44px;
+  height: 44px;
+  top: 0.4rem;
+  right: 0.4rem;
+}
+
+.vehicle-tile-compact .tuev-plakette-ring-num {
+  font-size: 0.44rem;
+}
+
+.vehicle-tile-compact .tuev-plakette-year {
+  font-size: 0.5rem;
+}
+
+.vehicle-tile-compact .tuev-plakette-overdue-badge {
+  width: 12px;
+  height: 12px;
+  font-size: 8px;
+  top: -3px;
+  right: -3px;
+}
+
 @media (min-width: 851px) {
   .category-filter-row {
     gap: 0.75rem;
@@ -1041,12 +1182,27 @@ body[data-bg-style="mercedes-classic"],
 
 /* Vehicle Banner Card */
 .vehicle-banner-card {
+  position: relative;
   margin-bottom: 1rem;
   padding: 1rem;
+  padding-right: 5.5rem;
   background: var(--card-gradient);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* TÜV-Plakette auf der Dashboard-Fahrzeugkarte (rechts oben auf der Karte,
+   nicht im kleinen Bildrahmen, damit sie auch auf dem Handy nicht abgeschnitten wird) */
+#dashTuevPlakette {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  z-index: 3;
+}
+
+#dashTuevPlakette .tuev-plakette {
+  position: static;
 }
 
 .vehicle-banner-content {
@@ -1056,6 +1212,7 @@ body[data-bg-style="mercedes-classic"],
 }
 
 .vehicle-image-wrapper {
+  position: relative;
   width: 130px;
   height: 90px;
   border-radius: var(--radius-sm);
@@ -1920,6 +2077,13 @@ input:focus, select:focus, textarea:focus {
   .vehicle-banner-content { flex-direction: column; align-items: stretch; }
   .vehicle-image-wrapper { width: 100%; height: 130px; }
   .dashboard-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Gestapeltes Layout: Plakette liegt nur auf dem Bild oben, Text braucht
+     den reservierten Platz rechts nicht - Karte wieder normal nutzen */
+  .vehicle-banner-card { padding-right: 1rem; }
+  #dashTuevPlakette .tuev-plakette { width: 52px; height: 52px; }
+  #dashTuevPlakette .tuev-plakette-year { font-size: 0.54rem; }
+  #dashTuevPlakette .tuev-plakette-ring-num { font-size: 0.5rem; }
 
   /* Mobile Data Table (Card-View) */
   .data-table, .data-table thead, .data-table tbody, .data-table th, .data-table td, .data-table tr { display: block; }
