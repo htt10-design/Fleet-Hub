@@ -2504,11 +2504,25 @@ function renderDashboard() {
   const hasEngine = vehicleHasEngine(v);
   const boatEnginesForDash = getBoatEngines(v);
   const multiEngineBoat = v.category === 'boot' && boatEnginesForDash.length > 1;
-  const showMileage = v.category !== 'anhaenger' && !multiEngineBoat;
+  // Bei Autos mit KM-Erfassung ersetzt die Tacho-Walzen-Anzeige die normale KPI-Kachel
+  const useOdometer = (v.category || 'auto') === 'auto' && v.type !== 'hours';
+  const showMileage = v.category !== 'anhaenger' && !multiEngineBoat && !useOdometer;
   const showCostPerKm = (v.category || 'auto') === 'auto';
   if (kpiMileageCard) kpiMileageCard.style.display = showMileage ? '' : 'none';
   if (kpiConsumptionCard) kpiConsumptionCard.style.display = hasEngine ? '' : 'none';
   if (kpiCostPerKmCard) kpiCostPerKmCard.style.display = showCostPerKm ? '' : 'none';
+
+  const odometerWrapper = document.getElementById('odometerWrapper');
+  if (odometerWrapper) {
+    if (useOdometer) {
+      odometerWrapper.style.display = '';
+      const odoDigits = document.getElementById('odometerDigits');
+      const paddedKm = Math.max(0, Math.round(maxMileage)).toString().padStart(6, '0').slice(-6);
+      odoDigits.innerHTML = paddedKm.split('').map(d => `<span class="odometer-digit">${d}</span>`).join('');
+    } else {
+      odometerWrapper.style.display = 'none';
+    }
+  }
 
   // "Stand erfassen"-Button: bei Anhängern (kein sinnvoller Stand) ausblenden,
   // sonst Beschriftung passend zu KM/Betriebsstunden setzen
