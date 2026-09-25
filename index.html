@@ -1043,6 +1043,35 @@
           <label>Initialer Stand</label>
           <input type="text" id="newVMileage" inputmode="decimal" value="0" required oninput="formatMileageInput(this)">
         </div>
+
+        <div id="newVAutoExtraFields" style="display: none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Erstzulassung (optional)</label>
+              <input type="date" id="newVErstzulassung">
+            </div>
+            <div class="form-group">
+              <label>Leistung in PS (optional)</label>
+              <input type="text" id="newVPowerHp" inputmode="numeric" placeholder="z.B. 231">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>HSN (optional)</label>
+              <input type="text" id="newVHsn" maxlength="4" placeholder="z.B. 0708">
+            </div>
+            <div class="form-group">
+              <label>TSN (optional)</label>
+              <input type="text" id="newVTsn" maxlength="10" placeholder="z.B. 420">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Fahrgestellnummer / FIN (optional)</label>
+            <input type="text" id="newVVin" placeholder="z.B. WDB1240321F123456">
+          </div>
+          <p class="sub-text">Diese Angaben werden gleich in die Stammdaten und den Fahrzeugschein übernommen. Weitere Details kannst du jederzeit dort ergänzen.</p>
+        </div>
+
         <div class="modal-actions">
           <button type="submit" class="btn btn-primary">Anlegen</button>
           <button type="button" class="btn btn-secondary" onclick="closeVehicleModal()">Abbrechen</button>
@@ -1146,37 +1175,37 @@
               <div class="fzschein-oval-d">D</div>
             </div>
             <div class="fzschein-col">
-              <div class="fzschein-field"><span class="fzschein-tag" title="Datum der Erstzulassung">1</span><input type="date" id="fzsErstzulassung" placeholder="Datum der Erstzulassung"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="HSN">2.1</span><input type="text" id="fzsHsn" maxlength="4" placeholder="HSN"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="TSN">2.2</span><input type="text" id="fzsTsn" maxlength="10" placeholder="TSN"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Fahrgestellnummer (VIN)">3</span><input type="text" id="fzsVin" placeholder="Fahrgestellnummer (VIN)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Typ">4</span><input type="text" id="fzsTyp" placeholder="Typ"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Hersteller">D.1</span><input type="text" id="fzsHersteller" placeholder="Hersteller"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Handelsbezeichnung">D.3</span><input type="text" id="fzsHandelsbezeichnung" placeholder="Handelsbezeichnung"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Fahrzeugart">J</span><input type="text" id="fzsFahrzeugart" placeholder="Fahrzeugart"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Schadstoffklasse">V.9</span><input type="text" id="fzsSchadstoffklasse" placeholder="Schadstoffklasse"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Kraftstoffart">P.3</span><input type="text" id="fzsKraftstoffart" placeholder="Kraftstoffart"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Hubraum (ccm)">P.1</span><input type="text" id="fzsHubraum" inputmode="numeric" placeholder="Hubraum (ccm)"></div>
+              <div class="fzschein-field" data-fieldlabel="Datum der Erstzulassung"><span class="fzschein-tag" title="Datum der Erstzulassung">1</span><input type="date" id="fzsErstzulassung" placeholder="Datum der Erstzulassung"></div>
+              <div class="fzschein-field" data-fieldlabel="HSN"><span class="fzschein-tag" title="HSN">2.1</span><input type="text" id="fzsHsn" maxlength="4" placeholder="HSN"></div>
+              <div class="fzschein-field" data-fieldlabel="TSN"><span class="fzschein-tag" title="TSN">2.2</span><input type="text" id="fzsTsn" maxlength="10" placeholder="TSN"></div>
+              <div class="fzschein-field" data-fieldlabel="Fahrgestellnummer (VIN)"><span class="fzschein-tag" title="Fahrgestellnummer (VIN)">3</span><input type="text" id="fzsVin" placeholder="Fahrgestellnummer (VIN)"></div>
+              <div class="fzschein-field" data-fieldlabel="Typ"><span class="fzschein-tag" title="Typ">4</span><input type="text" id="fzsTyp" placeholder="Typ"></div>
+              <div class="fzschein-field" data-fieldlabel="Hersteller"><span class="fzschein-tag" title="Hersteller">D.1</span><input type="text" id="fzsHersteller" placeholder="Hersteller"></div>
+              <div class="fzschein-field" data-fieldlabel="Handelsbezeichnung"><span class="fzschein-tag" title="Handelsbezeichnung">D.3</span><input type="text" id="fzsHandelsbezeichnung" placeholder="Handelsbezeichnung"></div>
+              <div class="fzschein-field" data-fieldlabel="Fahrzeugart"><span class="fzschein-tag" title="Fahrzeugart">J</span><input type="text" id="fzsFahrzeugart" placeholder="Fahrzeugart"></div>
+              <div class="fzschein-field" data-fieldlabel="Schadstoffklasse"><span class="fzschein-tag" title="Schadstoffklasse">V.9</span><input type="text" id="fzsSchadstoffklasse" placeholder="Schadstoffklasse"></div>
+              <div class="fzschein-field" data-fieldlabel="Kraftstoffart"><span class="fzschein-tag" title="Kraftstoffart">P.3</span><input type="text" id="fzsKraftstoffart" placeholder="Kraftstoffart"></div>
+              <div class="fzschein-field" data-fieldlabel="Hubraum (ccm)"><span class="fzschein-tag" title="Hubraum (ccm)">P.1</span><input type="text" id="fzsHubraum" inputmode="numeric" placeholder="Hubraum (ccm)"></div>
             </div>
             <div class="fzschein-corner fzschein-corner-right" onclick="switchFzscheinPage(2)" title="Zu Seite 2 blättern"><span>1/2</span></div>
           </div>
 
           <div class="fzschein-paper fzschein-page" id="fzsPage2" style="display: none;">
             <div class="fzschein-col">
-              <div class="fzschein-field"><span class="fzschein-tag" title="Leistung (kW)">P.2</span><input type="text" id="fzsLeistungKw" inputmode="numeric" placeholder="Leistung (kW)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Leistung bei Drehzahl (U/min)">P.4</span><input type="text" id="fzsDrehzahl" inputmode="numeric" placeholder="Leistung bei Drehzahl (U/min)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Höchstgeschwindigkeit (km/h)">T</span><input type="text" id="fzsHoechstgeschwindigkeit" inputmode="numeric" placeholder="Höchstgeschwindigkeit (km/h)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Länge (mm)">18</span><input type="text" id="fzsLaenge" inputmode="numeric" placeholder="Länge (mm)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Breite (mm)">19</span><input type="text" id="fzsBreite" inputmode="numeric" placeholder="Breite (mm)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Höhe (mm)">20</span><input type="text" id="fzsHoehe" inputmode="numeric" placeholder="Höhe (mm)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Leergewicht (kg)">G</span><input type="text" id="fzsLeergewicht" inputmode="numeric" placeholder="Leergewicht (kg)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Zul. Gesamtgewicht (kg)">F.1/F.2</span><input type="text" id="fzsGesamtgewicht" inputmode="numeric" placeholder="Zul. Gesamtgewicht (kg)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Achslast vorne (kg)">7.1</span><input type="text" id="fzsAchslastVorne" inputmode="numeric" placeholder="Achslast vorne (kg)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Achslast hinten (kg)">7.2</span><input type="text" id="fzsAchslastHinten" inputmode="numeric" placeholder="Achslast hinten (kg)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Anhängelast gebremst (kg)">O.1</span><input type="text" id="fzsAnhaengelastGebremst" inputmode="numeric" placeholder="Anhängelast gebremst (kg)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Anhängelast ungebremst (kg)">O.2</span><input type="text" id="fzsAnhaengelastUngebremst" inputmode="numeric" placeholder="Anhängelast ungebremst (kg)"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Bereifung vorne">15.1</span><input type="text" id="fzsBereifungVorne" placeholder="Bereifung vorne"></div>
-              <div class="fzschein-field"><span class="fzschein-tag" title="Bereifung hinten">15.2</span><input type="text" id="fzsBereifungHinten" placeholder="Bereifung hinten"></div>
+              <div class="fzschein-field" data-fieldlabel="Leistung (kW)"><span class="fzschein-tag" title="Leistung (kW)">P.2</span><input type="text" id="fzsLeistungKw" inputmode="numeric" placeholder="Leistung (kW)"></div>
+              <div class="fzschein-field" data-fieldlabel="Leistung bei Drehzahl (U/min)"><span class="fzschein-tag" title="Leistung bei Drehzahl (U/min)">P.4</span><input type="text" id="fzsDrehzahl" inputmode="numeric" placeholder="Leistung bei Drehzahl (U/min)"></div>
+              <div class="fzschein-field" data-fieldlabel="Höchstgeschwindigkeit (km/h)"><span class="fzschein-tag" title="Höchstgeschwindigkeit (km/h)">T</span><input type="text" id="fzsHoechstgeschwindigkeit" inputmode="numeric" placeholder="Höchstgeschwindigkeit (km/h)"></div>
+              <div class="fzschein-field" data-fieldlabel="Länge (mm)"><span class="fzschein-tag" title="Länge (mm)">18</span><input type="text" id="fzsLaenge" inputmode="numeric" placeholder="Länge (mm)"></div>
+              <div class="fzschein-field" data-fieldlabel="Breite (mm)"><span class="fzschein-tag" title="Breite (mm)">19</span><input type="text" id="fzsBreite" inputmode="numeric" placeholder="Breite (mm)"></div>
+              <div class="fzschein-field" data-fieldlabel="Höhe (mm)"><span class="fzschein-tag" title="Höhe (mm)">20</span><input type="text" id="fzsHoehe" inputmode="numeric" placeholder="Höhe (mm)"></div>
+              <div class="fzschein-field" data-fieldlabel="Leergewicht (kg)"><span class="fzschein-tag" title="Leergewicht (kg)">G</span><input type="text" id="fzsLeergewicht" inputmode="numeric" placeholder="Leergewicht (kg)"></div>
+              <div class="fzschein-field" data-fieldlabel="Zul. Gesamtgewicht (kg)"><span class="fzschein-tag" title="Zul. Gesamtgewicht (kg)">F.1/F.2</span><input type="text" id="fzsGesamtgewicht" inputmode="numeric" placeholder="Zul. Gesamtgewicht (kg)"></div>
+              <div class="fzschein-field" data-fieldlabel="Achslast vorne (kg)"><span class="fzschein-tag" title="Achslast vorne (kg)">7.1</span><input type="text" id="fzsAchslastVorne" inputmode="numeric" placeholder="Achslast vorne (kg)"></div>
+              <div class="fzschein-field" data-fieldlabel="Achslast hinten (kg)"><span class="fzschein-tag" title="Achslast hinten (kg)">7.2</span><input type="text" id="fzsAchslastHinten" inputmode="numeric" placeholder="Achslast hinten (kg)"></div>
+              <div class="fzschein-field" data-fieldlabel="Anhängelast gebremst (kg)"><span class="fzschein-tag" title="Anhängelast gebremst (kg)">O.1</span><input type="text" id="fzsAnhaengelastGebremst" inputmode="numeric" placeholder="Anhängelast gebremst (kg)"></div>
+              <div class="fzschein-field" data-fieldlabel="Anhängelast ungebremst (kg)"><span class="fzschein-tag" title="Anhängelast ungebremst (kg)">O.2</span><input type="text" id="fzsAnhaengelastUngebremst" inputmode="numeric" placeholder="Anhängelast ungebremst (kg)"></div>
+              <div class="fzschein-field" data-fieldlabel="Bereifung vorne"><span class="fzschein-tag" title="Bereifung vorne">15.1</span><input type="text" id="fzsBereifungVorne" placeholder="Bereifung vorne"></div>
+              <div class="fzschein-field" data-fieldlabel="Bereifung hinten"><span class="fzschein-tag" title="Bereifung hinten">15.2</span><input type="text" id="fzsBereifungHinten" placeholder="Bereifung hinten"></div>
             </div>
             <div class="fzschein-corner fzschein-corner-left" onclick="switchFzscheinPage(1)" title="Zurück zu Seite 1"><span>2/2</span></div>
           </div>

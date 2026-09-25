@@ -1391,9 +1391,14 @@ function updateNewVehicleFieldsForCategory() {
   if (!categoryEl) return;
 
   const isTrailer = categoryEl.value === 'anhaenger';
+  const isAuto = categoryEl.value === 'auto';
   if (fuelGroup) fuelGroup.style.display = isTrailer ? 'none' : '';
   if (mileageGroup) mileageGroup.style.display = isTrailer ? 'none' : '';
   if (typeGroup) typeGroup.style.display = isTrailer ? 'none' : '';
+
+  // Zusätzliche Stammdaten-Felder beim Anlegen gibt's nur bei Autos
+  const autoExtraFields = document.getElementById('newVAutoExtraFields');
+  if (autoExtraFields) autoExtraFields.style.display = isAuto ? '' : 'none';
 
   // Bei Autos macht KM als Erfassungstyp praktisch immer Sinn - direkt vorauswählen
   if (categoryEl.value === 'auto' && typeEl) {
@@ -1420,11 +1425,12 @@ function createNewVehicle(e) {
   const mileageEl = document.getElementById('newVMileage');
 
   const startMileage = mileageEl ? parseFormattedNumber(mileageEl.value) : 0;
-  
+  const category = categoryEl ? categoryEl.value : 'auto';
+
   const newV = {
     id: "v_" + Date.now(),
     name: nameEl ? nameEl.value : 'Neues Fahrzeug',
-    category: categoryEl ? categoryEl.value : 'auto',
+    category: category,
     type: typeEl ? typeEl.value : 'km',
     fuelType: fuelTypeEl ? fuelTypeEl.value : 'Super',
     image: "",
@@ -1435,6 +1441,37 @@ function createNewVehicle(e) {
     fuelEntries: [],
     serviceEntries: []
   };
+
+  // Zusätzliche Angaben beim Anlegen (nur Autos) - fließen sowohl in die
+  // Stammdaten als auch direkt in den Fahrzeugschein mit ein
+  if (category === 'auto') {
+    const erstzulassungEl = document.getElementById('newVErstzulassung');
+    const powerHpEl = document.getElementById('newVPowerHp');
+    const hsnEl = document.getElementById('newVHsn');
+    const tsnEl = document.getElementById('newVTsn');
+    const vinEl = document.getElementById('newVVin');
+
+    const erstzulassung = erstzulassungEl ? erstzulassungEl.value : '';
+    const powerHp = powerHpEl ? powerHpEl.value : '';
+    const hsn = hsnEl ? hsnEl.value : '';
+    const tsn = tsnEl ? tsnEl.value : '';
+    const vin = vinEl ? vinEl.value : '';
+
+    if (erstzulassung) newV.firstReg = erstzulassung;
+    if (powerHp) newV.powerHp = parseInt(powerHp, 10) || null;
+    if (hsn) newV.hsn = hsn;
+    if (tsn) newV.tsn = tsn;
+    if (vin) newV.vin = vin;
+
+    if (erstzulassung || powerHp || hsn || tsn || vin) {
+      newV.fahrzeugschein = {};
+      if (erstzulassung) newV.fahrzeugschein.erstzulassung = erstzulassung;
+      if (hsn) newV.fahrzeugschein.hsn = hsn;
+      if (tsn) newV.fahrzeugschein.tsn = tsn;
+      if (vin) newV.fahrzeugschein.vin = vin;
+      if (powerHp) newV.fahrzeugschein.leistungKw = Math.round(parseInt(powerHp, 10) / 1.35962).toString();
+    }
+  }
 
   if (startMileage > 0) {
     newV.serviceEntries.push({
@@ -1689,6 +1726,20 @@ function saveVehicleDetails(e) {
   v.tsn = document.getElementById('vTsn').value;
   v.powerHp = parseInt(document.getElementById('vPowerHp').value) || null;
   v.towingBraked = parseInt(document.getElementById('vTowingBraked').value) || null;
+
+  // Alle Stammdaten, die es auch im Fahrzeugschein gibt, automatisch dorthin
+  // übernehmen, damit beide Stellen immer synchron bleiben (nur bei Autos,
+  // da der Schein bei anderen Fahrzeugarten ohnehin nicht existiert)
+  if (v.category === 'auto') {
+    if (!v.fahrzeugschein) v.fahrzeugschein = {};
+    if (v.firstReg) v.fahrzeugschein.erstzulassung = v.firstReg;
+    if (v.hsn) v.fahrzeugschein.hsn = v.hsn;
+    if (v.tsn) v.fahrzeugschein.tsn = v.tsn;
+    if (v.vin) v.fahrzeugschein.vin = v.vin;
+    if (v.fuelType) v.fahrzeugschein.kraftstoffart = v.fuelType;
+    if (v.powerHp) v.fahrzeugschein.leistungKw = Math.round(v.powerHp / 1.35962).toString();
+    if (v.towingBraked) v.fahrzeugschein.anhaengelastGebremst = v.towingBraked.toString();
+  }
   v.nextTuev = document.getElementById('vNextTuev').value;
   v.specs = document.getElementById('vSpecs').value;
 
@@ -2117,8 +2168,8 @@ function switchFzscheinPage(targetPageNum) {
 
     targetPage.style.display = '';
     targetPage.classList.add('active', 'fzschein-page-turning-in');
-    setTimeout(() => targetPage.classList.remove('fzschein-page-turning-in'), 390);
-  }, 380);
+    setTimeout(() => targetPage.classList.remove('fzschein-page-turning-in'), 560);
+  }, 550);
 }
 window.switchFzscheinPage = switchFzscheinPage;
 
@@ -2139,8 +2190,28 @@ function saveFahrzeugschein(e) {
   });
 
   v.fahrzeugschein = daten;
+
+  // Umgekehrte Richtung: überschneidende Angaben zurück in die Stammdaten
+  // übernehmen, damit beide Stellen immer synchron bleiben
+  if (daten.erstzulassung) v.firstReg = daten.erstzulassung;
+  if (daten.hsn) v.hsn = daten.hsn;
+  if (daten.tsn) v.tsn = daten.tsn;
+  if (daten.vin) v.vin = daten.vin;
+  if (daten.kraftstoffart) v.fuelType = daten.kraftstoffart;
+  if (daten.leistungKw) {
+    const ps = Math.round(parseFloat(daten.leistungKw.replace(',', '.')) * 1.35962);
+    if (!isNaN(ps) && ps > 0) v.powerHp = ps;
+  }
+  if (daten.anhaengelastGebremst) {
+    const kg = parseInt(daten.anhaengelastGebremst, 10);
+    if (!isNaN(kg) && kg > 0) v.towingBraked = kg;
+  }
+
   saveData();
   closeFahrzeugscheinModal();
+
+  // Stammdaten-Formular neu befüllen, falls es gerade im Hintergrund offen ist
+  loadActiveVehicle();
 }
 window.saveFahrzeugschein = saveFahrzeugschein;
 

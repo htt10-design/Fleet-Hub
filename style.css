@@ -631,7 +631,7 @@ body[data-bg-style="mercedes-classic"],
 /* Buch-Container mit Perspektive für den Umblätter-Effekt */
 .fzschein-book {
   position: relative;
-  perspective: 1400px;
+  perspective: 1800px;
   margin-bottom: 0.75rem;
 }
 
@@ -721,29 +721,53 @@ body[data-bg-style="mercedes-classic"],
 .fzschein-corner-right span { right: 3px; }
 .fzschein-corner-left span { left: 3px; }
 
-/* Einroll-Effekt: die Seite rollt sich wie ein Blatt Papier zusammen,
-   statt zu kippen/flippen */
-@keyframes fzscheinPageRollOut {
-  0%   { transform: scaleX(1); opacity: 1; }
-  100% { transform: scaleX(0.02); opacity: 0; }
-}
-
-@keyframes fzscheinPageRollIn {
-  0%   { transform: scaleX(0.02); opacity: 0; }
-  100% { transform: scaleX(1); opacity: 1; }
-}
-
+/* Eleganter Umblätter-Effekt: echte 3D-Drehung um die linke Kante (wie eine
+   Buchseite auf ihrem Falz), mit einem sanft durchlaufenden Schattenwurf,
+   der die Wölbung der Seite andeutet - dezent statt spektakulär */
 .fzschein-page {
-  transform-origin: right center;
+  position: relative;
+  backface-visibility: hidden;
+  transform-origin: left center;
+  will-change: transform;
+}
+
+.fzschein-page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.22), transparent 55%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes fzscheinPageTurnOut {
+  0%   { transform: rotateY(0deg); }
+  100% { transform: rotateY(-96deg); }
+}
+
+@keyframes fzscheinPageTurnIn {
+  0%   { transform: rotateY(96deg); }
+  100% { transform: rotateY(0deg); }
+}
+
+@keyframes fzscheinShadowSweep {
+  0%   { opacity: 0; }
+  45%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .fzschein-page-turning-out {
-  animation: fzscheinPageRollOut 0.4s ease-in forwards;
+  animation: fzscheinPageTurnOut 0.55s cubic-bezier(0.6, 0.05, 0.4, 1) forwards;
 }
 
 .fzschein-page-turning-in {
-  animation: fzscheinPageRollIn 0.4s ease-out forwards;
-  transform-origin: left center;
+  animation: fzscheinPageTurnIn 0.55s cubic-bezier(0.6, 0.05, 0.4, 1) forwards;
+}
+
+.fzschein-page-turning-out::after,
+.fzschein-page-turning-in::after {
+  animation: fzscheinShadowSweep 0.55s ease forwards;
 }
 
 .fzschein-col {
@@ -760,6 +784,29 @@ body[data-bg-style="mercedes-classic"],
   box-sizing: border-box;
   overflow: visible;
   border-bottom: 1px solid rgba(20, 60, 50, 0.35);
+}
+
+/* Sobald ein Feld ausgefüllt ist, verschwindet ja der Platzhaltertext -
+   dafür erscheint oben ganz dezent/blass, was in dem Feld steht */
+.fzschein-field::before {
+  content: attr(data-fieldlabel);
+  position: absolute;
+  left: 22px;
+  bottom: 0;
+  max-width: calc(100% - 26px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.4rem;
+  font-family: Arial, Helvetica, sans-serif;
+  color: rgba(47, 82, 69, 0.28);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.fzschein-field:has(input:not(:placeholder-shown))::before {
+  opacity: 1;
 }
 
 .fzschein-tag {
