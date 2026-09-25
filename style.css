@@ -561,6 +561,266 @@ body[data-bg-style="mercedes-classic"],
   margin-bottom: 0.2rem;
 }
 
+/* Klickbare Kachel zum Öffnen des Fahrzeugscheins - gleiche Größe/Optik wie
+   die anderen Kennzahlen-Kacheln im Dashboard */
+.fzschein-open-card {
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.fzschein-open-card:active {
+  transform: scale(0.98);
+}
+
+/* Mini-Vorschau: deutet die Papier-/Linien-Optik des echten Scheins an */
+.fzschein-mini-preview {
+  width: 100%;
+  max-width: 90px;
+  background-color: #dce8e4;
+  border: 1px solid #7a9990;
+  border-radius: 3px;
+  padding: 5px 6px;
+  margin: 0.25rem 0;
+}
+
+.fzschein-mini-line {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 8px;
+  border-bottom: 1px solid rgba(20, 60, 50, 0.3);
+}
+
+.fzschein-mini-line:last-child {
+  border-bottom: none;
+}
+
+.fzschein-mini-line span:first-child {
+  width: 8px;
+  height: 5px;
+  border: 1px solid rgba(47, 82, 69, 0.6);
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.fzschein-mini-line span:last-child {
+  flex: 1;
+  height: 4px;
+  background-color: rgba(47, 82, 69, 0.25);
+  border-radius: 1px;
+}
+
+/* Modal etwas breiter, damit die zweispaltige Schein-Optik Platz hat */
+.fahrzeugschein-modal {
+  max-width: 700px;
+}
+
+/* Tablet & größere Bildschirme: mehr Platz, damit möglichst wenig gescrollt werden muss */
+@media (min-width: 700px) {
+  .fahrzeugschein-modal {
+    max-width: 1300px;
+    width: 96vw;
+    max-height: 95vh;
+  }
+}
+
+
+
+/* Nachgebauter Fahrzeugschein: helles, liniertes "Papier", zwei Spalten wie
+   die aufgeschlagenen Seiten des Originals, Schreibmaschinen-Schrift */
+/* Buch-Container mit Perspektive für den Umblätter-Effekt */
+.fzschein-book {
+  position: relative;
+  perspective: 1400px;
+  margin-bottom: 0.75rem;
+}
+
+.fzschein-paper {
+  position: relative;
+  background-color: #dce8e4;
+  border: 1px solid #7a9990;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.fzschein-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1.5px solid #2f5245;
+}
+
+.fzschein-header h4 {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #16302a;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.5px;
+}
+
+/* Kleines ovales Länderkennzeichen "D", wie auf dem echten Dokument */
+.fzschein-oval-d {
+  flex-shrink: 0;
+  width: 26px;
+  height: 18px;
+  border: 1.5px solid #16302a;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #16302a;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* "Eselsohr"-Ecken zum Umblättern, direkt auf dem Schein statt als Button */
+.fzschein-corner {
+  position: absolute;
+  bottom: 0;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  z-index: 5;
+  transition: width 0.15s, height 0.15s;
+}
+
+.fzschein-corner:hover {
+  width: 36px;
+  height: 36px;
+}
+
+.fzschein-corner-right {
+  right: 0;
+  background: linear-gradient(135deg, transparent 50%, #b9cdc4 51%, #a9c0b6 100%);
+  clip-path: polygon(100% 100%, 0% 100%, 100% 0%);
+  box-shadow: -1px -1px 3px rgba(0, 0, 0, 0.2);
+  border-bottom-right-radius: 4px;
+}
+
+.fzschein-corner-left {
+  left: 0;
+  background: linear-gradient(225deg, transparent 50%, #b9cdc4 51%, #a9c0b6 100%);
+  clip-path: polygon(0% 100%, 100% 100%, 0% 0%);
+  box-shadow: 1px -1px 3px rgba(0, 0, 0, 0.2);
+  border-bottom-left-radius: 4px;
+}
+
+.fzschein-corner span {
+  position: absolute;
+  bottom: 2px;
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: #2f5245;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.fzschein-corner-right span { right: 3px; }
+.fzschein-corner-left span { left: 3px; }
+
+/* Einroll-Effekt: die Seite rollt sich wie ein Blatt Papier zusammen,
+   statt zu kippen/flippen */
+@keyframes fzscheinPageRollOut {
+  0%   { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(0.02); opacity: 0; }
+}
+
+@keyframes fzscheinPageRollIn {
+  0%   { transform: scaleX(0.02); opacity: 0; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+
+.fzschein-page {
+  transform-origin: right center;
+}
+
+.fzschein-page-turning-out {
+  animation: fzscheinPageRollOut 0.4s ease-in forwards;
+}
+
+.fzschein-page-turning-in {
+  animation: fzscheinPageRollIn 0.4s ease-out forwards;
+  transform-origin: left center;
+}
+
+.fzschein-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.fzschein-field {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  height: 28px;
+  box-sizing: border-box;
+  overflow: visible;
+  border-bottom: 1px solid rgba(20, 60, 50, 0.35);
+}
+
+.fzschein-tag {
+  flex-shrink: 0;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #2f5245;
+  border: 1px solid #2f5245;
+  border-radius: 2px;
+  padding: 1px 0.2rem;
+  line-height: 1;
+  min-width: 1.1rem;
+  text-align: center;
+  cursor: help;
+}
+
+/* Höhere Spezifität nötig, damit die globalen Eingabefeld-Styles (die im
+   Dunkelmodus helle Schrift + dunklen Kasten setzen) hier nicht greifen */
+#fahrzeugscheinModal .fzschein-field input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  min-height: 0;
+  border: none !important;
+  background: transparent !important;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #16302a !important;
+  padding: 0;
+}
+
+/* Natives Kalender-Symbol beim Datumsfeld ausblenden, damit keine Pfeile übrig bleiben */
+#fahrzeugscheinModal .fzschein-field input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  width: 100%;
+  cursor: pointer;
+}
+
+#fahrzeugscheinModal .fzschein-field input::placeholder {
+  color: rgba(47, 82, 69, 0.55);
+  font-weight: 400;
+  font-size: 0.68rem;
+}
+
+#fahrzeugscheinModal .fzschein-field input:focus {
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Handy im Querformat: mehr Höhe fürs Modal nutzen */
+@media (orientation: landscape) and (max-height: 500px) {
+  .fahrzeugschein-modal {
+    max-height: 96vh;
+    max-width: 90vw;
+  }
+}
+
 /* Tacho-Walzen-Anzeige für den KM-Stand (nur Autos) - dezent gehalten,
    damit sie nicht mit der eigentlichen Kennzahlen-Kachel konkurriert */
 .odometer {

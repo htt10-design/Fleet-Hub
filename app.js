@@ -2075,6 +2075,75 @@ function updateServiceEngineFieldForActiveVehicle() {
   }
 }
 
+/* --- FAHRZEUGSCHEIN (digital nachgebaut, alle Felder optional) --- */
+const FAHRZEUGSCHEIN_FIELDS = [
+  'erstzulassung', 'hsn', 'tsn', 'vin', 'typ', 'hersteller', 'handelsbezeichnung',
+  'fahrzeugart', 'schadstoffklasse', 'kraftstoffart', 'hubraum',
+  'leistungKw', 'drehzahl', 'hoechstgeschwindigkeit', 'laenge', 'breite', 'hoehe',
+  'leergewicht', 'gesamtgewicht', 'achslastVorne', 'achslastHinten',
+  'anhaengelastGebremst', 'anhaengelastUngebremst', 'bereifungVorne', 'bereifungHinten'
+];
+
+function openFahrzeugscheinModal() {
+  const v = getActiveVehicle();
+  if (!v) return;
+  const daten = v.fahrzeugschein || {};
+
+  FAHRZEUGSCHEIN_FIELDS.forEach(key => {
+    const el = document.getElementById('fzs' + key.charAt(0).toUpperCase() + key.slice(1));
+    if (el) el.value = daten[key] || '';
+  });
+
+  // Immer auf Seite 1 starten
+  const page1 = document.getElementById('fzsPage1');
+  const page2 = document.getElementById('fzsPage2');
+  if (page1) { page1.style.display = ''; page1.classList.add('active'); }
+  if (page2) { page2.style.display = 'none'; page2.classList.remove('active'); }
+
+  document.getElementById('fahrzeugscheinModal').classList.add('active');
+}
+window.openFahrzeugscheinModal = openFahrzeugscheinModal;
+
+// Blättert dezent zwischen den beiden Schein-Seiten um
+function switchFzscheinPage(targetPageNum) {
+  const currentPage = document.querySelector('.fzschein-page.active');
+  const targetPage = document.getElementById('fzsPage' + targetPageNum);
+  if (!currentPage || !targetPage || currentPage === targetPage) return;
+
+  currentPage.classList.add('fzschein-page-turning-out');
+  setTimeout(() => {
+    currentPage.classList.remove('active', 'fzschein-page-turning-out');
+    currentPage.style.display = 'none';
+
+    targetPage.style.display = '';
+    targetPage.classList.add('active', 'fzschein-page-turning-in');
+    setTimeout(() => targetPage.classList.remove('fzschein-page-turning-in'), 390);
+  }, 380);
+}
+window.switchFzscheinPage = switchFzscheinPage;
+
+function closeFahrzeugscheinModal() {
+  document.getElementById('fahrzeugscheinModal').classList.remove('active');
+}
+window.closeFahrzeugscheinModal = closeFahrzeugscheinModal;
+
+function saveFahrzeugschein(e) {
+  e.preventDefault();
+  const v = getActiveVehicle();
+  if (!v) return;
+
+  const daten = {};
+  FAHRZEUGSCHEIN_FIELDS.forEach(key => {
+    const el = document.getElementById('fzs' + key.charAt(0).toUpperCase() + key.slice(1));
+    if (el) daten[key] = el.value;
+  });
+
+  v.fahrzeugschein = daten;
+  saveData();
+  closeFahrzeugscheinModal();
+}
+window.saveFahrzeugschein = saveFahrzeugschein;
+
 /* --- STANDERFASSUNG (KM-Stand / Betriebsstunden ohne Tankung/Wartung eintragen) --- */
 function openStandEntryModal() {
   const v = getActiveVehicle();
@@ -2530,6 +2599,10 @@ function renderDashboard() {
   const standEntryBtn = document.getElementById('standEntryBtn');
   if (standEntryBtnWrapper) standEntryBtnWrapper.style.display = (v.category === 'anhaenger') ? 'none' : '';
   if (standEntryBtn) standEntryBtn.innerText = v.type === 'hours' ? 'Betriebsstunden erfassen' : 'KM-Stand erfassen';
+
+  // Fahrzeugschein-Kachel: nur bei Autos & Anhängern (straßenzugelassene Fahrzeuge)
+  const fzscheinOpenCard = document.getElementById('fzscheinOpenCard');
+  if (fzscheinOpenCard) fzscheinOpenCard.style.display = (v.category === 'boot') ? 'none' : '';
 
   // Bei Booten mit mehreren Motoren: eine eigene Betriebsstunden-Kachel pro Motor
   // statt nur einem gemeinsamen "Aktueller Stand"
