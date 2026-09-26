@@ -2275,6 +2275,7 @@ function toggleRoutineIntervalFields() {
 
   if (category === 'Wartung') {
     container.style.display = '';
+    renderIntervalPresetButtons();
   } else {
     container.style.display = 'none';
     // Felder leeren, wenn sie nicht zu einer Routine-Wartung gehören
@@ -2285,6 +2286,40 @@ function toggleRoutineIntervalFields() {
   }
 }
 window.toggleRoutineIntervalFields = toggleRoutineIntervalFields;
+
+// Zeigt Schnellauswahl-Buttons für gängige Wartungsintervalle an (z.B. +10.000 km).
+// Bei Betriebsstunden-Fahrzeugen (Boote) werden passende Stunden-Intervalle angezeigt.
+function renderIntervalPresetButtons() {
+  const container = document.getElementById('intervalPresetRow');
+  if (!container) return;
+  const v = getActiveVehicle();
+  const isKm = !v || v.type === 'km';
+  const presets = isKm ? [10000, 20000, 30000, 40000] : [50, 100, 150, 200];
+  const unitSuffix = isKm ? '' : ' Std';
+  const label = isKm ? 'Intervall ab aktuellem KM-Stand:' : 'Intervall ab aktuellen Betriebsstunden:';
+  container.innerHTML =
+    `<span class="interval-preset-label">${label}</span>` +
+    presets.map(p => `<button type="button" class="interval-preset-btn" onclick="applyServiceInterval(${p})">+${p.toLocaleString('de-DE')}${unitSuffix}</button>`).join('');
+}
+window.renderIntervalPresetButtons = renderIntervalPresetButtons;
+
+// Berechnet aus dem aktuell eingetragenen KM-Stand/Betriebsstunden + gewähltem Intervall
+// den Ziel-Wert und trägt ihn automatisch ins "Bei KM-Stand"-Feld ein.
+function applyServiceInterval(intervalAmount) {
+  const mileageInput = document.getElementById('serviceMileage');
+  const nextKmInput = document.getElementById('nextServiceKm');
+  if (!mileageInput || !nextKmInput) return;
+
+  const currentMileage = parseFormattedNumber(mileageInput.value);
+  if (!currentMileage) {
+    alert('Bitte zuerst oben den aktuellen KM-Stand bzw. die Betriebsstunden eintragen – die Schnellauswahl berechnet den Zielwert daraus.');
+    return;
+  }
+
+  const target = currentMileage + intervalAmount;
+  nextKmInput.value = formatNumberForDisplay(target);
+}
+window.applyServiceInterval = applyServiceInterval;
 
 function handleServiceImageUpload(event) {
   const files = Array.from(event.target.files);

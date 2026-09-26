@@ -1839,6 +1839,39 @@ body[data-bg-style="mercedes-classic"],
   margin: 0;
 }
 
+.interval-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.interval-preset-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  width: 100%;
+}
+
+.interval-preset-btn {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.15));
+  background: rgba(255,255,255,0.05);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.interval-preset-btn:hover,
+.interval-preset-btn:active {
+  background: var(--accent-color, #3b82f6);
+  border-color: var(--accent-color, #3b82f6);
+  color: #fff;
+}
+
 /* Motorenverwaltung bei Booten (Stammdaten) */
 #boatEnginesSection {
   margin-bottom: 1rem;
