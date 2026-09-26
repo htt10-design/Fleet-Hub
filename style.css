@@ -2685,7 +2685,15 @@ input:focus, select:focus, textarea:focus {
   /* Gestapeltes Layout: Plakette liegt nur auf dem Bild oben, Text braucht
      den reservierten Platz rechts nicht - Karte wieder normal nutzen */
   .vehicle-banner-card { padding-right: 1rem; }
-  #dashTuevPlakette .tuev-plakette { width: 52px; height: 52px; }
+  #dashTuevPlakette .tuev-plakette {
+    width: 52px;
+    height: 52px;
+    /* Bei 52px braucht der Ring proportional dünnere Linien als die volle
+       64px-Plakette, sonst wirkt der Rand zu dick (analog zur 44px-Kachel) */
+    border-width: 2.4px;
+  }
+  #dashTuevPlakette .tuev-plakette-center { border-width: 1.3px; }
+  #dashTuevPlakette .tuev-plakette-tick:not(.tuev-plakette-tick-special) { width: 1.3px; }
   #dashTuevPlakette .tuev-plakette-year { font-size: 0.54rem; }
   #dashTuevPlakette .tuev-plakette-ring-num { font-size: 0.5rem; }
 

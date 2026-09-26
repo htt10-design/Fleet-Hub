@@ -616,26 +616,41 @@ function renderTuevPlaketteHtml(plakette) {
   `;
 }
 
-// Liefert die drei Radien (Zahlenkranz / äußere & innere Strichmarken) für
-// eine bestimmte, tatsächlich gerenderte Plaketten-Größe in Pixel. Handverlesen
-// abgestimmt für die drei Größen, die im CSS tatsächlich vorkommen (44px auf
-// der "Alle"-Kachel, 52px auf dem Dashboard-Handy-Layout, 64px sonst) - eine
-// reine lineare Skalierung sieht bei so kleinen Kreisen nicht immer gut aus,
-// deshalb keine Formel, sondern abgestimmte Werte je Größe. Für unbekannte
-// Größen wird linear von der 64px-Referenz hochgerechnet.
-function getTuevRingRadii(sizePx) {
-  const knownSizes = {
-    44: { numRadius: 11, tickRadius: 16, innerTickRadius: 8 },
-    52: { numRadius: 13, tickRadius: 19, innerTickRadius: 10 },
-    64: { numRadius: 17, tickRadius: 24, innerTickRadius: 12 }
-  };
-  if (knownSizes[sizePx]) return knownSizes[sizePx];
+// Randstärke des äußeren schwarzen Rings je Plaketten-Größe (muss exakt zum
+// tatsächlichen CSS "border-width" von .tuev-plakette in dieser Größe passen -
+// siehe style.css). Wird gebraucht, um die äußeren Striche rechnerisch exakt
+// an den Innenrand des Rings andocken zu lassen (statt frei geschätzter Werte).
+function getTuevBorderWidthForSize(sizePx) {
+  if (sizePx === 44) return 2;
+  if (sizePx === 52) return 2.4;
+  if (sizePx === 64) return 3;
+  return 3 * ((sizePx || 64) / 64);
+}
 
-  const ratio = (sizePx || 64) / 64;
+// Liefert die Radien (Zahlenkranz / äußere & innere Strichmarken) für eine
+// bestimmte, tatsächlich gerenderte Plaketten-Größe in Pixel. Der äußere
+// Strich-Radius (normal & Monat-12-Spezialmarkierung) wird rechnerisch so
+// bestimmt, dass die Striche den Innenrand des schwarzen Rings exakt berühren,
+// unabhängig von der Größe - dafür muss die tatsächliche Randstärke (s.o.)
+// sowie die CSS-Strichhöhe (11% / 12% der Plaketten-Größe) mit einbezogen
+// werden. Zahlenkranz & innerer Strich bleiben handverlesen abgestimmt.
+function getTuevRingRadii(sizePx) {
+  const size = sizePx || 64;
+  const borderWidth = getTuevBorderWidthForSize(size);
+  const ringInnerRadius = size / 2 - borderWidth;
+
+  const tickHeightPx = 0.11 * size;
+  const specialTickHeightPx = 0.12 * size;
+
+  const numRadiusTable = { 44: 11, 52: 13, 64: 17 };
+  const innerTickRadiusTable = { 44: 8, 52: 10, 64: 12 };
+  const ratio = size / 64;
+
   return {
-    numRadius: Math.round(17 * ratio),
-    tickRadius: Math.round(24 * ratio),
-    innerTickRadius: Math.round(12 * ratio)
+    numRadius: numRadiusTable[size] ?? Math.round(17 * ratio),
+    innerTickRadius: innerTickRadiusTable[size] ?? Math.round(12 * ratio),
+    tickRadius: ringInnerRadius - tickHeightPx / 2,
+    specialTickRadius: ringInnerRadius - specialTickHeightPx / 2
   };
 }
 
@@ -647,7 +662,7 @@ function getTuevRingRadii(sizePx) {
 // Rand hinaus bzw. sitzen zu weit innen.
 function buildTuevMonthRing(dueMonth, sizePx) {
   let html = '';
-  const { numRadius, tickRadius, innerTickRadius } = getTuevRingRadii(sizePx);
+  const { numRadius, tickRadius, specialTickRadius, innerTickRadius } = getTuevRingRadii(sizePx);
 
   // Je Monat: kurzer Strich innen, Zahl in der Mitte, langer Strich außen -
   // alle drei auf derselben Linie/Winkel ausgerichtet.
@@ -660,9 +675,11 @@ function buildTuevMonthRing(dueMonth, sizePx) {
     html += `<span class="tuev-plakette-tick tuev-plakette-tick-inner" style="transform: translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${innerTickRadius}px);"></span>`;
 
     if (m === 12) {
-      // Spezialmarkierung: sitzt weiter außen und ragt NICHT in die Zahl hinein -
-      // wirkt wie ein an dieser Stelle dickerer Rand
-      html += `<span class="tuev-plakette-tick tuev-plakette-tick-special" style="transform: translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${tickRadius + 2}px);"></span>`;
+      // Spezialmarkierung: höher/breiter als die normalen Striche, berührt den
+      // Ring aber exakt genauso (eigener Radius wegen der größeren Höhe) -
+      // wirkt wie ein an dieser Stelle dickerer Rand, ohne über den Rand
+      // hinauszuragen
+      html += `<span class="tuev-plakette-tick tuev-plakette-tick-special" style="transform: translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${specialTickRadius}px);"></span>`;
     } else {
       html += `<span class="tuev-plakette-tick" style="transform: translate(-50%, -50%) rotate(${angleDeg}deg) translateY(-${tickRadius}px);"></span>`;
     }
