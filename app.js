@@ -335,6 +335,12 @@ function applyAccentColor(color) {
   document.querySelectorAll('.accent-color-option').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-accent') === (color || 'amber'));
   });
+
+  // Verbrauchsverlauf-Chart nutzt die Akzentfarbe live (siehe renderCharts) -
+  // daher hier ebenfalls neu zeichnen, sonst zeigt er erst nach einem Reload
+  // die neu gewählte Farbe
+  const v = getActiveVehicle();
+  if (v) renderCharts(v);
 }
 
 // Wendet den gewählten Design-Stil an (Standard oder Cockpit-Design)
