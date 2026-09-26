@@ -717,20 +717,22 @@ body[data-bg-style="mercedes-classic"],
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* "Eselsohr"-Ecken zum Umblättern, direkt auf dem Schein statt als Button */
+/* "Eselsohr"-Ecken zum Umblättern, direkt auf dem Schein statt als Button.
+   Größer als optisch nötig, damit man sie auf dem Handy auch mit dem
+   Finger gut trifft (Mindest-Tapfläche ~44px). */
 .fzschein-corner {
   position: absolute;
   bottom: 0;
-  width: 30px;
-  height: 30px;
+  width: 46px;
+  height: 46px;
   cursor: pointer;
   z-index: 5;
   transition: width 0.15s, height 0.15s;
 }
 
 .fzschein-corner:hover {
-  width: 36px;
-  height: 36px;
+  width: 52px;
+  height: 52px;
 }
 
 .fzschein-corner-right {
@@ -751,15 +753,15 @@ body[data-bg-style="mercedes-classic"],
 
 .fzschein-corner span {
   position: absolute;
-  bottom: 2px;
-  font-size: 0.5rem;
+  bottom: 4px;
+  font-size: 0.62rem;
   font-weight: 700;
   color: #2f5245;
   font-family: Arial, Helvetica, sans-serif;
 }
 
-.fzschein-corner-right span { right: 3px; }
-.fzschein-corner-left span { left: 3px; }
+.fzschein-corner-right span { right: 5px; }
+.fzschein-corner-left span { left: 5px; }
 
 /* Eleganter Umblätter-Effekt: echte 3D-Drehung um die linke Kante (wie eine
    Buchseite auf ihrem Falz), mit einem sanft durchlaufenden Schattenwurf,
@@ -2171,6 +2173,36 @@ input:focus, select:focus, textarea:focus {
   justify-content: center;
   margin-bottom: 1rem;
 }
+
+.crop-rotate-row {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.crop-rotate-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  background: none;
+  border: none;
+  padding: 0.2rem 0.4rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.crop-rotate-btn svg {
+  color: var(--text-main);
+}
+
+.crop-rotate-btn span {
+  font-size: 0.68rem;
+  letter-spacing: 0.2px;
+}
+
+.crop-rotate-btn:active svg { opacity: 0.6; }
 
 .crop-stage {
   position: relative;

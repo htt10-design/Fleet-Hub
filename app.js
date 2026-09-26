@@ -1539,6 +1539,8 @@ let cropState = {
 };
 let cropHandlersAttached = false;
 const CROP_MIN_SIZE = 32;
+let cropOriginalDataUrl = null;
+let cropRotation = 0; // 0, 90, 180, 270 (im Uhrzeigersinn)
 
 function renderCropSelection() {
   const sel = document.getElementById('cropSelection');
@@ -1551,12 +1553,22 @@ function renderCropSelection() {
 
 function openImageCropModal(dataUrl) {
   const modal = document.getElementById('imageCropModal');
-  const img = document.getElementById('cropImage');
+
+  cropOriginalDataUrl = dataUrl;
+  cropRotation = 0;
 
   // Modal zuerst sichtbar machen, damit das Bild beim Laden schon seine
   // echte gerenderte Größe hat
   modal.classList.add('active');
   attachCropSelectionHandlers();
+
+  loadCropImageSrc();
+}
+
+// Lädt das Ausgangsbild (ggf. gedreht) in den Zuschneide-Bereich und setzt
+// die Auswahl danach wieder auf das komplette (gedrehte) Bild zurück
+function loadCropImageSrc() {
+  const img = document.getElementById('cropImage');
 
   img.onload = () => {
     cropState.naturalWidth = img.naturalWidth;
@@ -1573,8 +1585,35 @@ function openImageCropModal(dataUrl) {
       renderCropSelection();
     });
   };
-  img.src = dataUrl;
+
+  if (cropRotation === 0) {
+    img.src = cropOriginalDataUrl;
+    return;
+  }
+
+  // Für 90°/180°/270° wird das Originalbild einmalig über einen Canvas
+  // gedreht - so bleibt die Drehung verlustfrei nachvollziehbar und die
+  // Zuschnitt-Logik (natürliche/gerenderte Maße) funktioniert unverändert
+  const rotSource = new Image();
+  rotSource.onload = () => {
+    const swap = cropRotation === 90 || cropRotation === 270;
+    const canvas = document.createElement('canvas');
+    canvas.width = swap ? rotSource.naturalHeight : rotSource.naturalWidth;
+    canvas.height = swap ? rotSource.naturalWidth : rotSource.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(cropRotation * Math.PI / 180);
+    ctx.drawImage(rotSource, -rotSource.naturalWidth / 2, -rotSource.naturalHeight / 2);
+    img.src = canvas.toDataURL('image/jpeg', 0.92);
+  };
+  rotSource.src = cropOriginalDataUrl;
 }
+
+function rotateCropImage(deltaDeg) {
+  cropRotation = (cropRotation + deltaDeg + 360) % 360;
+  loadCropImageSrc();
+}
+window.rotateCropImage = rotateCropImage;
 
 function attachCropSelectionHandlers() {
   if (cropHandlersAttached) return;
