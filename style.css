@@ -2118,6 +2118,9 @@ input:focus, select:focus, textarea:focus {
    erscheinen, unabhängig von der DOM-Reihenfolge der Modals. */
 #imageCropModal.active { z-index: 1200; }
 
+/* Wird aus dem Einstellungen-Fenster heraus geöffnet - muss davor liegen */
+#acarImportModal.active { z-index: 1200; }
+
 .modal {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -2288,6 +2291,73 @@ input:focus, select:focus, textarea:focus {
   font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
+}
+
+/* aCar-Import: Vorschau-Karten je gefundenem Fahrzeug */
+.acar-vehicle-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  margin-bottom: 0.65rem;
+  background-color: var(--bg-card, var(--bg-body));
+}
+
+.acar-vehicle-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.acar-vehicle-card-header input[type="checkbox"] {
+  margin-top: 0.2rem;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.acar-vehicle-card-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.acar-vehicle-card-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+.acar-vehicle-card-counts {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
+
+.acar-vehicle-card-target {
+  margin-top: 0.5rem;
+}
+
+.acar-vehicle-card-target select {
+  width: 100%;
+}
+
+.acar-fuel-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.acar-fuel-custom-input {
+  width: 100%;
+  margin-top: 0.4rem;
+}
+
+.acar-import-summary-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px dashed var(--border-color);
 }
 
 .detail-section {
