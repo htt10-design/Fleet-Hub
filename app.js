@@ -633,7 +633,8 @@ function getTuevBorderWidthForSize(sizePx) {
 // bestimmt, dass die Striche den Innenrand des schwarzen Rings exakt berühren,
 // unabhängig von der Größe - dafür muss die tatsächliche Randstärke (s.o.)
 // sowie die CSS-Strichhöhe (11% / 12% der Plaketten-Größe) mit einbezogen
-// werden. Zahlenkranz & innerer Strich bleiben handverlesen abgestimmt.
+// werden. Der innere Strich-Radius bleibt handverlesen abgestimmt; die
+// Zahlen sitzen genau mittig zwischen innerem und äußerem Strich.
 function getTuevRingRadii(sizePx) {
   const size = sizePx || 64;
   const borderWidth = getTuevBorderWidthForSize(size);
@@ -641,15 +642,16 @@ function getTuevRingRadii(sizePx) {
 
   const tickHeightPx = 0.11 * size;
   const specialTickHeightPx = 0.12 * size;
+  const tickRadius = ringInnerRadius - tickHeightPx / 2;
 
-  const numRadiusTable = { 44: 11, 52: 13, 64: 17 };
   const innerTickRadiusTable = { 44: 8, 52: 10, 64: 12 };
   const ratio = size / 64;
+  const innerTickRadius = innerTickRadiusTable[size] ?? Math.round(12 * ratio);
 
   return {
-    numRadius: numRadiusTable[size] ?? Math.round(17 * ratio),
-    innerTickRadius: innerTickRadiusTable[size] ?? Math.round(12 * ratio),
-    tickRadius: ringInnerRadius - tickHeightPx / 2,
+    numRadius: (innerTickRadius + tickRadius) / 2,
+    innerTickRadius,
+    tickRadius,
     specialTickRadius: ringInnerRadius - specialTickHeightPx / 2
   };
 }
