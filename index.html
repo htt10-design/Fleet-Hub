@@ -1009,6 +1009,23 @@
             </div>
           </div>
           <p class="sub-text" style="margin-top: 0.5rem;">Blendet die Kachel "Kundenfahrzeuge" auf dem Startbildschirm ein oder aus. Bereits vorhandene Kundendaten bleiben dabei erhalten und sind wieder da, sobald du es erneut aktivierst.</p>
+
+          <div class="theme-switch-row" style="margin-top: 1rem;">
+            <span class="sub-text" style="margin: 0;">Boote als Fahrzeugart</span>
+            <div class="theme-switch">
+              <button type="button" class="theme-switch-btn" id="bootCategoryToggleOn" onclick="setBoatCategoryEnabled(true)">An</button>
+              <button type="button" class="theme-switch-btn" id="bootCategoryToggleOff" onclick="setBoatCategoryEnabled(false)">Aus</button>
+            </div>
+          </div>
+
+          <div class="theme-switch-row" style="margin-top: 0.75rem;">
+            <span class="sub-text" style="margin: 0;">Anhänger als Fahrzeugart</span>
+            <div class="theme-switch">
+              <button type="button" class="theme-switch-btn" id="anhaengerCategoryToggleOn" onclick="setTrailerCategoryEnabled(true)">An</button>
+              <button type="button" class="theme-switch-btn" id="anhaengerCategoryToggleOff" onclick="setTrailerCategoryEnabled(false)">Aus</button>
+            </div>
+          </div>
+          <p class="sub-text" style="margin-top: 0.5rem;">Blendet Boot bzw. Anhänger als wählbare Fahrzeugart beim Anlegen sowie den jeweiligen Filter aus. Bereits vorhandene Fahrzeuge dieser Art bleiben ganz normal erhalten und sichtbar.</p>
         </details>
       </div>
 

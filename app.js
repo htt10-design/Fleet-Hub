@@ -7,6 +7,11 @@ let appData = {
   accentColor: "amber",
   uiStyle: "standard",
   customerVehiclesEnabled: true,
+  boatCategoryEnabled: true,
+  trailerCategoryEnabled: true,
+  // Reserviert für eine spätere frei konfigurierbare Sonderkategorie
+  // (z.B. Bagger, Radlader, ...) - noch ohne UI, nur Datenstruktur vorbereitet
+  customVehicleCategories: [],
   vehicles: [],
   customerVehicles: [],
   businessInfo: null,
@@ -170,6 +175,15 @@ async function initApp() {
   if (appData.customerVehiclesEnabled === undefined) {
     appData.customerVehiclesEnabled = true;
   }
+  if (appData.boatCategoryEnabled === undefined) {
+    appData.boatCategoryEnabled = true;
+  }
+  if (appData.trailerCategoryEnabled === undefined) {
+    appData.trailerCategoryEnabled = true;
+  }
+  if (!appData.customVehicleCategories) {
+    appData.customVehicleCategories = [];
+  }
   if (!appData.uiStyle) {
     appData.uiStyle = 'standard';
   }
@@ -195,6 +209,7 @@ async function initApp() {
   applyAccentColor(appData.accentColor);
   applyUiStyle(appData.uiStyle);
   applyCustomerVehiclesVisibility();
+  applyVehicleCategoryToggleVisibility();
 
   const fuelDateEl = document.getElementById('fuelDate');
   const serviceDateEl = document.getElementById('serviceDate');
@@ -774,6 +789,100 @@ function formatReminderMeta(r, unitLabel) {
   }
   return metaParts.join(' • ');
 }
+
+// Zentrale Liste der (Standard-)Fahrzeugarten - "Auto" ist immer aktiv, Boot &
+// Anhänger lassen sich in den Einstellungen ausblenden. Eine Fahrzeugart hier
+// zu definieren heißt nur: sie taucht in der Kategorie-Auswahl beim Anlegen
+// und in den Filter-Chips auf, wenn ihr "enabledKey" in appData true ist
+// (bzw. wenn kein enabledKey gesetzt ist, wie bei "auto").
+//
+// Vorbereitung für später (noch nicht gebaut): eine frei konfigurierbare
+// Sonderkategorie (z.B. Bagger, Radlader). appData.customVehicleCategories
+// ist als leeres Array bereits vorhanden; sobald es eine UI zum Anlegen
+// solcher Einträge gibt, kann getEnabledVehicleCategories() diese einfach an
+// die Liste unten anhängen (label + icon + sizeSpec kämen dann von jedem
+// benutzerdefinierten Eintrag statt aus dieser festen Liste) - der ganze
+// Rest (Dropdown, Filter-Chips, Icon-Zuordnung) müsste dafür nicht mehr
+// angefasst werden.
+const VEHICLE_CATEGORY_DEFS = [
+  { value: 'auto', label: 'Auto', enabledKey: null },
+  { value: 'anhaenger', label: 'Anhänger', enabledKey: 'trailerCategoryEnabled' },
+  { value: 'boot', label: 'Boot', enabledKey: 'boatCategoryEnabled' }
+];
+
+// Liefert alle aktuell aktivierten Fahrzeugarten (immer inkl. "Auto"),
+// optional mit einem zusätzlichen Wert, der auf jeden Fall enthalten sein
+// muss (z.B. die Kategorie eines bereits bestehenden Fahrzeugs, auch wenn
+// diese Kategorie inzwischen deaktiviert wurde - bestehende Daten sollen
+// weiterhin normal bearbeitbar bleiben).
+function getEnabledVehicleCategories(mustIncludeValue) {
+  const enabled = VEHICLE_CATEGORY_DEFS.filter(def => !def.enabledKey || appData[def.enabledKey] !== false);
+  if (mustIncludeValue && !enabled.some(def => def.value === mustIncludeValue)) {
+    const forced = VEHICLE_CATEGORY_DEFS.find(def => def.value === mustIncludeValue);
+    if (forced) enabled.push(forced);
+  }
+  return enabled;
+}
+
+// Baut die <option>-Liste eines Fahrzeugart-Selects neu auf, entsprechend der
+// aktuell aktivierten Kategorien. currentValue wird (falls gesetzt) in jedem
+// Fall mit aufgenommen, auch wenn diese Kategorie deaktiviert ist - und danach
+// wieder als ausgewählter Wert gesetzt.
+function populateVehicleCategorySelect(selectEl, currentValue) {
+  if (!selectEl) return;
+  const valueToKeep = currentValue !== undefined ? currentValue : selectEl.value;
+  const categories = getEnabledVehicleCategories(valueToKeep);
+  selectEl.innerHTML = categories.map(def => `<option value="${def.value}">${def.label}</option>`).join('');
+  if (valueToKeep) selectEl.value = valueToKeep;
+}
+
+// Blendet die Filter-Chips für deaktivierte Fahrzeugarten in der "Alle"-
+// Übersicht aus bzw. wieder ein. Bereits vorhandene Fahrzeuge dieser Art
+// bleiben unangetastet und sind weiterhin über "Alle" erreichbar.
+function applyVehicleCategoryToggleVisibility() {
+  VEHICLE_CATEGORY_DEFS.forEach(def => {
+    if (!def.enabledKey) return;
+    const enabled = appData[def.enabledKey] !== false;
+    const chip = document.querySelector(`.category-filter-chip[data-category="${def.value}"]`);
+    if (chip) chip.style.display = enabled ? '' : 'none';
+
+    // Falls gerade nach der (jetzt versteckten) Kategorie gefiltert wird,
+    // zurück auf "Alle" springen statt auf einem ausgeblendeten Chip hängen zu bleiben
+    if (!enabled && vehicleCategoryFilter === def.value) {
+      setVehicleCategoryFilter('all');
+    }
+
+    const onBtn = document.getElementById(def.value + 'CategoryToggleOn');
+    const offBtn = document.getElementById(def.value + 'CategoryToggleOff');
+    if (onBtn) onBtn.classList.toggle('active', enabled);
+    if (offBtn) offBtn.classList.toggle('active', !enabled);
+  });
+
+  // "Neues Fahrzeug"-Formular: nur relevant, falls das Modal gerade offen ist,
+  // schadet aber auch sonst nicht, da es beim Öffnen ohnehin neu befüllt wird
+  populateVehicleCategorySelect(document.getElementById('newVCategory'));
+
+  // Stammdaten-Formular des aktuell angezeigten Fahrzeugs: bestehende
+  // Kategorie unbedingt erhalten, auch wenn sie gerade deaktiviert wurde
+  const activeVehicle = getActiveVehicle();
+  if (activeVehicle) {
+    populateVehicleCategorySelect(document.getElementById('vCategory'), activeVehicle.category || 'auto');
+  }
+}
+
+function setBoatCategoryEnabled(enabled) {
+  appData.boatCategoryEnabled = enabled;
+  saveData();
+  applyVehicleCategoryToggleVisibility();
+}
+window.setBoatCategoryEnabled = setBoatCategoryEnabled;
+
+function setTrailerCategoryEnabled(enabled) {
+  appData.trailerCategoryEnabled = enabled;
+  saveData();
+  applyVehicleCategoryToggleVisibility();
+}
+window.setTrailerCategoryEnabled = setTrailerCategoryEnabled;
 
 // Liefert das passende Icon-SVG (als kleiner Markup-Schnipsel) für eine Fahrzeugart
 function getCategoryIconSvg(category) {
@@ -1466,10 +1575,14 @@ function loadActiveVehicle() {
   const vehicle = getActiveVehicle();
   if (!vehicle) return;
 
+  // Kategorie-Auswahl neu aufbauen, BEVOR der Wert gesetzt wird - sonst würde
+  // eine inzwischen deaktivierte Kategorie (Boot/Anhänger) nicht als Option
+  // existieren und die Auswahl bliebe leer stehen
+  populateVehicleCategorySelect(document.getElementById('vCategory'), vehicle.category || 'auto');
+
   const fields = {
     'vName': vehicle.name || '',
     'vPlate': vehicle.plate || '',
-    'vCategory': vehicle.category || 'auto',
     'vType': vehicle.type || 'km',
     'vFuelType': vehicle.fuelType || '',
     'vVin': vehicle.vin || '',
@@ -1507,14 +1620,20 @@ function loadActiveVehicle() {
   renderDashboard();
 }
 
-function openVehicleModal() { 
+function openVehicleModal() {
   const el = document.getElementById('vehicleModal');
-  if (el) el.classList.add('active'); 
+  if (el) el.classList.add('active');
 
-  // Fahrzeugart im Formular passend zum aktuell gewählten Filter vorauswählen
+  // Kategorie-Auswahl neu aufbauen (nur aktuell aktivierte Fahrzeugarten),
+  // dann Fahrzeugart im Formular passend zum aktuell gewählten Filter vorauswählen
   const categoryEl = document.getElementById('newVCategory');
+  populateVehicleCategorySelect(categoryEl);
   if (categoryEl) {
-    categoryEl.value = (vehicleCategoryFilter === 'all') ? 'auto' : vehicleCategoryFilter;
+    const preselect = (vehicleCategoryFilter === 'all') ? 'auto' : vehicleCategoryFilter;
+    // Falls der vorausgewählte Filter-Wert gerade keine gültige Option mehr ist
+    // (z.B. Kategorie zwischenzeitlich deaktiviert), auf "Auto" zurückfallen
+    const hasOption = Array.from(categoryEl.options).some(o => o.value === preselect);
+    categoryEl.value = hasOption ? preselect : 'auto';
   }
   updateNewVehicleFieldsForCategory();
 }
@@ -4249,6 +4368,7 @@ function openSettingsModal() {
   applyAccentColor(appData.accentColor || 'amber');
   applyUiStyle(appData.uiStyle || 'standard');
   applyCustomerVehiclesVisibility();
+  applyVehicleCategoryToggleVisibility();
 
   document.getElementById('settingsModal').classList.add('active');
 }
