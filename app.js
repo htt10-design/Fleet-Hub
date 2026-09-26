@@ -2674,6 +2674,7 @@ window.saveStandEntry = saveStandEntry;
 function openServiceFormModal() {
   updateServiceEngineFieldForActiveVehicle();
   updateServiceCategoryOptionsForActiveVehicle();
+  toggleRoutineIntervalFields();
   document.getElementById('serviceFormModal').classList.add('active');
 }
 window.openServiceFormModal = openServiceFormModal;
