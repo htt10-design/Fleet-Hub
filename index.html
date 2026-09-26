@@ -823,17 +823,18 @@
         <button class="modal-close" onclick="closeImageCropModal()">✕</button>
       </div>
 
-      <p class="sub-text">Bild zum Verschieben ziehen, mit dem Regler zoomen.</p>
+      <p class="sub-text">Rahmen an den Ecken ziehen oder verschieben, um den Ausschnitt festzulegen.</p>
 
       <div class="crop-frame-wrapper">
-        <div class="crop-frame" id="cropFrame">
+        <div class="crop-stage" id="cropStage">
           <img id="cropImage" alt="Bildausschnitt" draggable="false">
+          <div class="crop-selection" id="cropSelection">
+            <div class="crop-handle crop-handle-nw" data-handle="nw"></div>
+            <div class="crop-handle crop-handle-ne" data-handle="ne"></div>
+            <div class="crop-handle crop-handle-sw" data-handle="sw"></div>
+            <div class="crop-handle crop-handle-se" data-handle="se"></div>
+          </div>
         </div>
-      </div>
-
-      <div class="crop-zoom-row">
-        <label for="cropZoomSlider">Zoom</label>
-        <input type="range" id="cropZoomSlider" min="1" max="4" step="0.01" value="1" oninput="updateCropZoom()">
       </div>
 
       <div class="modal-actions">
@@ -841,6 +842,15 @@
         <button type="button" class="btn btn-secondary" onclick="closeImageCropModal()">Abbrechen</button>
       </div>
     </div>
+  </div>
+
+  <!-- Foto-Ansicht mit Zoom (Mausrad/Doppelklick/Pinch) & Verschieben -
+       wiederverwendet für Fahrzeugfoto & Fahrzeugschein-Scan -->
+  <div class="modal-overlay image-zoom-modal" id="imageZoomViewModal">
+    <div class="image-zoom-stage" id="imageZoomStage">
+      <img id="imageZoomImg" src="" alt="Bild" draggable="false">
+    </div>
+    <button type="button" class="image-zoom-close" onclick="closeImageZoomView()">✕</button>
   </div>
 
   <div class="modal-overlay" id="settingsModal">
@@ -1166,6 +1176,14 @@
         <button class="modal-close" onclick="closeFahrzeugscheinModal()">✕</button>
       </div>
       <p class="sub-text">Alle Angaben sind optional und rein informativ hinterlegt.</p>
+
+      <div class="fzschein-photo-row">
+        <label class="btn btn-secondary btn-sm">
+          Foto/Scan hinterlegen
+          <input type="file" id="fzscheinPhotoInput" accept="image/*" style="display:none;" onchange="handleFahrzeugscheinPhotoUpload(event)">
+        </label>
+        <div id="fzscheinPhotoPreviewContainer"></div>
+      </div>
 
       <form onsubmit="saveFahrzeugschein(event)">
         <div class="fzschein-book">
