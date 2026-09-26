@@ -31,6 +31,58 @@ let costPieChartInstance = null;
 let tempServiceImages = [];
 let tempCustomerServiceImages = [];
 
+/* --- PERSISTENZ: IndexedDB (ersetzt localStorage) ---
+   localStorage ist pro Seite meist auf 5-10MB begrenzt - mit Fahrzeugfotos,
+   Fahrzeugschein-Scans und Beleg-Fotos ist das schnell ausgereizt.
+   IndexedDB bietet üblicherweise mehrere hundert MB und ist genauso lokal
+   auf dem Gerät gespeichert, nur mit viel mehr Platz. */
+const SGS_DB_NAME = 'sgs_pro_db';
+const SGS_DB_STORE = 'kv';
+let sgsDbPromise = null;
+
+function sgsOpenDb() {
+  if (sgsDbPromise) return sgsDbPromise;
+  sgsDbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(SGS_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(SGS_DB_STORE)) {
+        db.createObjectStore(SGS_DB_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  return sgsDbPromise;
+}
+
+function sgsIdbGet(key) {
+  return sgsOpenDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(SGS_DB_STORE, 'readonly');
+    const req = tx.objectStore(SGS_DB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  }));
+}
+
+function sgsIdbSet(key, value) {
+  return sgsOpenDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(SGS_DB_STORE, 'readwrite');
+    tx.objectStore(SGS_DB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+
+function sgsIdbDelete(key) {
+  return sgsOpenDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(SGS_DB_STORE, 'readwrite');
+    tx.objectStore(SGS_DB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+
 /* --- INITIALISIERUNG --- */
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
@@ -42,19 +94,52 @@ document.addEventListener('DOMContentLoaded', () => {
       splash.classList.add('splash-hide');
     }, 1200);
   }
+
+  // Service Worker registrieren (App-Shell-Caching, Offline-Fähigkeit) und
+  // den Browser bitten, den Speicher der App als "wichtig" einzustufen,
+  // damit er bei Speicherdruck nicht als Erstes weggeräumt wird
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(err => {
+      console.warn('Service Worker konnte nicht registriert werden:', err);
+    });
+  }
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
 });
 
-function initApp() {
- 
-  const saved = localStorage.getItem('sgs_data') || localStorage.getItem('fleethub_data');
-  if (saved) {
-    try {
-      appData = JSON.parse(saved);
-    } catch (e) {
-      console.error("Fehler beim Laden des Speicherstands, Fallback auf Standardwerte", e);
-      loadDefaultData();
+async function initApp() {
+
+  let appDataLoaded = false;
+
+  try {
+    const savedIdb = await sgsIdbGet('sgs_data');
+    if (savedIdb) {
+      appData = savedIdb;
+      appDataLoaded = true;
     }
-  } else {
+  } catch (e) {
+    console.error('Fehler beim Laden aus IndexedDB:', e);
+  }
+
+  // Einmalige Migration von alten Speicherständen aus localStorage (falls
+  // vorhanden und noch nichts in IndexedDB liegt)
+  if (!appDataLoaded) {
+    const savedLegacy = localStorage.getItem('sgs_data') || localStorage.getItem('fleethub_data');
+    if (savedLegacy) {
+      try {
+        appData = JSON.parse(savedLegacy);
+        appDataLoaded = true;
+        await sgsIdbSet('sgs_data', appData);
+        localStorage.removeItem('sgs_data');
+        localStorage.removeItem('fleethub_data');
+      } catch (e) {
+        console.error("Fehler beim Laden des alten Speicherstands, Fallback auf Standardwerte", e);
+      }
+    }
+  }
+
+  if (!appDataLoaded) {
     loadDefaultData();
   }
 
@@ -179,7 +264,10 @@ function loadDefaultData() {
 }
 
 function saveData() {
-  localStorage.setItem('sgs_data', JSON.stringify(appData));
+  // Absichtlich nicht "awaited" - der Aufrufer rendert direkt weiter aus dem
+  // appData-Objekt im Speicher, das Schreiben auf die Platte läuft im
+  // Hintergrund fertig
+  sgsIdbSet('sgs_data', appData).catch(e => console.error('Fehler beim Speichern:', e));
 }
 
 function getActiveVehicle() {
@@ -4025,7 +4113,7 @@ function resetAllData() {
   }
   localStorage.removeItem('sgs_data');
   localStorage.removeItem('fleethub_data');
-  location.reload();
+  sgsIdbDelete('sgs_data').finally(() => location.reload());
 }
 window.resetAllData = resetAllData;
 /* --- BILDER AUTOMATISCH KOMPRIMIEREN (MAX 800PX / JPEG 70%) --- */
