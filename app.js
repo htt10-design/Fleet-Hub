@@ -3078,6 +3078,24 @@ function renderDashboard() {
   renderCharts(v);
 }
 
+// Liest eine CSS-Custom-Property vom Dokument (folgt also automatisch Theme
+// (hell/dunkel) und der gewählten Akzentfarbe), mit Fallback falls leer.
+function getCssVar(name, fallback) {
+  const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return val || fallback;
+}
+
+// Wandelt eine "#rrggbb"-Hexfarbe in einen "rgba(...)"-String mit gewünschter
+// Deckkraft um (für Verlaufsfüllungen/Glow-Effekte in Charts).
+function hexToRgba(hex, alpha) {
+  const clean = (hex || '').replace('#', '');
+  if (clean.length !== 6) return `rgba(243, 156, 18, ${alpha})`;
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function renderCharts(v) {
   if (typeof Chart === 'undefined') return;
 
@@ -3122,9 +3140,20 @@ function renderCharts(v) {
     const ctx1 = consCanvas.getContext('2d');
     if (consumptionChartInstance) consumptionChartInstance.destroy();
 
-    const isDark = appData.theme === 'dark';
-    const textColor = isDark ? '#f8fafc' : '#0f172a';
-    const gridColor = isDark ? '#334155' : '#cbd5e1';
+    // Farben direkt aus dem aktuellen Theme/Akzent lesen (CSS-Variablen), statt
+    // fest verdrahteter Werte - passt sich so automatisch an hell/dunkel und
+    // die gewählte Akzentfarbe an, statt wie bisher immer knallig blau zu sein.
+    const textColor = getCssVar('--text-muted', '#8b98a5');
+    const gridColor = getCssVar('--border-color', '#212c38');
+    const cardBg = getCssVar('--bg-card', '#131820');
+    const accentHex = getCssVar('--accent-primary', '#f39c12');
+
+    // Sanfter Verlauf unter der Linie (wie ein dezentes "Instrumenten-Glühen"),
+    // statt einer flachen Einheitsfarbe
+    const chartHeight = consCanvas.parentElement ? consCanvas.parentElement.clientHeight || 260 : 260;
+    const fillGradient = ctx1.createLinearGradient(0, 0, 0, chartHeight);
+    fillGradient.addColorStop(0, hexToRgba(accentHex, 0.35));
+    fillGradient.addColorStop(1, hexToRgba(accentHex, 0.02));
 
     consumptionChartInstance = new Chart(ctx1, {
       type: 'line',
@@ -3133,8 +3162,14 @@ function renderCharts(v) {
         datasets: [{
           label: v.type === 'km' ? 'Verbrauch (L/100km)' : 'Verbrauch (L/Std)',
           data: dataPoints,
-          borderColor: '#2563eb',
-          backgroundColor: 'rgba(37, 99, 235, 0.2)',
+          borderColor: accentHex,
+          backgroundColor: fillGradient,
+          borderWidth: 2,
+          pointRadius: 2.5,
+          pointHoverRadius: 6,
+          pointBackgroundColor: accentHex,
+          pointBorderColor: cardBg,
+          pointBorderWidth: 1.5,
           fill: true,
           tension: 0.3
         }]
@@ -3142,11 +3177,24 @@ function renderCharts(v) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
         scales: {
           x: { ticks: { color: textColor }, grid: { color: gridColor } },
           y: { ticks: { color: textColor }, grid: { color: gridColor } }
         },
-        plugins: { legend: { labels: { color: textColor } } }
+        plugins: {
+          legend: { labels: { color: textColor } },
+          tooltip: {
+            backgroundColor: cardBg,
+            titleColor: getCssVar('--text-main', '#e6edf3'),
+            bodyColor: getCssVar('--text-main', '#e6edf3'),
+            borderColor: gridColor,
+            borderWidth: 1,
+            padding: 10,
+            cornerRadius: 8,
+            displayColors: false
+          }
+        }
       }
     });
   } else if (consumptionChartInstance) {
@@ -3165,17 +3213,31 @@ function renderCharts(v) {
     if (costPieChartInstance) costPieChartInstance.destroy();
 
     const isDark = appData.theme === 'dark';
-    const textColor = isDark ? '#f8fafc' : '#0f172a';
+    const textColor = getCssVar('--text-muted', '#8b98a5');
+    const cardBg = getCssVar('--bg-card', '#131820');
+
+    // Feste, aufeinander abgestimmte Kategorie-Farben (statt der bisherigen
+    // knalligen Bootstrap-Farben) - bewusst UNABHÄNGIG von der frei wählbaren
+    // Akzentfarbe der App, damit sich z.B. "Kraftstoff" nicht plötzlich mit
+    // "Reparatur" verwechseln lässt, nur weil jemand die rote Akzentfarbe wählt.
+    // Reihenfolge ist fest: Kraftstoff -> Wartung -> Reparatur -> TÜV.
+    const CHART_CATEGORY_COLORS = {
+      Kraftstoff: { light: '#2a78d6', dark: '#3987e5' },
+      Wartung:    { light: '#1baf7a', dark: '#199e70' },
+      Reparatur:  { light: '#e34948', dark: '#e66767' },
+      'TÜV':      { light: '#4a3aa7', dark: '#9085e9' }
+    };
+    const colorFor = (label) => isDark ? CHART_CATEGORY_COLORS[label].dark : CHART_CATEGORY_COLORS[label].light;
 
     const pieLabels = ['Wartung', 'Reparatur', 'TÜV'];
     const pieData = [serviceTotal, repairTotal, tuevTotal];
-    const pieColors = ['#10b981', '#ef4444', '#f59e0b'];
 
     if (hasEngineForCharts) {
       pieLabels.unshift('Kraftstoff');
       pieData.unshift(fuelTotal);
-      pieColors.unshift('#2563eb');
     }
+
+    const pieColors = pieLabels.map(colorFor);
 
     costPieChartInstance = new Chart(ctx2, {
       type: 'doughnut',
@@ -3183,13 +3245,31 @@ function renderCharts(v) {
         labels: pieLabels,
         datasets: [{
           data: pieData,
-          backgroundColor: pieColors
+          backgroundColor: pieColors,
+          borderColor: cardBg,
+          borderWidth: 2,
+          hoverOffset: 6
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { color: textColor } } }
+        cutout: '62%',
+        plugins: {
+          legend: { position: 'bottom', labels: { color: textColor, padding: 14, usePointStyle: true, pointStyle: 'circle' } },
+          tooltip: {
+            backgroundColor: cardBg,
+            titleColor: getCssVar('--text-main', '#e6edf3'),
+            bodyColor: getCssVar('--text-main', '#e6edf3'),
+            borderColor: getCssVar('--border-color', '#212c38'),
+            borderWidth: 1,
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: {
+              label: (ctx) => ` ${ctx.label}: ${(ctx.parsed || 0).toFixed(2)} €`
+            }
+          }
+        }
       }
     });
   }
