@@ -984,6 +984,10 @@ body[data-bg-style="mercedes-classic"],
   height: 44px;
   top: 0.4rem;
   right: 0.4rem;
+  /* Kleinere Plakette braucht proportional dünnere Linien, sonst wirkt der
+     Rand im Verhältnis zur Größe viel zu dick (war vorher 1:1 mit der
+     großen 64px-Plakette übernommen) */
+  border-width: 2px;
 }
 
 .vehicle-tile-compact .tuev-plakette-ring-num {
@@ -992,6 +996,14 @@ body[data-bg-style="mercedes-classic"],
 
 .vehicle-tile-compact .tuev-plakette-year {
   font-size: 0.5rem;
+}
+
+.vehicle-tile-compact .tuev-plakette-center {
+  border-width: 1.1px;
+}
+
+.vehicle-tile-compact .tuev-plakette-tick {
+  width: 1.1px;
 }
 
 .vehicle-tile-compact .tuev-plakette-overdue-badge {

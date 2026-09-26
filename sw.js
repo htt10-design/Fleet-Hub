@@ -5,7 +5,7 @@
 // Nur so merkt der Browser, dass es eine neue Version gibt und lädt sie
 // nach - sonst bekommen Nutzer u.U. dauerhaft die alte, zwischengespeicherte
 // Version ausgeliefert.
-const CACHE_VERSION = 'sgs-pro-v5';
+const CACHE_VERSION = 'sgs-pro-v6';
 
 // Alle Dateien, die die App offline-fähig machen ("App-Shell")
 const APP_SHELL_FILES = [
