@@ -1002,7 +1002,11 @@ body[data-bg-style="mercedes-classic"],
   border-width: 1.1px;
 }
 
-.vehicle-tile-compact .tuev-plakette-tick {
+/* :not(...) hier wichtig: sonst überschreibt diese Regel (2 Klassen) auch
+   die Monat-12-Spezialmarkierung, die eigentlich breiter sein soll
+   (.tuev-plakette-tick-special hat selbst nur 1 Klasse und würde sonst
+   trotz späterer Definition durch die höhere Spezifität verlieren) */
+.vehicle-tile-compact .tuev-plakette-tick:not(.tuev-plakette-tick-special) {
   width: 1.1px;
 }
 

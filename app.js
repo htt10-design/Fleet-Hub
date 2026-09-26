@@ -572,7 +572,7 @@ function formatTuevDate(value) {
 // echte 6-Jahres-Farbrotation (Braun/Rosa/Grün/Orange/Blau/Gelb), Monat & Jahr
 // zur Anzeige, sowie ob der Termin überfällig ist. Bei Booten gibt's keine
 // Plakette (TÜV nicht relevant); ohne eingetragenes Datum eine leere Plakette.
-function getTuevPlaketteData(v, compact) {
+function getTuevPlaketteData(v, sizePx) {
   if (v.category === 'boot') return null;
 
   if (!v.nextTuev) {
@@ -596,7 +596,7 @@ function getTuevPlaketteData(v, compact) {
     month,
     year: (year % 100).toString().padStart(2, '0'),
     colorClass,
-    monthRingHtml: buildTuevMonthRing(parseInt(month, 10), compact)
+    monthRingHtml: buildTuevMonthRing(parseInt(month, 10), sizePx)
   };
 }
 
@@ -616,14 +616,38 @@ function renderTuevPlaketteHtml(plakette) {
   `;
 }
 
+// Liefert die drei Radien (Zahlenkranz / äußere & innere Strichmarken) für
+// eine bestimmte, tatsächlich gerenderte Plaketten-Größe in Pixel. Handverlesen
+// abgestimmt für die drei Größen, die im CSS tatsächlich vorkommen (44px auf
+// der "Alle"-Kachel, 52px auf dem Dashboard-Handy-Layout, 64px sonst) - eine
+// reine lineare Skalierung sieht bei so kleinen Kreisen nicht immer gut aus,
+// deshalb keine Formel, sondern abgestimmte Werte je Größe. Für unbekannte
+// Größen wird linear von der 64px-Referenz hochgerechnet.
+function getTuevRingRadii(sizePx) {
+  const knownSizes = {
+    44: { numRadius: 11, tickRadius: 16, innerTickRadius: 8 },
+    52: { numRadius: 13, tickRadius: 19, innerTickRadius: 10 },
+    64: { numRadius: 17, tickRadius: 24, innerTickRadius: 12 }
+  };
+  if (knownSizes[sizePx]) return knownSizes[sizePx];
+
+  const ratio = (sizePx || 64) / 64;
+  return {
+    numRadius: Math.round(17 * ratio),
+    tickRadius: Math.round(24 * ratio),
+    innerTickRadius: Math.round(12 * ratio)
+  };
+}
+
 // Baut den Zahlenkranz mit allen 12 Monaten am Rand der Plakette (wie beim
 // echten Vorbild): jede Zahl radial ausgerichtet (wie ein Uhrzeiger gedreht)
-// und so positioniert, dass der fällige Monat oben (12-Uhr) steht
-function buildTuevMonthRing(dueMonth, compact) {
+// und so positioniert, dass der fällige Monat oben (12-Uhr) steht.
+// sizePx muss der tatsächlich im CSS gerenderten Kantenlänge der Plakette
+// entsprechen (siehe getTuevRingRadii) - sonst ragen die Striche über den
+// Rand hinaus bzw. sitzen zu weit innen.
+function buildTuevMonthRing(dueMonth, sizePx) {
   let html = '';
-  const numRadius = compact ? 11 : 17; // Abstand der Zahlen vom Mittelpunkt (mittig zwischen innerem & äußerem Strich)
-  const tickRadius = compact ? 16 : 24; // Abstand der äußeren Strichmarken (näher am Rand)
-  const innerTickRadius = compact ? 8 : 12; // Abstand der kurzen inneren Striche (knapp außerhalb des Jahreskreises, bis zur Zahl)
+  const { numRadius, tickRadius, innerTickRadius } = getTuevRingRadii(sizePx);
 
   // Je Monat: kurzer Strich innen, Zahl in der Mitte, langer Strich außen -
   // alle drei auf derselben Linie/Winkel ausgerichtet.
@@ -964,7 +988,8 @@ function renderGarageVehicleTiles() {
     const tsn = v.tsn || '-';
 
     // TÜV-Plakette (rechts auf der Kachel) statt Textzeile
-    const tuevPlakette = getTuevPlaketteData(v, isAllFilter);
+    // Kachel "Alle" nutzt die kleinere 44px-Plakette (siehe .vehicle-tile-compact im CSS)
+    const tuevPlakette = getTuevPlaketteData(v, isAllFilter ? 44 : 64);
     let tuevBadgeHtml = '';
     if (tuevPlakette) {
       if (tuevPlakette.empty) {
@@ -2918,7 +2943,12 @@ function renderDashboard() {
   // TÜV-Plakette auf dem Fahrzeugfoto im Dashboard (wie auf der Kachel)
   const dashPlaketteContainer = document.getElementById('dashTuevPlakette');
   if (dashPlaketteContainer) {
-    const dashTuevPlakette = getTuevPlaketteData(v, false);
+    // Auf dem Handy-Layout (siehe CSS @media max-width: 850px) wird die
+    // Dashboard-Plakette per CSS auf 52px verkleinert - das muss hier bekannt
+    // sein, sonst werden die Striche für 64px berechnet und ragen über den
+    // (kleineren) Rand hinaus
+    const dashPlaketteSizePx = window.innerWidth <= 850 ? 52 : 64;
+    const dashTuevPlakette = getTuevPlaketteData(v, dashPlaketteSizePx);
     if (!dashTuevPlakette) {
       dashPlaketteContainer.innerHTML = '';
     } else if (dashTuevPlakette.empty) {
