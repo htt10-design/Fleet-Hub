@@ -191,6 +191,10 @@ async function initApp() {
   appData.vehicles.forEach(v => {
     if (v.archived === undefined) v.archived = false;
     if (!v.category) v.category = 'auto';
+    // Migration: Reifensätze (nur für Auto & Anhänger relevant, aber schadet
+    // auch bei anderen Kategorien nicht, einfach als leeres Array vorzuhalten)
+    if (!v.tireSets) v.tireSets = [];
+    if (v.tireApprovedCombos === undefined) v.tireApprovedCombos = '';
     // Migration: Boote bekommen die neuen Felder (Bootstyp, Motorenliste, Zubehör-Verknüpfung)
     if (v.category === 'boot') {
       if (!v.boatType) v.boatType = 'motorboot';
@@ -1484,6 +1488,17 @@ function updateNavForCategory(vehicleOrCategory) {
       showTab('dashboard');
     }
   }
+
+  // Reifen-Tab ergibt bei Booten keinen Sinn (kein Straßenfahrzeug)
+  const needsTires = vehicle.category !== 'boot';
+  const navTireBtn = document.getElementById('navTireBtn');
+  if (navTireBtn) navTireBtn.style.display = needsTires ? 'flex' : 'none';
+  if (!needsTires) {
+    const tiresTab = document.getElementById('tab-tires');
+    if (tiresTab && tiresTab.classList.contains('active')) {
+      showTab('dashboard');
+    }
+  }
 }
 
 // Blendet in den Stammdaten Felder ein/aus bzw. beschriftet sie um, je nachdem
@@ -1600,6 +1615,235 @@ function removeBoatEngineRow(id) {
 }
 window.removeBoatEngineRow = removeBoatEngineRow;
 
+/* --- REIFEN & FELGEN --- */
+
+const TIRE_AGE_WARNING_YEARS = 6;
+
+// Ermittelt das Alter eines Reifensatzes in Jahren (bevorzugt Herstellungsdatum,
+// sonst Kaufdatum als Näherung) sowie ob er damit als "alt" gilt. Liefert null
+// für das Alter, wenn gar kein Datum hinterlegt ist.
+function getTireAgeInfo(tireSet) {
+  const dateStr = tireSet.manufactureDate || tireSet.purchaseDate;
+  if (!dateStr) return { years: null, isOld: false, label: 'Alter unbekannt' };
+
+  // "YYYY-MM" (Herstellungsdatum) oder "YYYY-MM-DD" (Kaufdatum) - beides von "-01" ergänzbar
+  const parsable = dateStr.length === 7 ? dateStr + '-01' : dateStr;
+  const refDate = new Date(parsable);
+  if (isNaN(refDate.getTime())) return { years: null, isOld: false, label: 'Alter unbekannt' };
+
+  const ageMs = Date.now() - refDate.getTime();
+  const years = ageMs / (1000 * 60 * 60 * 24 * 365.25);
+  const roundedYears = Math.floor(years * 10) / 10;
+  const isOld = years >= TIRE_AGE_WARNING_YEARS;
+
+  return {
+    years: roundedYears,
+    isOld,
+    label: `${roundedYears.toFixed(1).replace('.0', '')} Jahre alt`
+  };
+}
+
+function getMountedTireSet(v) {
+  return (v.tireSets || []).find(t => t.mounted) || null;
+}
+
+// Baut die Liste der Reifensatz-Karten im Reifen-Tab auf
+function renderTireSection(v) {
+  const list = document.getElementById('tireSetsList');
+  const emptyHint = document.getElementById('tireSetsEmptyHint');
+  const swapBtn = document.getElementById('tireSwapBtn');
+  const combosInput = document.getElementById('tireApprovedCombosInput');
+  if (!list) return;
+
+  const tireSets = v.tireSets || [];
+  list.innerHTML = '';
+
+  if (emptyHint) emptyHint.style.display = tireSets.length === 0 ? '' : 'none';
+  if (swapBtn) swapBtn.style.display = tireSets.length >= 2 ? '' : 'none';
+  if (combosInput) combosInput.value = v.tireApprovedCombos || '';
+
+  tireSets.forEach(tireSet => {
+    const age = getTireAgeInfo(tireSet);
+    const card = document.createElement('div');
+    card.className = 'tire-set-card' + (tireSet.mounted ? ' tire-set-mounted' : '');
+
+    const specsParts = [];
+    if (tireSet.tireSize) specsParts.push(tireSet.tireSize);
+    if (tireSet.rimSize) specsParts.push(tireSet.rimSize);
+
+    card.innerHTML = `
+      <div class="tire-set-main">
+        <div class="tire-set-title-row">
+          <span class="tire-set-title">${tireSet.label}</span>
+          <span class="tire-set-badge ${tireSet.mounted ? 'tire-set-badge-mounted' : 'tire-set-badge-stored'}">${tireSet.mounted ? 'Montiert' : 'Eingelagert'}</span>
+          ${age.isOld ? '<span class="tire-set-badge tire-set-badge-old">Alt</span>' : ''}
+        </div>
+        <span class="tire-set-specs">${specsParts.length ? specsParts.join(' • ') : 'Größe nicht hinterlegt'}</span>
+        <span class="tire-set-age${age.isOld ? ' tire-set-age-old' : ''}">${age.label}</span>
+      </div>
+      <div class="tire-set-actions">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openTireFormModal('${tireSet.id}')">${ICON_EDIT_SVG}</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="deleteTireSet('${tireSet.id}')">${ICON_DELETE_SVG}</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function updateTireLabelCustomVisibility() {
+  const labelEl = document.getElementById('tireLabel');
+  const customGroup = document.getElementById('tireLabelCustomGroup');
+  if (labelEl && customGroup) {
+    customGroup.style.display = labelEl.value === 'custom' ? '' : 'none';
+  }
+}
+window.updateTireLabelCustomVisibility = updateTireLabelCustomVisibility;
+
+// editId leer/undefined = neuer Reifensatz, sonst wird der bestehende Satz vorausgefüllt
+function openTireFormModal(editId) {
+  const v = getActiveVehicle();
+  if (!v) return;
+  const existing = editId ? (v.tireSets || []).find(t => t.id === editId) : null;
+
+  document.getElementById('tireEditId').value = editId || '';
+  document.getElementById('tireFormTitle').innerText = existing ? 'Reifensatz bearbeiten' : 'Neuer Reifensatz';
+
+  const knownLabels = ['Sommerreifen', 'Winterreifen', 'Ganzjahresreifen'];
+  const labelEl = document.getElementById('tireLabel');
+  const customEl = document.getElementById('tireLabelCustom');
+
+  if (existing && !knownLabels.includes(existing.label)) {
+    labelEl.value = 'custom';
+    customEl.value = existing.label;
+  } else {
+    labelEl.value = existing ? existing.label : 'Sommerreifen';
+    customEl.value = '';
+  }
+  updateTireLabelCustomVisibility();
+
+  document.getElementById('tireSize').value = existing ? (existing.tireSize || '') : '';
+  document.getElementById('tireRimSize').value = existing ? (existing.rimSize || '') : '';
+  document.getElementById('tireManufactureDate').value = existing ? (existing.manufactureDate || '') : '';
+  document.getElementById('tirePurchaseDate').value = existing ? (existing.purchaseDate || '') : '';
+
+  document.getElementById('tireFormModal').classList.add('active');
+}
+window.openTireFormModal = openTireFormModal;
+
+function closeTireFormModal() {
+  document.getElementById('tireFormModal').classList.remove('active');
+}
+window.closeTireFormModal = closeTireFormModal;
+
+function saveTireSet(e) {
+  e.preventDefault();
+  const v = getActiveVehicle();
+  if (!v) return;
+
+  const editId = document.getElementById('tireEditId').value;
+  const labelEl = document.getElementById('tireLabel');
+  const label = labelEl.value === 'custom'
+    ? (document.getElementById('tireLabelCustom').value.trim() || 'Sonstige')
+    : labelEl.value;
+
+  if (!v.tireSets) v.tireSets = [];
+  const existing = editId ? v.tireSets.find(t => t.id === editId) : null;
+
+  const tireSet = {
+    id: editId || ('tire_' + Date.now()),
+    label,
+    tireSize: document.getElementById('tireSize').value.trim(),
+    rimSize: document.getElementById('tireRimSize').value.trim(),
+    manufactureDate: document.getElementById('tireManufactureDate').value || '',
+    purchaseDate: document.getElementById('tirePurchaseDate').value || '',
+    // Der allererste angelegte Satz gilt automatisch als montiert, damit nicht
+    // jeder gleich manuell einen Reifenwechsel durchführen muss
+    mounted: existing ? existing.mounted : v.tireSets.length === 0
+  };
+
+  if (existing) {
+    const idx = v.tireSets.findIndex(t => t.id === editId);
+    v.tireSets[idx] = tireSet;
+  } else {
+    v.tireSets.push(tireSet);
+  }
+
+  saveData();
+  closeTireFormModal();
+  renderTireSection(v);
+  renderDashboard();
+}
+window.saveTireSet = saveTireSet;
+
+function deleteTireSet(id) {
+  const v = getActiveVehicle();
+  if (!v || !v.tireSets) return;
+  if (!confirm('Diesen Reifensatz wirklich löschen?')) return;
+
+  const wasMounted = v.tireSets.find(t => t.id === id)?.mounted;
+  v.tireSets = v.tireSets.filter(t => t.id !== id);
+
+  // Falls der montierte Satz gelöscht wurde und noch andere übrig sind,
+  // keinen automatisch neu montieren lassen - lieber bewusst per Reifenwechsel
+  // festlegen, damit nichts fälschlich als "montiert" gilt
+  if (wasMounted) {
+    // nichts weiter zu tun - keiner ist mehr als montiert markiert
+  }
+
+  saveData();
+  renderTireSection(v);
+  renderDashboard();
+}
+window.deleteTireSet = deleteTireSet;
+
+function openTireSwapModal() {
+  const v = getActiveVehicle();
+  if (!v || !v.tireSets || v.tireSets.length < 2) return;
+
+  const list = document.getElementById('tireSwapList');
+  list.innerHTML = v.tireSets.map(t => {
+    const specs = [t.tireSize, t.rimSize].filter(Boolean).join(' • ') || 'Größe nicht hinterlegt';
+    return `
+      <button type="button" class="tire-swap-option${t.mounted ? ' tire-swap-option-current' : ''}" onclick="applyTireSwap('${t.id}')">
+        <span>
+          <strong>${t.label}</strong><br>
+          <span class="sub-text">${specs}</span>
+        </span>
+        ${t.mounted ? '<span class="tire-set-badge tire-set-badge-mounted">Aktuell montiert</span>' : ''}
+      </button>
+    `;
+  }).join('');
+
+  document.getElementById('tireSwapModal').classList.add('active');
+}
+window.openTireSwapModal = openTireSwapModal;
+
+function closeTireSwapModal() {
+  document.getElementById('tireSwapModal').classList.remove('active');
+}
+window.closeTireSwapModal = closeTireSwapModal;
+
+function applyTireSwap(id) {
+  const v = getActiveVehicle();
+  if (!v || !v.tireSets) return;
+
+  v.tireSets.forEach(t => { t.mounted = (t.id === id); });
+
+  saveData();
+  closeTireSwapModal();
+  renderTireSection(v);
+  renderDashboard();
+}
+window.applyTireSwap = applyTireSwap;
+
+function saveTireApprovedCombos() {
+  const v = getActiveVehicle();
+  if (!v) return;
+  v.tireApprovedCombos = document.getElementById('tireApprovedCombosInput').value;
+  saveData();
+}
+window.saveTireApprovedCombos = saveTireApprovedCombos;
+
 function loadActiveVehicle() {
   const vehicle = getActiveVehicle();
   if (!vehicle) return;
@@ -1638,6 +1882,9 @@ function loadActiveVehicle() {
   // Motorenliste für Boote in den Zwischenspeicher laden & anzeigen
   tempBoatEngines = (vehicle.engines || []).map(e => ({ ...e }));
   renderBoatEnginesList();
+
+  // Reifen-Tab (nur relevant bei Auto/Anhänger, s. updateNavForCategory)
+  renderTireSection(vehicle);
 
   const settingsImgPreview = document.getElementById('vehicleImageSettingsPreview');
   if (settingsImgPreview) {
@@ -1725,7 +1972,9 @@ function createNewVehicle(e) {
     engines: [],
     belongsToId: null,
     fuelEntries: [],
-    serviceEntries: []
+    serviceEntries: [],
+    tireSets: [],
+    tireApprovedCombos: ""
   };
 
   // Zusätzliche Angaben beim Anlegen (nur Autos) - fließen sowohl in die
@@ -3185,25 +3434,57 @@ function renderDashboard() {
   const totalCosts = fuelCosts + serviceCosts;
   document.getElementById('kpi-total-cost').innerText = `${totalCosts.toFixed(2)} €`;
 
+  // "Kosten/100km" ist auf der KPI-Kachel der Reifen-Übersicht gewichen (s.u.),
+  // taucht aber weiterhin dezent bei der Kostenverteilung (Kreisdiagramm) auf -
+  // nur bei Autos sinnvoll (Boote laufen über Betriebsstunden, Anhänger tanken nicht)
   const costPerKm = totalDist > 0 ? (fuelCosts / totalDist) * 100 : 0;
-  document.getElementById('kpi-cost-per-km').innerText = `${costPerKm.toFixed(2)} €`;
+  const costPerKmInlineStat = document.getElementById('costPerKmInlineStat');
+  if (costPerKmInlineStat) {
+    const showCostPerKmInline = (v.category || 'auto') === 'auto';
+    costPerKmInlineStat.style.display = showCostPerKmInline ? '' : 'none';
+    if (showCostPerKmInline) {
+      costPerKmInlineStat.innerText = `Kosten / 100 km: ${costPerKm.toFixed(2)} €`;
+    }
+  }
 
   // KPI-Kacheln je nach Fahrzeugart ein-/ausblenden:
   // - Anhänger hat keinen eigenen Antrieb und keinen sinnvollen KM-Stand
-  // - "Kosten/100km" passt nur bei Autos (bei Booten läuft's ja in Betriebsstunden)
   const kpiMileageCard = document.getElementById('kpiMileageCard');
   const kpiConsumptionCard = document.getElementById('kpiConsumptionCard');
-  const kpiCostPerKmCard = document.getElementById('kpiCostPerKmCard');
+  const kpiTireCard = document.getElementById('kpiTireCard');
   const hasEngine = vehicleHasEngine(v);
   const boatEnginesForDash = getBoatEngines(v);
   const multiEngineBoat = v.category === 'boot' && boatEnginesForDash.length > 1;
   // Bei Autos mit KM-Erfassung ersetzt die Tacho-Walzen-Anzeige die normale KPI-Kachel
   const useOdometer = (v.category || 'auto') === 'auto' && v.type !== 'hours';
   const showMileage = v.category !== 'anhaenger' && !multiEngineBoat && !useOdometer;
-  const showCostPerKm = (v.category || 'auto') === 'auto';
   if (kpiMileageCard) kpiMileageCard.style.display = showMileage ? '' : 'none';
   if (kpiConsumptionCard) kpiConsumptionCard.style.display = hasEngine ? '' : 'none';
-  if (kpiCostPerKmCard) kpiCostPerKmCard.style.display = showCostPerKm ? '' : 'none';
+
+  // Reifen-KPI-Kachel: nur Auto & Anhänger (Boote haben keine Reifen)
+  const showTireCard = v.category !== 'boot';
+  if (kpiTireCard) {
+    kpiTireCard.style.display = showTireCard ? '' : 'none';
+    if (showTireCard) {
+      const mounted = getMountedTireSet(v);
+      const tireStatusEl = document.getElementById('kpi-tire-status');
+      const tireSubEl = document.getElementById('kpi-tire-sub');
+      if (!v.tireSets || v.tireSets.length === 0) {
+        if (tireStatusEl) tireStatusEl.innerText = '-';
+        if (tireSubEl) tireSubEl.innerText = 'Noch nicht erfasst';
+      } else if (!mounted) {
+        if (tireStatusEl) tireStatusEl.innerText = '-';
+        if (tireSubEl) tireSubEl.innerText = 'Kein Satz als montiert markiert';
+      } else {
+        const age = getTireAgeInfo(mounted);
+        if (tireStatusEl) tireStatusEl.innerText = mounted.label;
+        if (tireSubEl) {
+          tireSubEl.innerText = age.label;
+          tireSubEl.classList.toggle('kpi-sub-warning', age.isOld);
+        }
+      }
+    }
+  }
 
   const odometerWrapper = document.getElementById('odometerWrapper');
   if (odometerWrapper) {
