@@ -1609,10 +1609,10 @@ window.removeBoatEngineRow = removeBoatEngineRow;
 
 const TIRE_AGE_WARNING_YEARS = 6;
 
-// Formatiert ein "YYYY-MM" Herstellungsdatum als "MM/YYYY" für die Dashboard-Kachel
-function formatTireMonthLabel(manufactureDate) {
-  if (!manufactureDate || manufactureDate.length !== 7) return '';
-  const [year, month] = manufactureDate.split('-');
+// Formatiert ein Herstellungs- ("YYYY-MM") oder Kaufdatum ("YYYY-MM-DD") als "MM/YYYY" für die Dashboard-Kachel
+function formatTireMonthLabel(dateStr) {
+  if (!dateStr || dateStr.length < 7) return '';
+  const [year, month] = dateStr.split('-');
   if (!year || !month) return '';
   return `${month}/${year}`;
 }
@@ -1666,7 +1666,6 @@ function renderTireSection(v) {
   const list = document.getElementById('tireSetsList');
   const emptyHint = document.getElementById('tireSetsEmptyHint');
   const swapBtn = document.getElementById('tireSwapBtn');
-  const combosInput = document.getElementById('tireApprovedCombosInput');
   if (!list) return;
 
   const tireSets = v.tireSets || [];
@@ -1674,7 +1673,6 @@ function renderTireSection(v) {
 
   if (emptyHint) emptyHint.style.display = tireSets.length === 0 ? '' : 'none';
   if (swapBtn) swapBtn.style.display = tireSets.length >= 2 ? '' : 'none';
-  if (combosInput) combosInput.value = v.tireApprovedCombos || '';
 
   tireSets.forEach(tireSet => {
     const age = getTireAgeInfo(tireSet);
@@ -1849,14 +1847,6 @@ function applyTireSwap(id) {
   renderDashboard();
 }
 window.applyTireSwap = applyTireSwap;
-
-function saveTireApprovedCombos() {
-  const v = getActiveVehicle();
-  if (!v) return;
-  v.tireApprovedCombos = document.getElementById('tireApprovedCombosInput').value;
-  saveData();
-}
-window.saveTireApprovedCombos = saveTireApprovedCombos;
 
 function loadActiveVehicle() {
   const vehicle = getActiveVehicle();
@@ -3481,30 +3471,30 @@ function renderDashboard() {
     kpiTireCard.style.display = showTireCard ? '' : 'none';
     if (showTireCard) {
       const mounted = getMountedTireSet(v);
-      const sizeEl = document.getElementById('kpi-tire-size');
-      const halfcircleEl = document.getElementById('kpi-tire-halfcircle');
+      const arcTextEl = document.getElementById('kpi-tire-arc-text');
+      const wheelEl = document.getElementById('kpi-tire-wheel');
       const tireSubEl = document.getElementById('kpi-tire-sub');
       if (!v.tireSets || v.tireSets.length === 0) {
-        if (sizeEl) sizeEl.innerText = '-';
-        if (halfcircleEl) halfcircleEl.classList.add('tire-kpi-empty');
+        if (arcTextEl) arcTextEl.textContent = '-';
+        if (wheelEl) wheelEl.classList.add('tire-kpi-empty');
         if (tireSubEl) {
           tireSubEl.innerText = 'Noch nicht erfasst';
           tireSubEl.classList.remove('kpi-sub-warning');
         }
       } else if (!mounted) {
-        if (sizeEl) sizeEl.innerText = '-';
-        if (halfcircleEl) halfcircleEl.classList.add('tire-kpi-empty');
+        if (arcTextEl) arcTextEl.textContent = '-';
+        if (wheelEl) wheelEl.classList.add('tire-kpi-empty');
         if (tireSubEl) {
           tireSubEl.innerText = 'Kein Satz als montiert markiert';
           tireSubEl.classList.remove('kpi-sub-warning');
         }
       } else {
         const age = getTireAgeInfo(mounted);
-        if (sizeEl) sizeEl.innerText = mounted.tireSize || mounted.label;
-        if (halfcircleEl) halfcircleEl.classList.remove('tire-kpi-empty');
+        if (arcTextEl) arcTextEl.textContent = mounted.tireSize || mounted.label;
+        if (wheelEl) wheelEl.classList.remove('tire-kpi-empty');
         if (tireSubEl) {
-          const dateLabel = formatTireMonthLabel(mounted.manufactureDate);
-          tireSubEl.innerText = dateLabel ? `${mounted.label} · ${dateLabel}` : mounted.label;
+          const dateLabel = formatTireMonthLabel(mounted.manufactureDate || mounted.purchaseDate);
+          tireSubEl.innerText = dateLabel ? `${mounted.label} von ${dateLabel}` : mounted.label;
           tireSubEl.classList.toggle('kpi-sub-warning', age.isOld);
         }
       }

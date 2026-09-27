@@ -264,9 +264,35 @@
             <div class="kpi-card kpi-card-clickable" id="kpiTireCard" onclick="openTireOverviewModal()">
               <span class="kpi-label">Reifen</span>
               <div class="tire-kpi-visual">
-                <div class="tire-kpi-halfcircle" id="kpi-tire-halfcircle">
-                  <span class="tire-kpi-size" id="kpi-tire-size">-</span>
-                </div>
+                <svg class="tire-kpi-wheel" id="kpi-tire-wheel" viewBox="0 0 100 100" width="72" height="72" xmlns:xlink="http://www.w3.org/1999/xlink">
+                  <defs>
+                    <radialGradient id="tireKpiTireGrad" cx="35%" cy="30%" r="75%">
+                      <stop offset="0%" stop-color="#4a4a46"/>
+                      <stop offset="70%" stop-color="#2c2c29"/>
+                      <stop offset="100%" stop-color="#1a1a18"/>
+                    </radialGradient>
+                    <radialGradient id="tireKpiRimGrad" cx="35%" cy="30%" r="75%">
+                      <stop offset="0%" stop-color="#eeeeec"/>
+                      <stop offset="55%" stop-color="#c7c7c1"/>
+                      <stop offset="100%" stop-color="#93938c"/>
+                    </radialGradient>
+                  </defs>
+                  <circle cx="50" cy="50" r="48" fill="url(#tireKpiTireGrad)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+                  <circle cx="50" cy="50" r="32" fill="url(#tireKpiRimGrad)"/>
+                  <g stroke="#84847c" stroke-width="2.4" stroke-linecap="round">
+                    <line x1="50" y1="50" x2="50" y2="24" transform="rotate(0 50 50)"/>
+                    <line x1="50" y1="50" x2="50" y2="24" transform="rotate(72 50 50)"/>
+                    <line x1="50" y1="50" x2="50" y2="24" transform="rotate(144 50 50)"/>
+                    <line x1="50" y1="50" x2="50" y2="24" transform="rotate(216 50 50)"/>
+                    <line x1="50" y1="50" x2="50" y2="24" transform="rotate(288 50 50)"/>
+                  </g>
+                  <circle cx="50" cy="50" r="8" fill="#5c5c56"/>
+                  <circle cx="50" cy="50" r="3" fill="#3a3a37"/>
+                  <path id="kpiTireArcPath" d="M 9,50 A 41,41 0 0 1 91,50" fill="none"/>
+                  <text font-size="9" font-weight="700" fill="#f5f4ee" letter-spacing="0.3">
+                    <textPath href="#kpiTireArcPath" xlink:href="#kpiTireArcPath" startOffset="50%" text-anchor="middle" id="kpi-tire-arc-text">-</textPath>
+                  </text>
+                </svg>
               </div>
               <span class="kpi-sub" id="kpi-tire-sub">Noch nicht erfasst</span>
             </div>
@@ -1273,7 +1299,7 @@
         <button class="modal-close" onclick="closeTireOverviewModal()">✕</button>
       </div>
       <div class="card-header-flex">
-        <p class="sub-text" style="margin: 0;">Behalte im Blick, welcher Satz gerade montiert ist, wie alt die Reifen sind, und welche Größen zulässig sind.</p>
+        <p class="sub-text" style="margin: 0;">Behalte im Blick, welcher Satz gerade montiert ist und wie alt die Reifen sind.</p>
         <div class="filter-tools">
           <button type="button" class="btn btn-secondary btn-sm" id="tireSwapBtn" onclick="openTireSwapModal()" style="display: none;">Reifenwechsel durchführen</button>
           <button type="button" class="btn btn-primary btn-sm" onclick="openTireFormModal()">+ Neuer Satz</button>
@@ -1282,10 +1308,6 @@
 
       <div id="tireSetsList" class="tire-sets-list"></div>
       <p class="sub-text" id="tireSetsEmptyHint" style="display: none;">Noch keine Reifensätze erfasst. Leg mit "+ Neuer Satz" den ersten an (z.B. Sommer- und Winterreifen).</p>
-
-      <h3 style="margin-top: 1.25rem;">Zulässige Reifen-/Felgenkombinationen</h3>
-      <p class="sub-text">Freier Notiztext, z.B. aus dem Fahrzeugschein (Feld 15) oder der Herstellerfreigabe abgeschrieben - einmal eintragen, dann immer griffbereit.</p>
-      <textarea id="tireApprovedCombosInput" rows="4" placeholder="z.B. 205/55 R16 91V oder 215/50 R17 91W auf 6.5-7Jx16/17, ET35-45 ..." onblur="saveTireApprovedCombos()"></textarea>
     </div>
   </div>
 
