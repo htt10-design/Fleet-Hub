@@ -858,6 +858,8 @@ function applyVehicleCategoryToggleVisibility() {
     if (offBtn) offBtn.classList.toggle('active', !enabled);
   });
 
+  updateAllCategoryChipVisibility();
+
   // "Neues Fahrzeug"-Formular: nur relevant, falls das Modal gerade offen ist,
   // schadet aber auch sonst nicht, da es beim Öffnen ohnehin neu befüllt wird
   populateVehicleCategorySelect(document.getElementById('newVCategory'));
@@ -867,6 +869,29 @@ function applyVehicleCategoryToggleVisibility() {
   const activeVehicle = getActiveVehicle();
   if (activeVehicle) {
     populateVehicleCategorySelect(document.getElementById('vCategory'), activeVehicle.category || 'auto');
+  }
+}
+
+// Der "Alle"-Filter-Chip ergibt nur einen Sinn, wenn es überhaupt mehr als
+// eine Fahrzeugart zu unterscheiden gibt. Sind Boot & Anhänger deaktiviert
+// UND besitzt man aktuell auch keine (nicht archivierten) Fahrzeuge dieser
+// Art mehr, bleibt effektiv nur noch "Auto" übrig - dann blendet sich "Alle"
+// automatisch aus, da es ohnehin identisch mit "Autos" wäre.
+function updateAllCategoryChipVisibility() {
+  const relevantCategories = new Set();
+  VEHICLE_CATEGORY_DEFS.forEach(def => {
+    if (!def.enabledKey || appData[def.enabledKey] !== false) relevantCategories.add(def.value);
+  });
+  (appData.vehicles || []).filter(v => !v.archived).forEach(v => {
+    relevantCategories.add(v.category || 'auto');
+  });
+
+  const showAllChip = relevantCategories.size > 1;
+  const allChip = document.querySelector('.category-filter-chip[data-category="all"]');
+  if (allChip) allChip.style.display = showAllChip ? '' : 'none';
+
+  if (!showAllChip && vehicleCategoryFilter === 'all') {
+    setVehicleCategoryFilter('auto');
   }
 }
 
@@ -1064,6 +1089,10 @@ window.deleteVehicleById = deleteVehicleById;
 function renderGarageVehicleTiles() {
   const grid = document.getElementById('garageVehicleGrid');
   if (!grid) return;
+
+  // Bei jeder Änderung an der Fahrzeugliste (neu/gelöscht/archiviert) neu
+  // bewerten, ob der "Alle"-Chip noch einen Mehrwert bietet
+  updateAllCategoryChipVisibility();
 
   grid.innerHTML = '';
 
