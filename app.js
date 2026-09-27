@@ -1489,16 +1489,6 @@ function updateNavForCategory(vehicleOrCategory) {
     }
   }
 
-  // Reifen-Tab ergibt bei Booten keinen Sinn (kein Straßenfahrzeug)
-  const needsTires = vehicle.category !== 'boot';
-  const navTireBtn = document.getElementById('navTireBtn');
-  if (navTireBtn) navTireBtn.style.display = needsTires ? 'flex' : 'none';
-  if (!needsTires) {
-    const tiresTab = document.getElementById('tab-tires');
-    if (tiresTab && tiresTab.classList.contains('active')) {
-      showTab('dashboard');
-    }
-  }
 }
 
 // Blendet in den Stammdaten Felder ein/aus bzw. beschriftet sie um, je nachdem
@@ -1619,6 +1609,14 @@ window.removeBoatEngineRow = removeBoatEngineRow;
 
 const TIRE_AGE_WARNING_YEARS = 6;
 
+// Formatiert ein "YYYY-MM" Herstellungsdatum als "MM/YYYY" für die Dashboard-Kachel
+function formatTireMonthLabel(manufactureDate) {
+  if (!manufactureDate || manufactureDate.length !== 7) return '';
+  const [year, month] = manufactureDate.split('-');
+  if (!year || !month) return '';
+  return `${month}/${year}`;
+}
+
 // Ermittelt das Alter eines Reifensatzes in Jahren (bevorzugt Herstellungsdatum,
 // sonst Kaufdatum als Näherung) sowie ob er damit als "alt" gilt. Liefert null
 // für das Alter, wenn gar kein Datum hinterlegt ist.
@@ -1647,7 +1645,23 @@ function getMountedTireSet(v) {
   return (v.tireSets || []).find(t => t.mounted) || null;
 }
 
-// Baut die Liste der Reifensatz-Karten im Reifen-Tab auf
+// Öffnet das Reifen & Felgen Fenster (Übersicht) vom Dashboard aus
+function openTireOverviewModal() {
+  const v = getActiveVehicle();
+  if (!v) return;
+  renderTireSection(v);
+  const modal = document.getElementById('tireOverviewModal');
+  if (modal) modal.classList.add('active');
+}
+window.openTireOverviewModal = openTireOverviewModal;
+
+function closeTireOverviewModal() {
+  const modal = document.getElementById('tireOverviewModal');
+  if (modal) modal.classList.remove('active');
+}
+window.closeTireOverviewModal = closeTireOverviewModal;
+
+// Baut die Liste der Reifensatz-Karten im Reifen-Fenster auf
 function renderTireSection(v) {
   const list = document.getElementById('tireSetsList');
   const emptyHint = document.getElementById('tireSetsEmptyHint');
@@ -3467,19 +3481,30 @@ function renderDashboard() {
     kpiTireCard.style.display = showTireCard ? '' : 'none';
     if (showTireCard) {
       const mounted = getMountedTireSet(v);
-      const tireStatusEl = document.getElementById('kpi-tire-status');
+      const sizeEl = document.getElementById('kpi-tire-size');
+      const halfcircleEl = document.getElementById('kpi-tire-halfcircle');
       const tireSubEl = document.getElementById('kpi-tire-sub');
       if (!v.tireSets || v.tireSets.length === 0) {
-        if (tireStatusEl) tireStatusEl.innerText = '-';
-        if (tireSubEl) tireSubEl.innerText = 'Noch nicht erfasst';
+        if (sizeEl) sizeEl.innerText = '-';
+        if (halfcircleEl) halfcircleEl.classList.add('tire-kpi-empty');
+        if (tireSubEl) {
+          tireSubEl.innerText = 'Noch nicht erfasst';
+          tireSubEl.classList.remove('kpi-sub-warning');
+        }
       } else if (!mounted) {
-        if (tireStatusEl) tireStatusEl.innerText = '-';
-        if (tireSubEl) tireSubEl.innerText = 'Kein Satz als montiert markiert';
+        if (sizeEl) sizeEl.innerText = '-';
+        if (halfcircleEl) halfcircleEl.classList.add('tire-kpi-empty');
+        if (tireSubEl) {
+          tireSubEl.innerText = 'Kein Satz als montiert markiert';
+          tireSubEl.classList.remove('kpi-sub-warning');
+        }
       } else {
         const age = getTireAgeInfo(mounted);
-        if (tireStatusEl) tireStatusEl.innerText = mounted.label;
+        if (sizeEl) sizeEl.innerText = mounted.tireSize || mounted.label;
+        if (halfcircleEl) halfcircleEl.classList.remove('tire-kpi-empty');
         if (tireSubEl) {
-          tireSubEl.innerText = age.label;
+          const dateLabel = formatTireMonthLabel(mounted.manufactureDate);
+          tireSubEl.innerText = dateLabel ? `${mounted.label} · ${dateLabel}` : mounted.label;
           tireSubEl.classList.toggle('kpi-sub-warning', age.isOld);
         }
       }

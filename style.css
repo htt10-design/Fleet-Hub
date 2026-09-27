@@ -1769,6 +1769,49 @@ body[data-bg-style="mercedes-classic"],
   font-weight: 600;
 }
 
+.tire-kpi-visual {
+  display: flex;
+  justify-content: center;
+  margin: 0.3rem 0 0.15rem;
+}
+
+.tire-kpi-halfcircle {
+  position: relative;
+  width: 84px;
+  height: 42px;
+  border-radius: 84px 84px 0 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 100%,
+    #3a3a38 0%, #3a3a38 34%,
+    #48473f 35%, #48473f 54%,
+    #57564b 55%, #57564b 74%,
+    #67665a 75%, #67665a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: opacity 0.15s ease;
+}
+
+.tire-kpi-halfcircle.tire-kpi-empty {
+  opacity: 0.4;
+}
+
+.tire-kpi-size {
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #f5f4ef;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+  max-width: 92%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Reminders & Charts */
 .reminder-list {
   list-style: none;

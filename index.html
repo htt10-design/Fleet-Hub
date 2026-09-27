@@ -172,10 +172,6 @@
         <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
         <span class="nav-label">Wartung </span>
       </button>
-      <button class="nav-item nav-eigene-only" id="navTireBtn" onclick="showTab('tires', this)">
-        <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M4.2 7.5l2.6 1.5M17.2 15l2.6 1.5M4.2 16.5l2.6-1.5M17.2 9l2.6-1.5"/></svg>
-        <span class="nav-label">Reifen</span>
-      </button>
       <button class="nav-item nav-eigene-only" onclick="showTab('history', this)">
         <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
         <span class="nav-label">Chronik</span>
@@ -265,9 +261,13 @@
               <div class="kpi-value" id="kpi-total-cost">0,00 €</div>
               <span class="kpi-sub">Sprit, Service & TÜV</span>
             </div>
-            <div class="kpi-card kpi-card-clickable" id="kpiTireCard" onclick="showTab('tires', document.getElementById('navTireBtn'))">
+            <div class="kpi-card kpi-card-clickable" id="kpiTireCard" onclick="openTireOverviewModal()">
               <span class="kpi-label">Reifen</span>
-              <div class="kpi-value" id="kpi-tire-status">-</div>
+              <div class="tire-kpi-visual">
+                <div class="tire-kpi-halfcircle" id="kpi-tire-halfcircle">
+                  <span class="tire-kpi-size" id="kpi-tire-size">-</span>
+                </div>
+              </div>
               <span class="kpi-sub" id="kpi-tire-sub">Noch nicht erfasst</span>
             </div>
           </div>
@@ -553,29 +553,6 @@
                 Mehr anzeigen
               </button>
             </div>
-          </div>
-        </section>
-
-        <!-- REIFEN TAB (nur Auto & Anhänger) -->
-        <section id="tab-tires" class="tab-content">
-          <div class="card">
-            <div class="card-header-flex">
-              <h2>Reifen &amp; Felgen</h2>
-              <div class="filter-tools">
-                <button type="button" class="btn btn-secondary btn-sm" id="tireSwapBtn" onclick="openTireSwapModal()" style="display: none;">Reifenwechsel durchführen</button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="openTireFormModal()">+ Neuer Satz</button>
-              </div>
-            </div>
-            <p class="sub-text">Behalte im Blick, welcher Satz gerade montiert ist, wie alt die Reifen sind, und welche Größen zulässig sind.</p>
-
-            <div id="tireSetsList" class="tire-sets-list"></div>
-            <p class="sub-text" id="tireSetsEmptyHint" style="display: none;">Noch keine Reifensätze erfasst. Leg mit "+ Neuer Satz" den ersten an (z.B. Sommer- und Winterreifen).</p>
-          </div>
-
-          <div class="card">
-            <h3>Zulässige Reifen-/Felgenkombinationen</h3>
-            <p class="sub-text">Freier Notiztext, z.B. aus dem Fahrzeugschein (Feld 15) oder der Herstellerfreigabe abgeschrieben - einmal eintragen, dann immer griffbereit.</p>
-            <textarea id="tireApprovedCombosInput" rows="4" placeholder="z.B. 205/55 R16 91V oder 215/50 R17 91W auf 6.5-7Jx16/17, ET35-45 ..." onblur="saveTireApprovedCombos()"></textarea>
           </div>
         </section>
 
@@ -1286,6 +1263,29 @@
           <button type="button" class="btn btn-secondary" onclick="closeStandEntryModal()">Abbrechen</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="tireOverviewModal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3>Reifen &amp; Felgen</h3>
+        <button class="modal-close" onclick="closeTireOverviewModal()">✕</button>
+      </div>
+      <div class="card-header-flex">
+        <p class="sub-text" style="margin: 0;">Behalte im Blick, welcher Satz gerade montiert ist, wie alt die Reifen sind, und welche Größen zulässig sind.</p>
+        <div class="filter-tools">
+          <button type="button" class="btn btn-secondary btn-sm" id="tireSwapBtn" onclick="openTireSwapModal()" style="display: none;">Reifenwechsel durchführen</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="openTireFormModal()">+ Neuer Satz</button>
+        </div>
+      </div>
+
+      <div id="tireSetsList" class="tire-sets-list"></div>
+      <p class="sub-text" id="tireSetsEmptyHint" style="display: none;">Noch keine Reifensätze erfasst. Leg mit "+ Neuer Satz" den ersten an (z.B. Sommer- und Winterreifen).</p>
+
+      <h3 style="margin-top: 1.25rem;">Zulässige Reifen-/Felgenkombinationen</h3>
+      <p class="sub-text">Freier Notiztext, z.B. aus dem Fahrzeugschein (Feld 15) oder der Herstellerfreigabe abgeschrieben - einmal eintragen, dann immer griffbereit.</p>
+      <textarea id="tireApprovedCombosInput" rows="4" placeholder="z.B. 205/55 R16 91V oder 215/50 R17 91W auf 6.5-7Jx16/17, ET35-45 ..." onblur="saveTireApprovedCombos()"></textarea>
     </div>
   </div>
 
