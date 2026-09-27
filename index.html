@@ -264,41 +264,40 @@
             <div class="kpi-card kpi-card-clickable" id="kpiTireCard" onclick="openTireOverviewModal()">
               <span class="kpi-label">Reifen</span>
               <div class="tire-kpi-visual">
-                <svg class="tire-kpi-wheel" id="kpi-tire-wheel" viewBox="0 0 100 100" width="42" height="42" xmlns:xlink="http://www.w3.org/1999/xlink">
+                <svg class="tire-kpi-wheel" id="kpi-tire-wheel" viewBox="0 0 200 100" width="124" height="62" xmlns:xlink="http://www.w3.org/1999/xlink">
                   <defs>
-                    <radialGradient id="tireKpiTireGrad" cx="38%" cy="32%" r="72%">
-                      <stop offset="0%" stop-color="#37372f"/>
-                      <stop offset="70%" stop-color="#221f1b"/>
+                    <radialGradient id="tireKpiTireGrad" cx="38%" cy="15%" r="90%">
+                      <stop offset="0%" stop-color="#39392f"/>
+                      <stop offset="65%" stop-color="#221f1b"/>
                       <stop offset="100%" stop-color="#131210"/>
                     </radialGradient>
-                    <linearGradient id="tireKpiRimGrad" x1="15%" y1="8%" x2="85%" y2="95%">
+                    <linearGradient id="tireKpiRimGrad" x1="10%" y1="0%" x2="90%" y2="100%">
                       <stop offset="0%" stop-color="#8c8c85"/>
                       <stop offset="42%" stop-color="#b7b7ae"/>
                       <stop offset="58%" stop-color="#9f9f96"/>
                       <stop offset="100%" stop-color="#6b6b64"/>
                     </linearGradient>
                   </defs>
-                  <circle cx="50" cy="50" r="48" fill="url(#tireKpiTireGrad)" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>
-                  <circle cx="50" cy="50" r="45.5" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="0.6"/>
-                  <circle cx="50" cy="50" r="31" fill="url(#tireKpiRimGrad)" stroke="rgba(0,0,0,0.25)" stroke-width="0.6"/>
-                  <g stroke="#59594f" stroke-width="1.4" stroke-linecap="butt">
-                    <g transform="rotate(0 50 50)"><line x1="50" y1="50" x2="42" y2="22.5"/><line x1="50" y1="50" x2="58" y2="22.5"/></g>
-                    <g transform="rotate(72 50 50)"><line x1="50" y1="50" x2="42" y2="22.5"/><line x1="50" y1="50" x2="58" y2="22.5"/></g>
-                    <g transform="rotate(144 50 50)"><line x1="50" y1="50" x2="42" y2="22.5"/><line x1="50" y1="50" x2="58" y2="22.5"/></g>
-                    <g transform="rotate(216 50 50)"><line x1="50" y1="50" x2="42" y2="22.5"/><line x1="50" y1="50" x2="58" y2="22.5"/></g>
-                    <g transform="rotate(288 50 50)"><line x1="50" y1="50" x2="42" y2="22.5"/><line x1="50" y1="50" x2="58" y2="22.5"/></g>
+                  <path d="M 2,98 A 96,96 0 0 1 198,98 Z" fill="url(#tireKpiTireGrad)" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>
+                  <path d="M 14,98 A 84,84 0 0 1 186,98" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+                  <path d="M 38,98 A 62,62 0 0 1 162,98 Z" fill="url(#tireKpiRimGrad)" stroke="rgba(0,0,0,0.25)" stroke-width="0.8"/>
+                  <g stroke="#59594f" stroke-width="1.8" stroke-linecap="butt">
+                    <line x1="100" y1="98" x2="65.7" y2="48.9"/>
+                    <line x1="100" y1="98" x2="134.3" y2="48.9"/>
+                    <line x1="100" y1="98" x2="100" y2="38"/>
+                    <line x1="100" y1="98" x2="45.6" y2="72.6"/>
+                    <line x1="100" y1="98" x2="154.4" y2="72.6"/>
                   </g>
-                  <circle cx="50" cy="50" r="7" fill="#4a4a44"/>
-                  <circle cx="50" cy="50" r="2.4" fill="#201f1c"/>
+                  <path d="M 88,98 A 12,12 0 0 1 112,98 Z" fill="#4a4a44"/>
                   <g fill="#2b2b27">
-                    <circle cx="50" cy="39.5" r="1.1" transform="rotate(0 50 50)"/>
-                    <circle cx="50" cy="39.5" r="1.1" transform="rotate(72 50 50)"/>
-                    <circle cx="50" cy="39.5" r="1.1" transform="rotate(144 50 50)"/>
-                    <circle cx="50" cy="39.5" r="1.1" transform="rotate(216 50 50)"/>
-                    <circle cx="50" cy="39.5" r="1.1" transform="rotate(288 50 50)"/>
+                    <circle cx="65.7" cy="48.9" r="1.9"/>
+                    <circle cx="134.3" cy="48.9" r="1.9"/>
+                    <circle cx="100" cy="38" r="1.9"/>
+                    <circle cx="45.6" cy="72.6" r="1.9"/>
+                    <circle cx="154.4" cy="72.6" r="1.9"/>
                   </g>
-                  <path id="kpiTireArcPath" d="M 10,50 A 40,40 0 0 1 90,50" fill="none"/>
-                  <text font-size="8.3" font-weight="700" fill="#f2f1ea" letter-spacing="0.2">
+                  <path id="kpiTireArcPath" d="M 24,98 A 74,74 0 0 1 176,98" fill="none"/>
+                  <text font-size="12.5" font-weight="700" fill="#f2f1ea" letter-spacing="0.2">
                     <textPath href="#kpiTireArcPath" xlink:href="#kpiTireArcPath" startOffset="50%" text-anchor="middle" id="kpi-tire-arc-text">-</textPath>
                   </text>
                 </svg>
