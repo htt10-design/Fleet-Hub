@@ -1772,7 +1772,7 @@ body[data-bg-style="mercedes-classic"],
 .tire-kpi-visual {
   display: flex;
   justify-content: center;
-  margin: 0.3rem 0 0.15rem;
+  margin: 0.15rem 0 0.05rem;
 }
 
 .tire-kpi-wheel {

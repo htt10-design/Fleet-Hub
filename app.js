@@ -1609,6 +1609,24 @@ window.removeBoatEngineRow = removeBoatEngineRow;
 
 const TIRE_AGE_WARNING_YEARS = 6;
 
+// Schreibt Text auf den gebogenen Pfad der Reifen-Kachel und staucht ihn nur,
+// wenn er länger ist als der verfügbare Bogen (kurze Größen bleiben in normaler Schriftgröße)
+function setTireArcText(textPathEl, pathEl, text) {
+  if (!textPathEl) return;
+  textPathEl.textContent = text;
+  textPathEl.removeAttribute('textLength');
+  textPathEl.removeAttribute('lengthAdjust');
+  if (!pathEl || typeof textPathEl.getComputedTextLength !== 'function') return;
+  try {
+    const maxLen = pathEl.getTotalLength() * 0.88;
+    const natural = textPathEl.getComputedTextLength();
+    if (natural > maxLen && maxLen > 0) {
+      textPathEl.setAttribute('textLength', maxLen.toFixed(1));
+      textPathEl.setAttribute('lengthAdjust', 'spacingAndGlyphs');
+    }
+  } catch (e) { /* z.B. Element noch nicht sichtbar im DOM - dann einfach normale Größe lassen */ }
+}
+
 // Formatiert ein Herstellungs- ("YYYY-MM") oder Kaufdatum ("YYYY-MM-DD") als "MM/YYYY" für die Dashboard-Kachel
 function formatTireMonthLabel(dateStr) {
   if (!dateStr || dateStr.length < 7) return '';
@@ -3472,17 +3490,18 @@ function renderDashboard() {
     if (showTireCard) {
       const mounted = getMountedTireSet(v);
       const arcTextEl = document.getElementById('kpi-tire-arc-text');
+      const arcPathEl = document.getElementById('kpiTireArcPath');
       const wheelEl = document.getElementById('kpi-tire-wheel');
       const tireSubEl = document.getElementById('kpi-tire-sub');
       if (!v.tireSets || v.tireSets.length === 0) {
-        if (arcTextEl) arcTextEl.textContent = '-';
+        setTireArcText(arcTextEl, arcPathEl, '-');
         if (wheelEl) wheelEl.classList.add('tire-kpi-empty');
         if (tireSubEl) {
           tireSubEl.innerText = 'Noch nicht erfasst';
           tireSubEl.classList.remove('kpi-sub-warning');
         }
       } else if (!mounted) {
-        if (arcTextEl) arcTextEl.textContent = '-';
+        setTireArcText(arcTextEl, arcPathEl, '-');
         if (wheelEl) wheelEl.classList.add('tire-kpi-empty');
         if (tireSubEl) {
           tireSubEl.innerText = 'Kein Satz als montiert markiert';
@@ -3490,7 +3509,8 @@ function renderDashboard() {
         }
       } else {
         const age = getTireAgeInfo(mounted);
-        if (arcTextEl) arcTextEl.textContent = mounted.tireSize || mounted.label;
+        const sizeParts = [mounted.tireSize, mounted.rimSize].filter(Boolean);
+        setTireArcText(arcTextEl, arcPathEl, sizeParts.length ? sizeParts.join(' · ') : mounted.label);
         if (wheelEl) wheelEl.classList.remove('tire-kpi-empty');
         if (tireSubEl) {
           const dateLabel = formatTireMonthLabel(mounted.manufactureDate || mounted.purchaseDate);
