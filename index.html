@@ -277,27 +277,32 @@
                       <stop offset="58%" stop-color="#9f9f96"/>
                       <stop offset="100%" stop-color="#6b6b64"/>
                     </linearGradient>
+                    <linearGradient id="tireKpiSpokeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#dcdcd4"/>
+                      <stop offset="50%" stop-color="#9d9d93"/>
+                      <stop offset="100%" stop-color="#5c5c55"/>
+                    </linearGradient>
+                    <radialGradient id="tireKpiHubGrad" cx="35%" cy="15%" r="85%">
+                      <stop offset="0%" stop-color="#cccac2"/>
+                      <stop offset="60%" stop-color="#87857c"/>
+                      <stop offset="100%" stop-color="#57554d"/>
+                    </radialGradient>
                   </defs>
                   <path d="M 2,98 A 96,96 0 0 1 198,98 Z" fill="url(#tireKpiTireGrad)" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>
                   <path d="M 14,98 A 84,84 0 0 1 186,98" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
                   <path d="M 38,98 A 62,62 0 0 1 162,98 Z" fill="url(#tireKpiRimGrad)" stroke="rgba(0,0,0,0.25)" stroke-width="0.8"/>
-                  <g stroke="#59594f" stroke-width="1.8" stroke-linecap="butt">
-                    <line x1="100" y1="98" x2="65.7" y2="48.9"/>
-                    <line x1="100" y1="98" x2="134.3" y2="48.9"/>
-                    <line x1="100" y1="98" x2="100" y2="38"/>
-                    <line x1="100" y1="98" x2="45.6" y2="72.6"/>
-                    <line x1="100" y1="98" x2="154.4" y2="72.6"/>
+                  <path d="M 40,96.5 A 60,60 0 0 1 160,96.5" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1" stroke-linecap="round"/>
+                  <g fill="url(#tireKpiSpokeGrad)" stroke="#3a3934" stroke-width="0.6" stroke-linejoin="round">
+                    <path d="M 116.5,96.9 L153.8,82.4 L152.7,79.0 L114.0,89.3 Z"/>
+                    <path d="M 112.6,87.4 L134.4,53.8 L131.5,51.6 L106.2,82.7 Z"/>
+                    <path d="M 104,82 L101.8,42 L98.2,42 L96,82 Z"/>
+                    <path d="M 93.8,82.7 L68.5,51.6 L65.6,53.8 L87.4,87.4 Z"/>
+                    <path d="M 86.0,89.3 L47.3,79.0 L46.2,82.4 L83.5,96.9 Z"/>
                   </g>
-                  <path d="M 88,98 A 12,12 0 0 1 112,98 Z" fill="#4a4a44"/>
-                  <g fill="#2b2b27">
-                    <circle cx="65.7" cy="48.9" r="1.9"/>
-                    <circle cx="134.3" cy="48.9" r="1.9"/>
-                    <circle cx="100" cy="38" r="1.9"/>
-                    <circle cx="45.6" cy="72.6" r="1.9"/>
-                    <circle cx="154.4" cy="72.6" r="1.9"/>
-                  </g>
+                  <path d="M 86,98 A 14,14 0 0 1 114,98 Z" fill="url(#tireKpiHubGrad)" stroke="rgba(0,0,0,0.35)" stroke-width="0.8"/>
+                  <path d="M 93,98 A 7,7 0 0 1 107,98 Z" fill="#232320"/>
                   <path id="kpiTireArcPath" d="M 24,98 A 74,74 0 0 1 176,98" fill="none"/>
-                  <text font-size="12.5" font-weight="700" fill="#f2f1ea" letter-spacing="0.2">
+                  <text font-size="16.5" font-weight="700" fill="#f2f1ea" letter-spacing="0.2">
                     <textPath href="#kpiTireArcPath" xlink:href="#kpiTireArcPath" startOffset="50%" text-anchor="middle" id="kpi-tire-arc-text">-</textPath>
                   </text>
                 </svg>
