@@ -1609,6 +1609,71 @@ window.removeBoatEngineRow = removeBoatEngineRow;
 
 const TIRE_AGE_WARNING_YEARS = 6;
 
+// Für die Dashboard-Kachel: wenn der montierte Satz vorne/hinten unterschiedliche
+// Größen hat, hält das den Wisch-Status (welche Seite gerade gezeigt wird)
+let tireKpiAxleData = null; // {front: "...", rear: "..."} oder null wenn nur eine Größe
+let tireKpiCurrentPage = 0; // 0 = Vorne, 1 = Hinten
+let tireCardSwipeStartX = null;
+let tireCardSwipeSuppressClick = false;
+
+// Schreibt die Größe der aktuellen Seite (Vorne/Hinten) auf die Kachel und aktualisiert Label + Punkte
+function renderTireKpiPage() {
+  if (!tireKpiAxleData) return;
+  const arcTextEl = document.getElementById('kpi-tire-arc-text');
+  const arcPathEl = document.getElementById('kpiTireArcPath');
+  const axleLabelEl = document.getElementById('kpi-tire-axle-label');
+  const dot0 = document.getElementById('kpi-tire-dot-0');
+  const dot1 = document.getElementById('kpi-tire-dot-1');
+  const isRear = tireKpiCurrentPage === 1;
+  setTireArcText(arcTextEl, arcPathEl, isRear ? tireKpiAxleData.rear : tireKpiAxleData.front);
+  if (axleLabelEl) axleLabelEl.innerText = isRear ? 'Hinten' : 'Vorne';
+  if (dot0) dot0.classList.toggle('active', !isRear);
+  if (dot1) dot1.classList.toggle('active', isRear);
+}
+
+// Wechselt die Reifen-Kachel auf Vorne (0) oder Hinten (1)
+function showTireKpiPage(idx) {
+  if (!tireKpiAxleData) return;
+  const target = idx === 1 ? 1 : 0;
+  if (target === tireKpiCurrentPage) return;
+  tireKpiCurrentPage = target;
+  renderTireKpiPage();
+}
+window.showTireKpiPage = showTireKpiPage;
+
+// Wisch-Erkennung auf der Reifen-Kachel (nur relevant, wenn vorne/hinten unterschiedlich sind)
+function tireCardTouchStart(e) {
+  if (!tireKpiAxleData || !e.touches || e.touches.length !== 1) { tireCardSwipeStartX = null; return; }
+  tireCardSwipeStartX = e.touches[0].clientX;
+}
+window.tireCardTouchStart = tireCardTouchStart;
+
+function tireCardTouchMove() { /* nichts zu tun - Auswertung erfolgt bei touchend */ }
+window.tireCardTouchMove = tireCardTouchMove;
+
+function tireCardTouchEnd(e) {
+  if (tireCardSwipeStartX === null || !tireKpiAxleData) { tireCardSwipeStartX = null; return; }
+  const endX = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : tireCardSwipeStartX;
+  const dx = endX - tireCardSwipeStartX;
+  tireCardSwipeStartX = null;
+  if (Math.abs(dx) > 24) {
+    e.preventDefault();
+    e.stopPropagation();
+    showTireKpiPage(dx < 0 ? 1 : 0);
+    // Verhindert, dass der nach dem Wischen ausgelöste Klick versehentlich das Reifen-Fenster öffnet
+    tireCardSwipeSuppressClick = true;
+    setTimeout(() => { tireCardSwipeSuppressClick = false; }, 350);
+  }
+}
+window.tireCardTouchEnd = tireCardTouchEnd;
+
+// Öffnet das Reifen-Fenster per Klick auf die Dashboard-Kachel - außer es war gerade ein Wisch-Gestus
+function handleTireCardClick() {
+  if (tireCardSwipeSuppressClick) { tireCardSwipeSuppressClick = false; return; }
+  openTireOverviewModal();
+}
+window.handleTireCardClick = handleTireCardClick;
+
 // Schreibt Text auf den gebogenen Pfad der Reifen-Kachel und staucht ihn nur,
 // wenn er länger ist als der verfügbare Bogen (kurze Größen bleiben in normaler Schriftgröße)
 function setTireArcText(textPathEl, pathEl, text) {
@@ -1697,9 +1762,18 @@ function renderTireSection(v) {
     const card = document.createElement('div');
     card.className = 'tire-set-card' + (tireSet.mounted ? ' tire-set-mounted' : '');
 
-    const specsParts = [];
-    if (tireSet.tireSize) specsParts.push(tireSet.tireSize);
-    if (tireSet.rimSize) specsParts.push(tireSet.rimSize);
+    let specsHtml;
+    if (tireSet.differentFrontRear) {
+      const frontParts = [tireSet.tireSizeFront, tireSet.rimSizeFront].filter(Boolean);
+      const rearParts = [tireSet.tireSizeRear, tireSet.rimSizeRear].filter(Boolean);
+      specsHtml = `
+        <span class="tire-set-specs">VA: ${frontParts.length ? frontParts.join(' • ') : 'nicht hinterlegt'}</span>
+        <span class="tire-set-specs">HA: ${rearParts.length ? rearParts.join(' • ') : 'nicht hinterlegt'}</span>
+      `;
+    } else {
+      const specsParts = [tireSet.tireSize, tireSet.rimSize].filter(Boolean);
+      specsHtml = `<span class="tire-set-specs">${specsParts.length ? specsParts.join(' • ') : 'Größe nicht hinterlegt'}</span>`;
+    }
 
     card.innerHTML = `
       <div class="tire-set-main">
@@ -1708,7 +1782,7 @@ function renderTireSection(v) {
           <span class="tire-set-badge ${tireSet.mounted ? 'tire-set-badge-mounted' : 'tire-set-badge-stored'}">${tireSet.mounted ? 'Montiert' : 'Eingelagert'}</span>
           ${age.isOld ? '<span class="tire-set-badge tire-set-badge-old">Alt</span>' : ''}
         </div>
-        <span class="tire-set-specs">${specsParts.length ? specsParts.join(' • ') : 'Größe nicht hinterlegt'}</span>
+        ${specsHtml}
         <span class="tire-set-age${age.isOld ? ' tire-set-age-old' : ''}">${age.label}</span>
       </div>
       <div class="tire-set-actions">
@@ -1728,6 +1802,18 @@ function updateTireLabelCustomVisibility() {
   }
 }
 window.updateTireLabelCustomVisibility = updateTireLabelCustomVisibility;
+
+// Blendet je nach Checkbox "Vorne/hinten unterschiedlich" die passenden Größenfelder ein/aus
+function updateTireFrontRearVisibility() {
+  const diffEl = document.getElementById('tireDiffFrontRear');
+  const singleGroup = document.getElementById('tireSizeSingleGroup');
+  const frontRearGroup = document.getElementById('tireSizeFrontRearGroup');
+  if (!diffEl) return;
+  const isDiff = diffEl.checked;
+  if (singleGroup) singleGroup.style.display = isDiff ? 'none' : '';
+  if (frontRearGroup) frontRearGroup.style.display = isDiff ? '' : 'none';
+}
+window.updateTireFrontRearVisibility = updateTireFrontRearVisibility;
 
 // editId leer/undefined = neuer Reifensatz, sonst wird der bestehende Satz vorausgefüllt
 function openTireFormModal(editId) {
@@ -1756,6 +1842,14 @@ function openTireFormModal(editId) {
   document.getElementById('tireManufactureDate').value = existing ? (existing.manufactureDate || '') : '';
   document.getElementById('tirePurchaseDate').value = existing ? (existing.purchaseDate || '') : '';
 
+  const diffEl = document.getElementById('tireDiffFrontRear');
+  diffEl.checked = !!(existing && existing.differentFrontRear);
+  document.getElementById('tireSizeFront').value = existing ? (existing.tireSizeFront || '') : '';
+  document.getElementById('tireRimSizeFront').value = existing ? (existing.rimSizeFront || '') : '';
+  document.getElementById('tireSizeRear').value = existing ? (existing.tireSizeRear || '') : '';
+  document.getElementById('tireRimSizeRear').value = existing ? (existing.rimSizeRear || '') : '';
+  updateTireFrontRearVisibility();
+
   document.getElementById('tireFormModal').classList.add('active');
 }
 window.openTireFormModal = openTireFormModal;
@@ -1779,11 +1873,18 @@ function saveTireSet(e) {
   if (!v.tireSets) v.tireSets = [];
   const existing = editId ? v.tireSets.find(t => t.id === editId) : null;
 
+  const differentFrontRear = document.getElementById('tireDiffFrontRear').checked;
+
   const tireSet = {
     id: editId || ('tire_' + Date.now()),
     label,
     tireSize: document.getElementById('tireSize').value.trim(),
     rimSize: document.getElementById('tireRimSize').value.trim(),
+    differentFrontRear,
+    tireSizeFront: differentFrontRear ? document.getElementById('tireSizeFront').value.trim() : '',
+    rimSizeFront: differentFrontRear ? document.getElementById('tireRimSizeFront').value.trim() : '',
+    tireSizeRear: differentFrontRear ? document.getElementById('tireSizeRear').value.trim() : '',
+    rimSizeRear: differentFrontRear ? document.getElementById('tireRimSizeRear').value.trim() : '',
     manufactureDate: document.getElementById('tireManufactureDate').value || '',
     purchaseDate: document.getElementById('tirePurchaseDate').value || '',
     // Der allererste angelegte Satz gilt automatisch als montiert, damit nicht
@@ -3489,33 +3590,56 @@ function renderDashboard() {
     kpiTireCard.style.display = showTireCard ? '' : 'none';
     if (showTireCard) {
       const mounted = getMountedTireSet(v);
-      const arcTextEl = document.getElementById('kpi-tire-arc-text');
-      const arcPathEl = document.getElementById('kpiTireArcPath');
       const wheelEl = document.getElementById('kpi-tire-wheel');
       const tireSubEl = document.getElementById('kpi-tire-sub');
+      const axleLabelEl = document.getElementById('kpi-tire-axle-label');
+      const dotsEl = document.getElementById('kpi-tire-dots');
       if (!v.tireSets || v.tireSets.length === 0) {
-        setTireArcText(arcTextEl, arcPathEl, '-');
+        tireKpiAxleData = null;
+        setTireArcText(document.getElementById('kpi-tire-arc-text'), document.getElementById('kpiTireArcPath'), '-');
         if (wheelEl) wheelEl.classList.add('tire-kpi-empty');
+        if (axleLabelEl) axleLabelEl.style.display = 'none';
+        if (dotsEl) dotsEl.style.display = 'none';
         if (tireSubEl) {
           tireSubEl.innerText = 'Noch nicht erfasst';
           tireSubEl.classList.remove('kpi-sub-warning');
         }
       } else if (!mounted) {
-        setTireArcText(arcTextEl, arcPathEl, '-');
+        tireKpiAxleData = null;
+        setTireArcText(document.getElementById('kpi-tire-arc-text'), document.getElementById('kpiTireArcPath'), '-');
         if (wheelEl) wheelEl.classList.add('tire-kpi-empty');
+        if (axleLabelEl) axleLabelEl.style.display = 'none';
+        if (dotsEl) dotsEl.style.display = 'none';
         if (tireSubEl) {
           tireSubEl.innerText = 'Kein Satz als montiert markiert';
           tireSubEl.classList.remove('kpi-sub-warning');
         }
       } else {
         const age = getTireAgeInfo(mounted);
-        const sizeParts = [mounted.tireSize, mounted.rimSize].filter(Boolean);
-        setTireArcText(arcTextEl, arcPathEl, sizeParts.length ? sizeParts.join(' · ') : mounted.label);
         if (wheelEl) wheelEl.classList.remove('tire-kpi-empty');
         if (tireSubEl) {
           const dateLabel = formatTireMonthLabel(mounted.manufactureDate || mounted.purchaseDate);
           tireSubEl.innerText = dateLabel ? `${mounted.label} von ${dateLabel}` : mounted.label;
           tireSubEl.classList.toggle('kpi-sub-warning', age.isOld);
+        }
+
+        const frontParts = [mounted.tireSizeFront, mounted.rimSizeFront].filter(Boolean);
+        const rearParts = [mounted.tireSizeRear, mounted.rimSizeRear].filter(Boolean);
+        if (mounted.differentFrontRear && (frontParts.length || rearParts.length)) {
+          tireKpiAxleData = {
+            front: frontParts.length ? frontParts.join(' · ') : '-',
+            rear: rearParts.length ? rearParts.join(' · ') : '-'
+          };
+          if (axleLabelEl) axleLabelEl.style.display = '';
+          if (dotsEl) dotsEl.style.display = '';
+          tireKpiCurrentPage = 0;
+          renderTireKpiPage();
+        } else {
+          tireKpiAxleData = null;
+          if (axleLabelEl) axleLabelEl.style.display = 'none';
+          if (dotsEl) dotsEl.style.display = 'none';
+          const sizeParts = [mounted.tireSize, mounted.rimSize].filter(Boolean);
+          setTireArcText(document.getElementById('kpi-tire-arc-text'), document.getElementById('kpiTireArcPath'), sizeParts.length ? sizeParts.join(' · ') : mounted.label);
         }
       }
     }

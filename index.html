@@ -261,9 +261,10 @@
               <div class="kpi-value" id="kpi-total-cost">0,00 €</div>
               <span class="kpi-sub">Sprit, Service & TÜV</span>
             </div>
-            <div class="kpi-card kpi-card-clickable" id="kpiTireCard" onclick="openTireOverviewModal()">
+            <div class="kpi-card kpi-card-clickable" id="kpiTireCard" onclick="handleTireCardClick()">
               <span class="kpi-label">Reifen</span>
-              <div class="tire-kpi-visual">
+              <span class="tire-kpi-axle-label" id="kpi-tire-axle-label" style="display: none;">Vorne</span>
+              <div class="tire-kpi-visual" id="kpi-tire-visual" ontouchstart="tireCardTouchStart(event)" ontouchmove="tireCardTouchMove(event)" ontouchend="tireCardTouchEnd(event)">
                 <svg class="tire-kpi-wheel" id="kpi-tire-wheel" viewBox="0 0 200 100" width="124" height="62" xmlns:xlink="http://www.w3.org/1999/xlink">
                   <defs>
                     <radialGradient id="tireKpiTireGrad" cx="38%" cy="15%" r="90%">
@@ -306,6 +307,10 @@
                     <textPath href="#kpiTireArcPath" xlink:href="#kpiTireArcPath" startOffset="50%" text-anchor="middle" id="kpi-tire-arc-text">-</textPath>
                   </text>
                 </svg>
+              </div>
+              <div class="tire-kpi-dots" id="kpi-tire-dots" style="display: none;">
+                <span class="tire-kpi-dot" id="kpi-tire-dot-0"></span>
+                <span class="tire-kpi-dot" id="kpi-tire-dot-1"></span>
               </div>
               <span class="kpi-sub" id="kpi-tire-sub">Noch nicht erfasst</span>
             </div>
@@ -1345,7 +1350,10 @@
           <label>Eigene Bezeichnung</label>
           <input type="text" id="tireLabelCustom" placeholder="z.B. Trackday-Satz">
         </div>
-        <div class="form-row">
+        <div class="form-group checkbox-group">
+          <label><input type="checkbox" id="tireDiffFrontRear" onchange="updateTireFrontRearVisibility()"> Vorne und hinten unterschiedliche Größe</label>
+        </div>
+        <div class="form-row" id="tireSizeSingleGroup">
           <div class="form-group">
             <label>Reifengröße</label>
             <input type="text" id="tireSize" placeholder="z.B. 205/55 R16 91V">
@@ -1353,6 +1361,30 @@
           <div class="form-group">
             <label>Felgengröße</label>
             <input type="text" id="tireRimSize" placeholder="z.B. 16 Zoll Alu">
+          </div>
+        </div>
+        <div id="tireSizeFrontRearGroup" style="display: none;">
+          <p class="sub-text" style="margin-top: 0;">Vorne</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Reifengröße vorne</label>
+              <input type="text" id="tireSizeFront" placeholder="z.B. 225/40 R18 92Y">
+            </div>
+            <div class="form-group">
+              <label>Felgengröße vorne</label>
+              <input type="text" id="tireRimSizeFront" placeholder="z.B. 8Jx18">
+            </div>
+          </div>
+          <p class="sub-text">Hinten</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Reifengröße hinten</label>
+              <input type="text" id="tireSizeRear" placeholder="z.B. 255/35 R18 95Y">
+            </div>
+            <div class="form-group">
+              <label>Felgengröße hinten</label>
+              <input type="text" id="tireRimSizeRear" placeholder="z.B. 9.5Jx18">
+            </div>
           </div>
         </div>
         <div class="form-row">

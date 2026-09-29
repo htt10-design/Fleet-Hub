@@ -1773,6 +1773,7 @@ body[data-bg-style="mercedes-classic"],
   display: flex;
   justify-content: center;
   margin: 0.15rem 0 0.05rem;
+  touch-action: pan-y;
 }
 
 .tire-kpi-wheel {
@@ -1783,6 +1784,35 @@ body[data-bg-style="mercedes-classic"],
 
 .tire-kpi-wheel.tire-kpi-empty {
   opacity: 0.4;
+}
+
+.tire-kpi-axle-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-primary);
+  text-align: center;
+}
+
+.tire-kpi-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.3rem;
+  margin: 0.1rem 0 0.05rem;
+}
+
+.tire-kpi-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--border-color);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.tire-kpi-dot.active {
+  background: var(--accent-primary);
+  transform: scale(1.2);
 }
 
 /* Reminders & Charts */
