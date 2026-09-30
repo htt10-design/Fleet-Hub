@@ -2293,7 +2293,9 @@ function addMonthsToDateStr(dateStr, months) {
 
 // Spielt die "Plakette wird geklebt"-Animation ab (per CSS-Klasse mit
 // erzwungenem Reflow, damit sie bei jedem erneuten Betreten von Schritt 4
-// erneut abläuft) und färbt die Plakette passend zum Zieljahr ein
+// erneut abläuft), färbt die Plakette passend zum Zieljahr ein und zeichnet
+// - wie bei der echten Plakette auf Kachel/Dashboard - den Monats-Zahlenkranz
+// sowie die Jahreszahl in der Mitte
 function playTuevStickerAnimation() {
   const badge = document.getElementById('tuevStickerBadge');
   if (!badge) return;
@@ -2301,14 +2303,32 @@ function playTuevStickerAnimation() {
   const tuevColors = ['braun', 'rosa', 'gruen', 'orange', 'blau', 'gelb'];
   const nextDateField = document.getElementById('tuevNextDate');
   let colorClass = 'color-blau';
+  let month = null;
+  let yearShort = '';
+
   if (nextDateField && nextDateField.value) {
-    const year = parseInt(nextDateField.value.split('-')[0], 10);
-    if (!isNaN(year)) colorClass = 'color-' + tuevColors[((year % 6) + 6) % 6];
+    const parts = nextDateField.value.split('-');
+    const year = parseInt(parts[0], 10);
+    const parsedMonth = parseInt(parts[1], 10);
+    if (!isNaN(year)) {
+      colorClass = 'color-' + tuevColors[((year % 6) + 6) % 6];
+      yearShort = (year % 100).toString().padStart(2, '0');
+    }
+    if (!isNaN(parsedMonth)) month = parsedMonth;
   }
+
+  const badgeSizePx = 56;
+  const ringHtml = month ? buildTuevMonthRing(month, badgeSizePx) : '';
 
   badge.classList.remove('sticker-applied');
   void badge.offsetWidth;
   badge.className = 'tuev-sticker-badge ' + colorClass;
+  badge.innerHTML = `
+    <div class="tuev-plakette-ring">${ringHtml}</div>
+    <div class="tuev-plakette-center">
+      <span class="tuev-plakette-year">${yearShort}</span>
+    </div>
+  `;
   void badge.offsetWidth;
   badge.classList.add('sticker-applied');
 }
@@ -2460,15 +2480,24 @@ function saveTuevWizard() {
     images: [...tempTuevImages],
     nextKm: null,
     nextDate: s.stickerGranted ? null : addMonthsToDateStr(s.date, 1),
-    engineId: null
+    engineId: null,
+    // Nur vom TÜV-Assistenten gesetzt (zusätzliches, optionales Feld - wird von
+    // anderem Code, z.B. der Detailansicht, einfach ignoriert): merkt sich, ob
+    // dieser Eintrag das TÜV-Fälligkeitsdatum geändert hat und was vorher
+    // eingetragen war, damit es beim Löschen dieses Eintrags wiederhergestellt
+    // werden kann (statt einfach so stehen zu bleiben)
+    tuevUpdatedNextTuev: false,
+    tuevPrevDueDate: null
   };
+
+  if (s.stickerGranted && s.nextTuevDate) {
+    entry.tuevUpdatedNextTuev = true;
+    entry.tuevPrevDueDate = v.nextTuev || null;
+    v.nextTuev = s.nextTuevDate;
+  }
 
   v.serviceEntries.push(entry);
   v.serviceEntries.sort(compareByDateThenMileageDesc);
-
-  if (s.stickerGranted && s.nextTuevDate) {
-    v.nextTuev = s.nextTuevDate;
-  }
 
   saveData();
   closeTuevWizard();
@@ -3906,10 +3935,21 @@ function deleteServiceEntry(id) {
   if (!confirm("Diesen Wartungseintrag wirklich löschen?")) return;
   const v = getActiveVehicle();
   if (!v || !v.serviceEntries) return;
+
+  const entry = v.serviceEntries.find(s => s.id === id);
   v.serviceEntries = v.serviceEntries.filter(s => s.id !== id);
+
+  // Wurde dieser Eintrag vom TÜV-Assistenten angelegt und hat dabei die
+  // TÜV-Plakette (v.nextTuev) neu gesetzt, dann beim Löschen wieder auf den
+  // Stand davor zurücksetzen (ggf. wieder "keine Plakette hinterlegt")
+  if (entry && entry.tuevUpdatedNextTuev) {
+    v.nextTuev = entry.tuevPrevDueDate || null;
+  }
+
   saveData();
   renderServiceTable();
   renderDashboard();
+  renderGarageVehicleTiles();
 }
 
 function openServiceDetailModal(id) {

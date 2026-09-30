@@ -3306,11 +3306,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 .tuev-sticker-badge {
+  position: relative;
   width: 56px;
   height: 56px;
   border-radius: 50%;
   border: 3px solid rgba(0, 0, 0, 0.85);
   background-color: rgba(63, 127, 193, 0.8);
+  font-family: Arial, Helvetica, sans-serif;
   opacity: 0;
   transform: translateY(-70px) scale(0.6) rotate(-18deg);
 }
