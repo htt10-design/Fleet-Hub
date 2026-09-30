@@ -3434,9 +3434,9 @@ function renderServiceTable() {
     }
 
     tr.innerHTML = `
-      <td data-label="Datum">${s.date || '-'}</td>
-      <td data-label="Kategorie"><span class="badge">${s.category || 'Allgemein'}</span></td>
       <td data-label="Titel"><strong>${s.title || 'Wartung'}</strong>${engineTagHtml}</td>
+      <td data-label="Kategorie"><span class="badge">${s.category || 'Allgemein'}</span></td>
+      <td data-label="Datum">${s.date || '-'}</td>
       <td data-label="Kosten">${costVal}</td>
       <td>
         <button class="btn btn-secondary btn-sm" onclick="editServiceEntry('${s.id}')">${ICON_EDIT_SVG}</button>
