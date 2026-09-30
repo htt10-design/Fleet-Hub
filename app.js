@@ -1704,6 +1704,7 @@ function renderTireKpiPage() {
   const track = document.getElementById('kpi-tire-track');
   const visualEl = document.getElementById('kpi-tire-visual');
   const axleLabelEl = document.getElementById('kpi-tire-axle-label');
+  const tireSubEl = document.getElementById('kpi-tire-sub');
   const dot0 = document.getElementById('kpi-tire-dot-0');
   const dot1 = document.getElementById('kpi-tire-dot-1');
   const width = visualEl ? (visualEl.clientWidth || 124) : 124;
@@ -1712,6 +1713,12 @@ function renderTireKpiPage() {
   if (axleLabelEl) axleLabelEl.innerText = isRear ? 'Hinten' : 'Vorne';
   if (dot0) dot0.classList.toggle('active', !isRear);
   if (dot1) dot1.classList.toggle('active', isRear);
+  // Sub-Text (Bezeichnung + Herstellungsdatum) passend zur gerade sichtbaren
+  // Achse, da vorne/hinten jeweils ein eigenes Datum/Alter haben können
+  if (tireSubEl) {
+    tireSubEl.innerText = isRear ? tireKpiAxleData.subLabelRear : tireKpiAxleData.subLabelFront;
+    tireSubEl.classList.toggle('kpi-sub-warning', isRear ? tireKpiAxleData.isOldRear : tireKpiAxleData.isOldFront);
+  }
 }
 
 // Wechselt die Reifen-Kachel auf Vorne (0) oder Hinten (1)
@@ -1820,11 +1827,10 @@ function formatTireMonthLabel(dateStr) {
   return `${month}/${year}`;
 }
 
-// Ermittelt das Alter eines Reifensatzes in Jahren (bevorzugt Herstellungsdatum,
-// sonst Kaufdatum als Näherung) sowie ob er damit als "alt" gilt. Liefert null
-// für das Alter, wenn gar kein Datum hinterlegt ist.
-function getTireAgeInfo(tireSet) {
-  const dateStr = tireSet.manufactureDate || tireSet.purchaseDate;
+// Ermittelt das Alter zu einem einzelnen Datumsstring ("YYYY-MM" Herstellungsdatum
+// oder "YYYY-MM-DD" Kaufdatum) in Jahren sowie ob es damit als "alt" gilt.
+// Liefert null für das Alter, wenn kein (gültiges) Datum übergeben wurde.
+function getTireAgeInfoForDate(dateStr) {
   if (!dateStr) return { years: null, isOld: false, label: 'Alter unbekannt' };
 
   // "YYYY-MM" (Herstellungsdatum) oder "YYYY-MM-DD" (Kaufdatum) - beides von "-01" ergänzbar
@@ -1842,6 +1848,23 @@ function getTireAgeInfo(tireSet) {
     isOld,
     label: `${roundedYears.toFixed(1).replace('.0', '')} Jahre alt`
   };
+}
+
+// Ermittelt das Alter eines Reifensatzes (bevorzugt Herstellungsdatum, sonst
+// Kaufdatum als Näherung) - für den "normalen" Fall ohne unterschiedliche
+// Größe vorne/hinten
+function getTireAgeInfo(tireSet) {
+  return getTireAgeInfoForDate(tireSet.manufactureDate || tireSet.purchaseDate);
+}
+
+// Wie getTireAgeInfo(), aber achsenspezifisch: nutzt das Herstellungsdatum der
+// jeweiligen Achse (vorne/hinten), fällt mangels achsenspezifischem Datum auf
+// das allgemeine Kaufdatum des Satzes zurück
+function getTireAxleAgeInfo(tireSet, axle) {
+  const dateStr = axle === 'front'
+    ? (tireSet.manufactureDateFront || tireSet.purchaseDate)
+    : (tireSet.manufactureDateRear || tireSet.purchaseDate);
+  return getTireAgeInfoForDate(dateStr);
 }
 
 function getMountedTireSet(v) {
@@ -1878,11 +1901,12 @@ function renderTireSection(v) {
   if (swapBtn) swapBtn.style.display = tireSets.length >= 2 ? '' : 'none';
 
   tireSets.forEach(tireSet => {
-    const age = getTireAgeInfo(tireSet);
     const card = document.createElement('div');
     card.className = 'tire-set-card' + (tireSet.mounted ? ' tire-set-mounted' : '');
 
     let specsHtml;
+    let ageHtml;
+    let isOldOverall;
     if (tireSet.differentFrontRear) {
       const frontParts = [tireSet.tireSizeFront, tireSet.rimSizeFront].filter(Boolean);
       const rearParts = [tireSet.tireSizeRear, tireSet.rimSizeRear].filter(Boolean);
@@ -1890,9 +1914,21 @@ function renderTireSection(v) {
         <span class="tire-set-specs">VA: ${frontParts.length ? frontParts.join(' • ') : 'nicht hinterlegt'}</span>
         <span class="tire-set-specs">HA: ${rearParts.length ? rearParts.join(' • ') : 'nicht hinterlegt'}</span>
       `;
+      // Bei unterschiedlicher Größe hat jede Achse ihr eigenes Herstellungsdatum
+      // (optional) und damit auch ihr eigenes Alter
+      const ageFront = getTireAxleAgeInfo(tireSet, 'front');
+      const ageRear = getTireAxleAgeInfo(tireSet, 'rear');
+      isOldOverall = ageFront.isOld || ageRear.isOld;
+      ageHtml = `
+        <span class="tire-set-age${ageFront.isOld ? ' tire-set-age-old' : ''}">VA: ${ageFront.label}</span>
+        <span class="tire-set-age${ageRear.isOld ? ' tire-set-age-old' : ''}">HA: ${ageRear.label}</span>
+      `;
     } else {
       const specsParts = [tireSet.tireSize, tireSet.rimSize].filter(Boolean);
       specsHtml = `<span class="tire-set-specs">${specsParts.length ? specsParts.join(' • ') : 'Größe nicht hinterlegt'}</span>`;
+      const age = getTireAgeInfo(tireSet);
+      isOldOverall = age.isOld;
+      ageHtml = `<span class="tire-set-age${age.isOld ? ' tire-set-age-old' : ''}">${age.label}</span>`;
     }
 
     card.innerHTML = `
@@ -1900,10 +1936,10 @@ function renderTireSection(v) {
         <div class="tire-set-title-row">
           <span class="tire-set-title">${tireSet.label}</span>
           <span class="tire-set-badge ${tireSet.mounted ? 'tire-set-badge-mounted' : 'tire-set-badge-stored'}">${tireSet.mounted ? 'Montiert' : 'Eingelagert'}</span>
-          ${age.isOld ? '<span class="tire-set-badge tire-set-badge-old">Alt</span>' : ''}
+          ${isOldOverall ? '<span class="tire-set-badge tire-set-badge-old">Alt</span>' : ''}
         </div>
         ${specsHtml}
-        <span class="tire-set-age${age.isOld ? ' tire-set-age-old' : ''}">${age.label}</span>
+        ${ageHtml}
       </div>
       <div class="tire-set-actions">
         <button type="button" class="btn btn-secondary btn-sm" onclick="openTireFormModal('${tireSet.id}')">${ICON_EDIT_SVG}</button>
@@ -1928,10 +1964,14 @@ function updateTireFrontRearVisibility() {
   const diffEl = document.getElementById('tireDiffFrontRear');
   const singleGroup = document.getElementById('tireSizeSingleGroup');
   const frontRearGroup = document.getElementById('tireSizeFrontRearGroup');
+  // Bei unterschiedlicher Größe vorne/hinten gibt's auch ein eigenes
+  // Herstellungsdatum je Achse statt des einen allgemeinen Feldes
+  const manufactureSingleGroup = document.getElementById('tireManufactureSingleGroup');
   if (!diffEl) return;
   const isDiff = diffEl.checked;
   if (singleGroup) singleGroup.style.display = isDiff ? 'none' : '';
   if (frontRearGroup) frontRearGroup.style.display = isDiff ? '' : 'none';
+  if (manufactureSingleGroup) manufactureSingleGroup.style.display = isDiff ? 'none' : '';
 }
 window.updateTireFrontRearVisibility = updateTireFrontRearVisibility;
 
@@ -1968,6 +2008,8 @@ function openTireFormModal(editId) {
   document.getElementById('tireRimSizeFront').value = existing ? (existing.rimSizeFront || '') : '';
   document.getElementById('tireSizeRear').value = existing ? (existing.tireSizeRear || '') : '';
   document.getElementById('tireRimSizeRear').value = existing ? (existing.rimSizeRear || '') : '';
+  document.getElementById('tireManufactureDateFront').value = existing ? (existing.manufactureDateFront || '') : '';
+  document.getElementById('tireManufactureDateRear').value = existing ? (existing.manufactureDateRear || '') : '';
   updateTireFrontRearVisibility();
 
   document.getElementById('tireFormModal').classList.add('active');
@@ -2005,7 +2047,11 @@ function saveTireSet(e) {
     rimSizeFront: differentFrontRear ? document.getElementById('tireRimSizeFront').value.trim() : '',
     tireSizeRear: differentFrontRear ? document.getElementById('tireSizeRear').value.trim() : '',
     rimSizeRear: differentFrontRear ? document.getElementById('tireRimSizeRear').value.trim() : '',
-    manufactureDate: document.getElementById('tireManufactureDate').value || '',
+    // Herstellungsdatum: bei unterschiedlicher Größe vorne/hinten je Achse
+    // eigenes Feld (beide optional), sonst das eine allgemeine Feld
+    manufactureDate: differentFrontRear ? '' : (document.getElementById('tireManufactureDate').value || ''),
+    manufactureDateFront: differentFrontRear ? (document.getElementById('tireManufactureDateFront').value || '') : '',
+    manufactureDateRear: differentFrontRear ? (document.getElementById('tireManufactureDateRear').value || '') : '',
     purchaseDate: document.getElementById('tirePurchaseDate').value || '',
     // Der allererste angelegte Satz gilt automatisch als montiert, damit nicht
     // jeder gleich manuell einen Reifenwechsel durchführen muss
@@ -4123,6 +4169,20 @@ function renderDashboard() {
   const totalCosts = fuelCosts + serviceCosts;
   document.getElementById('kpi-total-cost').innerText = `${totalCosts.toFixed(2)} €`;
 
+  // Zusatzzeile: insgesamt getankte Liter (alle Tankungen, nicht nur die für den
+  // Verbrauchsschnitt genutzte Voll-zu-Voll-Spanne) sowie die reinen Spritkosten
+  const totalCostFuelDetailEl = document.getElementById('kpi-total-cost-fuel-detail');
+  if (totalCostFuelDetailEl) {
+    const totalLitersAll = fuelList.reduce((sum, f) => sum + (f.liters || 0), 0);
+    if (totalLitersAll > 0 || fuelCosts > 0) {
+      totalCostFuelDetailEl.innerText = `davon ${formatNumberForDisplay(totalLitersAll.toFixed(1))} L · ${fuelCosts.toFixed(2)} € Sprit`;
+      totalCostFuelDetailEl.style.display = '';
+    } else {
+      totalCostFuelDetailEl.innerText = '';
+      totalCostFuelDetailEl.style.display = 'none';
+    }
+  }
+
   // "Kosten/100km" ist auf der KPI-Kachel der Reifen-Übersicht gewichen (s.u.),
   // taucht aber weiterhin dezent bei der Kostenverteilung (Kreisdiagramm) auf -
   // nur bei Autos sinnvoll (Boote laufen über Betriebsstunden, Anhänger tanken nicht)
@@ -4186,20 +4246,25 @@ function renderDashboard() {
           tireSubEl.classList.remove('kpi-sub-warning');
         }
       } else {
-        const age = getTireAgeInfo(mounted);
         if (visualEl) visualEl.classList.remove('tire-kpi-empty');
-        if (tireSubEl) {
-          const dateLabel = formatTireMonthLabel(mounted.manufactureDate || mounted.purchaseDate);
-          tireSubEl.innerText = dateLabel ? `${mounted.label} von ${dateLabel}` : mounted.label;
-          tireSubEl.classList.toggle('kpi-sub-warning', age.isOld);
-        }
 
         const frontParts = [mounted.tireSizeFront, mounted.rimSizeFront].filter(Boolean);
         const rearParts = [mounted.tireSizeRear, mounted.rimSizeRear].filter(Boolean);
         if (mounted.differentFrontRear && (frontParts.length || rearParts.length)) {
+          // Eigenes Herstellungsdatum/Alter je Achse - der Sub-Text unter der
+          // Kachel wird passend zur gerade sichtbaren Seite (vorne/hinten) in
+          // renderTireKpiPage() gesetzt
+          const ageFront = getTireAxleAgeInfo(mounted, 'front');
+          const ageRear = getTireAxleAgeInfo(mounted, 'rear');
+          const dateLabelFront = formatTireMonthLabel(mounted.manufactureDateFront || mounted.purchaseDate);
+          const dateLabelRear = formatTireMonthLabel(mounted.manufactureDateRear || mounted.purchaseDate);
           tireKpiAxleData = {
             front: frontParts.length ? frontParts.join(' · ') : '-',
-            rear: rearParts.length ? rearParts.join(' · ') : '-'
+            rear: rearParts.length ? rearParts.join(' · ') : '-',
+            subLabelFront: dateLabelFront ? `${mounted.label} VA von ${dateLabelFront}` : `${mounted.label} VA`,
+            subLabelRear: dateLabelRear ? `${mounted.label} HA von ${dateLabelRear}` : `${mounted.label} HA`,
+            isOldFront: ageFront.isOld,
+            isOldRear: ageRear.isOld
           };
           setTireArcText(document.getElementById('kpi-tire-arc-text-front'), document.getElementById('kpiTireArcPath-front'), tireKpiAxleData.front);
           setTireArcText(document.getElementById('kpi-tire-arc-text-rear'), document.getElementById('kpiTireArcPath-rear'), tireKpiAxleData.rear);
@@ -4210,6 +4275,12 @@ function renderDashboard() {
           renderTireKpiPage();
         } else {
           tireKpiAxleData = null;
+          if (tireSubEl) {
+            const age = getTireAgeInfo(mounted);
+            const dateLabel = formatTireMonthLabel(mounted.manufactureDate || mounted.purchaseDate);
+            tireSubEl.innerText = dateLabel ? `${mounted.label} von ${dateLabel}` : mounted.label;
+            tireSubEl.classList.toggle('kpi-sub-warning', age.isOld);
+          }
           if (axleLabelEl) axleLabelEl.style.display = 'none';
           if (dotsEl) dotsEl.style.display = 'none';
           tireKpiCurrentPage = 0;

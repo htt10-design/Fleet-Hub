@@ -260,6 +260,7 @@
               <span class="kpi-label">Gesamtkosten</span>
               <div class="kpi-value" id="kpi-total-cost">0,00 €</div>
               <span class="kpi-sub">Sprit, Service & TÜV</span>
+              <span class="kpi-sub kpi-sub-fuel-detail" id="kpi-total-cost-fuel-detail"></span>
             </div>
             <div class="kpi-card kpi-card-clickable" id="kpiTireCard" onclick="handleTireCardClick()">
               <span class="kpi-label">Reifen</span>
@@ -1440,6 +1441,10 @@
               <input type="text" id="tireRimSizeFront" placeholder="z.B. 8Jx18">
             </div>
           </div>
+          <div class="form-group">
+            <label>Herstellungsdatum vorne (optional, z.B. DOT-Code)</label>
+            <input type="month" id="tireManufactureDateFront">
+          </div>
           <p class="sub-text">Hinten</p>
           <div class="form-row">
             <div class="form-group">
@@ -1451,9 +1456,13 @@
               <input type="text" id="tireRimSizeRear" placeholder="z.B. 9.5Jx18">
             </div>
           </div>
+          <div class="form-group">
+            <label>Herstellungsdatum hinten (optional, z.B. DOT-Code)</label>
+            <input type="month" id="tireManufactureDateRear">
+          </div>
         </div>
         <div class="form-row">
-          <div class="form-group">
+          <div class="form-group" id="tireManufactureSingleGroup">
             <label>Herstellungsdatum (ca., z.B. DOT-Code)</label>
             <input type="month" id="tireManufactureDate">
           </div>

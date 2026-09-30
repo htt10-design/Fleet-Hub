@@ -1769,6 +1769,14 @@ body[data-bg-style="mercedes-classic"],
   font-weight: 600;
 }
 
+/* Zweite, dezentere Detailzeile unter der Gesamtkosten-Kachel (Gesamt-Liter +
+   reine Spritkosten) - etwas schwächer als die normale Sub-Zeile, damit die
+   Kachel nicht überladen wirkt */
+.kpi-sub-fuel-detail {
+  opacity: 0.75;
+  margin-top: 0.05rem;
+}
+
 .tire-kpi-visual {
   position: relative;
   width: 124px;
@@ -3228,13 +3236,18 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background-color: var(--accent-primary);
-  color: #111827;
+  /* Glasig statt flächig orange: durchscheinender, geblurrter Grund mit
+     dünnem, hellerem Rand und Innen-Glanzlicht oben - wie ein kleines
+     Glas-Plättchen in der Akzentfarbe, nicht wie ein satter Farbklecks */
+  background: color-mix(in srgb, var(--accent-primary) 32%, transparent);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  color: var(--accent-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid var(--bg-body);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 65%, transparent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.35);
 }
 
 #dashTuevPlakette .tuev-plakette-tap-hint svg {
