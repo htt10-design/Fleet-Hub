@@ -201,7 +201,7 @@
         <!-- DASHBOARD TAB -->
         <section id="tab-dashboard" class="tab-content active">
           <div class="vehicle-banner-card card">
-            <div id="dashTuevPlakette"></div>
+            <div id="dashTuevPlakette" class="dash-tuev-plakette-clickable" onclick="openTuevWizard()" title="TÜV/HU erfassen"></div>
             <div class="odometer-wrapper" id="odometerWrapper" style="display: none;">
               <span class="banner-vin-sub odometer-label">KM-Stand</span>
               <div class="odometer" id="odometerDigits"></div>
@@ -455,6 +455,8 @@
         </select>
       </div>
 
+      <p class="sub-text" id="tuevWizardFormHint" style="display: none;">Tipp: Für einen neuen HU/AU-Termin gibt es einen geführten Assistenten – einfach auf die TÜV-Plakette im Dashboard tippen. Hier kannst du TÜV-Einträge trotzdem frei erfassen (z.B. ältere Einträge nachtragen).</p>
+
       <div class="form-group" id="serviceEngineFieldGroup" style="display: none;">
         <label>Betrifft</label>
         <select id="serviceEngineSelect">
@@ -528,6 +530,108 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="tuevWizardModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>TÜV / HU erfassen</h3>
+      <button class="modal-close" onclick="closeTuevWizard()">✕</button>
+    </div>
+
+    <div class="wizard-step-header">
+      <span class="wizard-step-label" id="tuevStepLabel">Termin &amp; Organisation</span>
+      <div class="wizard-step-dots" id="tuevStepDots"></div>
+    </div>
+
+    <div class="wizard-step" id="tuevStep1">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Datum</label>
+          <input type="date" id="tuevDate">
+        </div>
+        <div class="form-group">
+          <label id="tuevMileageLabel">KM-Stand (optional)</label>
+          <input type="text" id="tuevMileage" inputmode="decimal" placeholder="z.B. 88.000" oninput="formatMileageInput(this)">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Organisation</label>
+        <select id="tuevOrg" onchange="updateTuevOrgCustomVisibility()">
+          <option value="TÜV">TÜV</option>
+          <option value="DEKRA">DEKRA</option>
+          <option value="GTÜ">GTÜ</option>
+          <option value="KÜS">KÜS</option>
+          <option value="custom">Sonstige (frei benennen)</option>
+        </select>
+      </div>
+      <div class="form-group" id="tuevOrgCustomGroup" style="display: none;">
+        <label>Eigene Bezeichnung</label>
+        <input type="text" id="tuevOrgCustom" placeholder="z.B. FSP">
+      </div>
+      <div class="form-group">
+        <label>Kosten (€, optional)</label>
+        <input type="number" step="0.01" id="tuevCost" inputmode="decimal" placeholder="0.00">
+      </div>
+    </div>
+
+    <div class="wizard-step" id="tuevStep2" style="display: none;">
+      <p class="sub-text">Ergebnis der Abgasuntersuchung (AU). Falls kein Bericht zur Hand ist (z.B. Ersteintrag), einfach überspringen.</p>
+      <div class="wizard-choice-grid" id="tuevAuChoices">
+        <button type="button" class="wizard-choice-btn" data-value="Bestanden" onclick="selectTuevAu('Bestanden')">Bestanden</button>
+        <button type="button" class="wizard-choice-btn" data-value="Nicht bestanden" onclick="selectTuevAu('Nicht bestanden')">Nicht bestanden</button>
+        <button type="button" class="wizard-choice-btn" data-value="Entfällt" onclick="selectTuevAu('Entfällt')">Entfällt (z.B. E-Fahrzeug)</button>
+      </div>
+    </div>
+
+    <div class="wizard-step" id="tuevStep3" style="display: none;">
+      <p class="sub-text">Ergebnis der Hauptuntersuchung (HU).</p>
+      <div class="wizard-choice-grid" id="tuevHuChoices">
+        <button type="button" class="wizard-choice-btn" data-value="Ohne Mängel" onclick="selectTuevHu('Ohne Mängel')">Ohne Mängel</button>
+        <button type="button" class="wizard-choice-btn" data-value="Geringer Mangel" onclick="selectTuevHu('Geringer Mangel')">Geringer Mangel (GM)</button>
+        <button type="button" class="wizard-choice-btn" data-value="Erheblicher Mangel" onclick="selectTuevHu('Erheblicher Mangel')">Erheblicher Mangel (EM)</button>
+        <button type="button" class="wizard-choice-btn" data-value="Gefährlicher Mangel" onclick="selectTuevHu('Gefährlicher Mangel')">Gefährlicher Mangel</button>
+        <button type="button" class="wizard-choice-btn" data-value="Verkehrsunsicher" onclick="selectTuevHu('Verkehrsunsicher')">Verkehrsunsicher</button>
+      </div>
+    </div>
+
+    <div class="wizard-step" id="tuevStep4" style="display: none;">
+      <div class="tuev-sticker-animation" id="tuevStickerAnim">
+        <div class="tuev-sticker-plate">
+          <span class="tuev-sticker-plate-text">TÜV</span>
+          <div class="tuev-sticker-badge" id="tuevStickerBadge"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Neue Plakette gültig bis (Monat/Jahr)</label>
+        <input type="month" id="tuevNextDate">
+      </div>
+      <p class="sub-text">Standard sind 2 Jahre - bei Anhängern oder Sonderfällen Monat/Jahr einfach anpassen.</p>
+    </div>
+
+    <div class="wizard-step" id="tuevStep5" style="display: none;">
+      <p class="sub-text" id="tuevStep5Hint">Mängel oder Auffälligkeiten aus dem Bericht (optional).</p>
+      <div class="form-group">
+        <textarea id="tuevMaengelNotes" rows="3" placeholder="z.B. Bremsscheiben vorne verschlissen, in 2 Jahren pr&uuml;fen"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Prüfbericht (Foto, optional)</label>
+        <input type="file" id="tuevImagesInput" accept="image/*" multiple onchange="handleTuevImageUpload(event)">
+        <div id="tuevImagePreviewContainer" class="image-preview-grid"></div>
+      </div>
+    </div>
+
+    <div class="wizard-step" id="tuevStep6" style="display: none;">
+      <div class="tuev-summary" id="tuevSummary"></div>
+    </div>
+
+    <div class="form-actions wizard-nav-actions">
+      <button type="button" class="btn btn-secondary" id="tuevBackBtn" onclick="tuevWizardBack()" style="display: none;">Zurück</button>
+      <button type="button" class="btn btn-secondary" id="tuevSkipBtn" onclick="tuevWizardSkip()" style="display: none;">Überspringen</button>
+      <button type="button" class="btn btn-primary" id="tuevNextBtn" onclick="tuevWizardNext()">Weiter</button>
+      <button type="button" class="btn btn-primary" id="tuevSaveBtn" onclick="saveTuevWizard()" style="display: none;">Speichern</button>
+      <button type="button" class="btn btn-secondary" onclick="closeTuevWizard()">Abbrechen</button>
+    </div>
+  </div>
+</div>
 
       <!-- HISTORY TAB -->
         <section id="tab-history" class="tab-content">
