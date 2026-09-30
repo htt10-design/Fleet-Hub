@@ -2137,6 +2137,22 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--accent-primary);
 }
 
+/* Das native Kalender-/Monats-Auswahl-Symbol wird vom Browser standardmäßig
+   dunkel gezeichnet - im (voreingestellten) Dunkelmodus auf dem dunklen
+   Eingabefeld dadurch praktisch unsichtbar, sodass nicht erkennbar ist, wo man
+   zum Öffnen der Auswahl tippen muss. Hier aufgehellt; im hellen Design (wo
+   das Symbol auf hellem Grund von Haus aus gut sichtbar ist) wieder normal */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
+  cursor: pointer;
+}
+
+[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="light"] input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
 /* Kundenfahrzeug-Auswahl: aufklappbarer Bereich mit Suche + scrollbarer Liste */
 .customer-select-toggle {
   width: 100%;
