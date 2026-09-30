@@ -1770,10 +1770,29 @@ body[data-bg-style="mercedes-classic"],
 }
 
 .tire-kpi-visual {
-  display: flex;
-  justify-content: center;
-  margin: 0.15rem 0 0.05rem;
+  position: relative;
+  width: 124px;
+  height: 62px;
+  margin: 0.15rem auto 0.05rem;
+  overflow: hidden;
   touch-action: pan-y;
+}
+
+.tire-kpi-track {
+  display: flex;
+  width: 248px;
+  height: 100%;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.tire-kpi-page {
+  flex: 0 0 124px;
+  width: 124px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tire-kpi-wheel {
@@ -1782,7 +1801,7 @@ body[data-bg-style="mercedes-classic"],
   transition: opacity 0.15s ease;
 }
 
-.tire-kpi-wheel.tire-kpi-empty {
+.tire-kpi-visual.tire-kpi-empty .tire-kpi-wheel {
   opacity: 0.4;
 }
 

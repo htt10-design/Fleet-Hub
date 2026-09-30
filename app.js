@@ -1613,19 +1613,95 @@ const TIRE_AGE_WARNING_YEARS = 6;
 // Größen hat, hält das den Wisch-Status (welche Seite gerade gezeigt wird)
 let tireKpiAxleData = null; // {front: "...", rear: "..."} oder null wenn nur eine Größe
 let tireKpiCurrentPage = 0; // 0 = Vorne, 1 = Hinten
+let tireKpiWheelsBuilt = false;
 let tireCardSwipeStartX = null;
+let tireCardSwipeDragging = false;
 let tireCardSwipeSuppressClick = false;
+let tireKpiDragBaseX = 0;
+let tireKpiDragWidth = 124;
 
-// Schreibt die Größe der aktuellen Seite (Vorne/Hinten) auf die Kachel und aktualisiert Label + Punkte
+// Baut die eigentliche Rad-Grafik (Reifen, Felge, Speichen, gebogene Größenangabe) als
+// Markup-String - wird für "Vorne" und "Hinten" je einmal mit eigenen IDs eingesetzt,
+// damit beide Seiten des Wisch-Karussells unabhängig voneinander Text tragen können
+function buildTireKpiWheelSvg(suffix) {
+  return `
+    <svg class="tire-kpi-wheel" viewBox="0 0 200 100" width="124" height="62" xmlns:xlink="http://www.w3.org/1999/xlink">
+      <defs>
+        <radialGradient id="tireKpiTireGrad-${suffix}" cx="38%" cy="15%" r="90%">
+          <stop offset="0%" stop-color="#39392f"/>
+          <stop offset="65%" stop-color="#221f1b"/>
+          <stop offset="100%" stop-color="#131210"/>
+        </radialGradient>
+        <linearGradient id="tireKpiRimGrad-${suffix}" x1="10%" y1="0%" x2="90%" y2="100%">
+          <stop offset="0%" stop-color="#8c8c85"/>
+          <stop offset="42%" stop-color="#b7b7ae"/>
+          <stop offset="58%" stop-color="#9f9f96"/>
+          <stop offset="100%" stop-color="#6b6b64"/>
+        </linearGradient>
+        <linearGradient id="tireKpiSpokeGrad-${suffix}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#dcdcd4"/>
+          <stop offset="50%" stop-color="#9d9d93"/>
+          <stop offset="100%" stop-color="#5c5c55"/>
+        </linearGradient>
+        <radialGradient id="tireKpiHubGrad-${suffix}" cx="35%" cy="15%" r="85%">
+          <stop offset="0%" stop-color="#cccac2"/>
+          <stop offset="60%" stop-color="#87857c"/>
+          <stop offset="100%" stop-color="#57554d"/>
+        </radialGradient>
+      </defs>
+      <path d="M 2,98 A 96,96 0 0 1 198,98 Z" fill="url(#tireKpiTireGrad-${suffix})" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>
+      <path d="M 14,98 A 84,84 0 0 1 186,98" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>
+      <path d="M 38,98 A 62,62 0 0 1 162,98 Z" fill="url(#tireKpiRimGrad-${suffix})" stroke="rgba(0,0,0,0.25)" stroke-width="0.8"/>
+      <path d="M 40,96.5 A 60,60 0 0 1 160,96.5" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1" stroke-linecap="round"/>
+      <g fill="url(#tireKpiSpokeGrad-${suffix})" stroke="#3a3934" stroke-width="0.6" stroke-linejoin="round">
+        <path d="M 116.5,96.9 L153.8,82.4 L152.7,79.0 L114.0,89.3 Z"/>
+        <path d="M 112.6,87.4 L134.4,53.8 L131.5,51.6 L106.2,82.7 Z"/>
+        <path d="M 104,82 L101.8,42 L98.2,42 L96,82 Z"/>
+        <path d="M 93.8,82.7 L68.5,51.6 L65.6,53.8 L87.4,87.4 Z"/>
+        <path d="M 86.0,89.3 L47.3,79.0 L46.2,82.4 L83.5,96.9 Z"/>
+      </g>
+      <path d="M 86,98 A 14,14 0 0 1 114,98 Z" fill="url(#tireKpiHubGrad-${suffix})" stroke="rgba(0,0,0,0.35)" stroke-width="0.8"/>
+      <path d="M 93,98 A 7,7 0 0 1 107,98 Z" fill="#232320"/>
+      <path id="kpiTireArcPath-${suffix}" d="M 24,98 A 74,74 0 0 1 176,98" fill="none"/>
+      <text font-size="16.5" font-weight="700" fill="#f2f1ea" letter-spacing="0.2">
+        <textPath href="#kpiTireArcPath-${suffix}" xlink:href="#kpiTireArcPath-${suffix}" startOffset="50%" text-anchor="middle" id="kpi-tire-arc-text-${suffix}">-</textPath>
+      </text>
+    </svg>
+  `;
+}
+
+// Erzeugt die beiden Rad-Grafiken (Vorne/Hinten) einmalig im Karussell
+function ensureTireKpiWheelsBuilt() {
+  if (tireKpiWheelsBuilt) return;
+  const frontPage = document.getElementById('kpi-tire-page-front');
+  const rearPage = document.getElementById('kpi-tire-page-rear');
+  if (!frontPage || !rearPage) return;
+  frontPage.innerHTML = buildTireKpiWheelSvg('front');
+  rearPage.innerHTML = buildTireKpiWheelSvg('rear');
+  tireKpiWheelsBuilt = true;
+}
+
+// Setzt das Karussell ohne Animation auf die übergebene Seite zurück (z.B. beim Laden neuer Daten)
+function resetTireKpiTrackPosition() {
+  const track = document.getElementById('kpi-tire-track');
+  if (!track) return;
+  track.style.transition = 'none';
+  track.style.transform = 'translateX(0px)';
+  void track.offsetHeight; // Reflow erzwingen, damit die nächste Änderung wieder animiert
+  track.style.transition = '';
+}
+
+// Bewegt das Karussell zur aktuellen Seite (mit Animation) und aktualisiert Label + Punkte
 function renderTireKpiPage() {
   if (!tireKpiAxleData) return;
-  const arcTextEl = document.getElementById('kpi-tire-arc-text');
-  const arcPathEl = document.getElementById('kpiTireArcPath');
+  const track = document.getElementById('kpi-tire-track');
+  const visualEl = document.getElementById('kpi-tire-visual');
   const axleLabelEl = document.getElementById('kpi-tire-axle-label');
   const dot0 = document.getElementById('kpi-tire-dot-0');
   const dot1 = document.getElementById('kpi-tire-dot-1');
+  const width = visualEl ? (visualEl.clientWidth || 124) : 124;
   const isRear = tireKpiCurrentPage === 1;
-  setTireArcText(arcTextEl, arcPathEl, isRear ? tireKpiAxleData.rear : tireKpiAxleData.front);
+  if (track) track.style.transform = `translateX(${isRear ? -width : 0}px)`;
   if (axleLabelEl) axleLabelEl.innerText = isRear ? 'Hinten' : 'Vorne';
   if (dot0) dot0.classList.toggle('active', !isRear);
   if (dot1) dot1.classList.toggle('active', isRear);
@@ -1641,29 +1717,66 @@ function showTireKpiPage(idx) {
 }
 window.showTireKpiPage = showTireKpiPage;
 
-// Wisch-Erkennung auf der Reifen-Kachel (nur relevant, wenn vorne/hinten unterschiedlich sind)
+// Wisch-Geste auf der Reifen-Kachel: das Karussell folgt live dem Finger (wie beim
+// Homescreen-Wischen), inkl. leichtem "Rubber-Banding" an den Rändern, und schnappt
+// beim Loslassen in die nächste bzw. wieder in die aktuelle Seite ein.
 function tireCardTouchStart(e) {
-  if (!tireKpiAxleData || !e.touches || e.touches.length !== 1) { tireCardSwipeStartX = null; return; }
+  tireCardSwipeStartX = null;
+  tireCardSwipeDragging = false;
+  if (!tireKpiAxleData || !e.touches || e.touches.length !== 1) return;
+  const track = document.getElementById('kpi-tire-track');
+  const visualEl = document.getElementById('kpi-tire-visual');
+  if (!track || !visualEl) return;
   tireCardSwipeStartX = e.touches[0].clientX;
+  tireKpiDragWidth = visualEl.clientWidth || 124;
+  tireKpiDragBaseX = tireKpiCurrentPage === 1 ? -tireKpiDragWidth : 0;
+  track.style.transition = 'none';
 }
 window.tireCardTouchStart = tireCardTouchStart;
 
-function tireCardTouchMove() { /* nichts zu tun - Auswertung erfolgt bei touchend */ }
+function tireCardTouchMove(e) {
+  if (tireCardSwipeStartX === null || !tireKpiAxleData || !e.touches || e.touches.length !== 1) return;
+  const dx = e.touches[0].clientX - tireCardSwipeStartX;
+  if (Math.abs(dx) > 6) {
+    tireCardSwipeDragging = true;
+    e.preventDefault(); // ab hier eindeutig ein horizontaler Wisch - Seiten-Scroll unterbinden
+  }
+  const track = document.getElementById('kpi-tire-track');
+  if (!track) return;
+  let target = tireKpiDragBaseX + dx;
+  const minX = -tireKpiDragWidth;
+  const maxX = 0;
+  // Leichter Widerstand, wenn man über den Anfang/das Ende hinaus zieht
+  if (target > maxX) target = maxX + (target - maxX) * 0.35;
+  if (target < minX) target = minX + (target - minX) * 0.35;
+  track.style.transform = `translateX(${target}px)`;
+}
 window.tireCardTouchMove = tireCardTouchMove;
 
 function tireCardTouchEnd(e) {
-  if (tireCardSwipeStartX === null || !tireKpiAxleData) { tireCardSwipeStartX = null; return; }
+  const track = document.getElementById('kpi-tire-track');
+  if (tireCardSwipeStartX === null || !tireKpiAxleData) {
+    tireCardSwipeStartX = null;
+    tireCardSwipeDragging = false;
+    return;
+  }
   const endX = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : tireCardSwipeStartX;
   const dx = endX - tireCardSwipeStartX;
   tireCardSwipeStartX = null;
-  if (Math.abs(dx) > 24) {
+  if (track) track.style.transition = '';
+
+  if (tireCardSwipeDragging) {
     e.preventDefault();
     e.stopPropagation();
-    showTireKpiPage(dx < 0 ? 1 : 0);
+    const threshold = tireKpiDragWidth * 0.22;
+    if (dx <= -threshold) tireKpiCurrentPage = 1;
+    else if (dx >= threshold) tireKpiCurrentPage = 0;
+    renderTireKpiPage();
     // Verhindert, dass der nach dem Wischen ausgelöste Klick versehentlich das Reifen-Fenster öffnet
     tireCardSwipeSuppressClick = true;
     setTimeout(() => { tireCardSwipeSuppressClick = false; }, 350);
   }
+  tireCardSwipeDragging = false;
 }
 window.tireCardTouchEnd = tireCardTouchEnd;
 
@@ -3589,34 +3702,39 @@ function renderDashboard() {
   if (kpiTireCard) {
     kpiTireCard.style.display = showTireCard ? '' : 'none';
     if (showTireCard) {
+      ensureTireKpiWheelsBuilt();
       const mounted = getMountedTireSet(v);
-      const wheelEl = document.getElementById('kpi-tire-wheel');
+      const visualEl = document.getElementById('kpi-tire-visual');
       const tireSubEl = document.getElementById('kpi-tire-sub');
       const axleLabelEl = document.getElementById('kpi-tire-axle-label');
       const dotsEl = document.getElementById('kpi-tire-dots');
       if (!v.tireSets || v.tireSets.length === 0) {
         tireKpiAxleData = null;
-        setTireArcText(document.getElementById('kpi-tire-arc-text'), document.getElementById('kpiTireArcPath'), '-');
-        if (wheelEl) wheelEl.classList.add('tire-kpi-empty');
+        setTireArcText(document.getElementById('kpi-tire-arc-text-front'), document.getElementById('kpiTireArcPath-front'), '-');
+        if (visualEl) visualEl.classList.add('tire-kpi-empty');
         if (axleLabelEl) axleLabelEl.style.display = 'none';
         if (dotsEl) dotsEl.style.display = 'none';
+        tireKpiCurrentPage = 0;
+        resetTireKpiTrackPosition();
         if (tireSubEl) {
           tireSubEl.innerText = 'Noch nicht erfasst';
           tireSubEl.classList.remove('kpi-sub-warning');
         }
       } else if (!mounted) {
         tireKpiAxleData = null;
-        setTireArcText(document.getElementById('kpi-tire-arc-text'), document.getElementById('kpiTireArcPath'), '-');
-        if (wheelEl) wheelEl.classList.add('tire-kpi-empty');
+        setTireArcText(document.getElementById('kpi-tire-arc-text-front'), document.getElementById('kpiTireArcPath-front'), '-');
+        if (visualEl) visualEl.classList.add('tire-kpi-empty');
         if (axleLabelEl) axleLabelEl.style.display = 'none';
         if (dotsEl) dotsEl.style.display = 'none';
+        tireKpiCurrentPage = 0;
+        resetTireKpiTrackPosition();
         if (tireSubEl) {
           tireSubEl.innerText = 'Kein Satz als montiert markiert';
           tireSubEl.classList.remove('kpi-sub-warning');
         }
       } else {
         const age = getTireAgeInfo(mounted);
-        if (wheelEl) wheelEl.classList.remove('tire-kpi-empty');
+        if (visualEl) visualEl.classList.remove('tire-kpi-empty');
         if (tireSubEl) {
           const dateLabel = formatTireMonthLabel(mounted.manufactureDate || mounted.purchaseDate);
           tireSubEl.innerText = dateLabel ? `${mounted.label} von ${dateLabel}` : mounted.label;
@@ -3630,16 +3748,21 @@ function renderDashboard() {
             front: frontParts.length ? frontParts.join(' · ') : '-',
             rear: rearParts.length ? rearParts.join(' · ') : '-'
           };
+          setTireArcText(document.getElementById('kpi-tire-arc-text-front'), document.getElementById('kpiTireArcPath-front'), tireKpiAxleData.front);
+          setTireArcText(document.getElementById('kpi-tire-arc-text-rear'), document.getElementById('kpiTireArcPath-rear'), tireKpiAxleData.rear);
           if (axleLabelEl) axleLabelEl.style.display = '';
           if (dotsEl) dotsEl.style.display = '';
           tireKpiCurrentPage = 0;
+          resetTireKpiTrackPosition();
           renderTireKpiPage();
         } else {
           tireKpiAxleData = null;
           if (axleLabelEl) axleLabelEl.style.display = 'none';
           if (dotsEl) dotsEl.style.display = 'none';
+          tireKpiCurrentPage = 0;
+          resetTireKpiTrackPosition();
           const sizeParts = [mounted.tireSize, mounted.rimSize].filter(Boolean);
-          setTireArcText(document.getElementById('kpi-tire-arc-text'), document.getElementById('kpiTireArcPath'), sizeParts.length ? sizeParts.join(' · ') : mounted.label);
+          setTireArcText(document.getElementById('kpi-tire-arc-text-front'), document.getElementById('kpiTireArcPath-front'), sizeParts.length ? sizeParts.join(' · ') : mounted.label);
         }
       }
     }
