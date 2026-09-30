@@ -93,6 +93,23 @@ function sgsIdbDelete(key) {
   }));
 }
 
+// Workaround für ein bekanntes Problem in manchen Android-Chrome-/installierten-
+// PWA-Umgebungen: ein natives Datums- oder Monatsfeld bekommt beim Antippen
+// zwar den Fokus, der eingebaute Auswahl-Dialog geht dabei aber nicht von
+// selbst auf. Erzwingt das Öffnen deshalb zusätzlich explizit über die
+// moderne showPicker()-API (sofern der Browser sie unterstützt) - schadet auf
+// Browsern, bei denen der native Dialog ohnehin normal aufgeht, nicht.
+document.addEventListener('click', (e) => {
+  const target = e.target;
+  if (
+    target && target.tagName === 'INPUT' &&
+    (target.type === 'date' || target.type === 'month') &&
+    typeof target.showPicker === 'function'
+  ) {
+    try { target.showPicker(); } catch (err) { /* z.B. ohne echte Nutzer-Interaktion - einfach ignorieren */ }
+  }
+});
+
 /* --- INITIALISIERUNG --- */
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
