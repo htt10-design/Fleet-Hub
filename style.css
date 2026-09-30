@@ -3242,22 +3242,6 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   height: 10px;
 }
 
-/* Dezenter, sich langsam wiederholender Puls-Ring um die ganze Plakette -
-   dasselbe Signal wie das Stift-Symbol, nur aus der Ferne/im Augenwinkel
-   leichter wahrzunehmen */
-#dashTuevPlakette .tuev-plakette {
-  animation: tuevPlaketteTapPulse 2.6s ease-in-out infinite;
-}
-
-@keyframes tuevPlaketteTapPulse {
-  0%, 100% {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 0 0 0 color-mix(in srgb, var(--accent-primary) 55%, transparent);
-  }
-  50% {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 0 0 7px color-mix(in srgb, var(--accent-primary) 0%, transparent);
-  }
-}
-
 /* Kopf mit Schritt-Label und Fortschritts-Punkten */
 .wizard-step-header {
   display: flex;
@@ -3349,15 +3333,6 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   align-items: center;
   justify-content: center;
   box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.4);
-}
-
-.tuev-sticker-plate-text {
-  position: absolute;
-  bottom: 8px;
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.35);
-  font-weight: 700;
 }
 
 .tuev-sticker-badge {
