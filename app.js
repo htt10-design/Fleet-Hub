@@ -4048,10 +4048,15 @@ function renderDashboard() {
     // (kleineren) Rand hinaus
     const dashPlaketteSizePx = window.innerWidth <= 850 ? 52 : 64;
     const dashTuevPlakette = getTuevPlaketteData(v, dashPlaketteSizePx);
+    // Kleines Stift-Symbol + dezenter Puls-Ring, damit man auch ohne Hinweistext
+    // erkennt, dass sich hinter der Plakette der TÜV-Assistent zum Antippen
+    // verbirgt (v.a. auf dem Handy, wo es keinen Hover-Zustand gibt)
+    const tapHintHtml = `<span class="tuev-plakette-tap-hint">${ICON_EDIT_SVG}</span>`;
+
     if (!dashTuevPlakette) {
       dashPlaketteContainer.innerHTML = '';
     } else if (dashTuevPlakette.empty) {
-      dashPlaketteContainer.innerHTML = `<div class="tuev-plakette tuev-plakette-empty"></div>`;
+      dashPlaketteContainer.innerHTML = `<div class="tuev-plakette tuev-plakette-empty">${tapHintHtml}</div>`;
     } else {
       dashPlaketteContainer.innerHTML = `
         <div class="tuev-plakette ${dashTuevPlakette.colorClass}">
@@ -4060,6 +4065,7 @@ function renderDashboard() {
             <span class="tuev-plakette-year">${dashTuevPlakette.year}</span>
           </div>
           ${dashTuevPlakette.overdue ? '<span class="tuev-plakette-overdue-badge">!</span>' : ''}
+          ${tapHintHtml}
         </div>
       `;
     }
