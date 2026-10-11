@@ -52,6 +52,15 @@ function saveFuelEntry(e) {
     notes: document.getElementById('fuelNotes').value
   };
 
+  // Tank-Deal: nur übernehmen, wenn die Funktion aktiv ist - sonst beim
+  // Bearbeiten den bisherigen Wert behalten
+  if (isFuelDealEnabled()) {
+    entry.dealUsed = document.getElementById('fuelDealUsed').checked;
+  } else if (editId) {
+    const previous = (v.fuelEntries || []).find(f => f.id === editId);
+    if (previous && previous.dealUsed) entry.dealUsed = true;
+  }
+
   if (!v.fuelEntries) v.fuelEntries = [];
 
   if (editId) {
@@ -125,6 +134,7 @@ function resetFuelForm() {
 
 // Formular für neue/bearbeitete Tankungen als Modal öffnen/schließen (FAB-Button)
 function openFuelFormModal() {
+  syncFuelDealCheckbox();
   document.getElementById('fuelFormModal').classList.add('active');
 }
 window.openFuelFormModal = openFuelFormModal;
@@ -140,6 +150,7 @@ let showAllFuelEntries = false;
 
 function renderFuelTable() {
   if (typeof renderHistoryTable === 'function') renderHistoryTable();
+  renderFuelDealCard();
   const v = getActiveVehicle();
   const tbody = document.getElementById('fuelTableBody');
   if (!tbody) return;
@@ -199,9 +210,11 @@ function renderFuelTable() {
     : displaySorted;
 
   // 4. Tabelle befüllen
+  const dealEnabled = isFuelDealEnabled();
   entriesToRender.forEach(f => {
     const tr = document.createElement('tr');
     const additiveBadge = f.hasAdditive ? `<span class="badge-additive" title="${escapeHtml(f.additiveName)}">🧪 ${escapeHtml(f.additiveName || 'Zusatz')}</span>` : '-';
+    const dealBadge = f.dealUsed && dealEnabled ? ' <span class="badge badge-deal" title="Mit Tank-Deal getankt">Deal</span>' : '';
     const notesVal = f.notes && f.notes.trim()
       ? `<span class="fuel-note">${escapeHtml(f.notes.trim())}</span>`
       : '-';
@@ -212,7 +225,7 @@ function renderFuelTable() {
 
     tr.innerHTML = `
       <td data-label="Datum">${f.date}</td>
-      <td data-label="Kraftstoff">${f.fuelType}</td>
+      <td data-label="Kraftstoff"><span>${escapeHtml(f.fuelType)}${dealBadge}</span></td>
       <td data-label="Stand">${f.mileage.toLocaleString()}</td>
       <td data-label="Liter">${f.liters.toFixed(2)} L</td>
       <td data-label="€/Liter">${pricePerLiterVal}</td>

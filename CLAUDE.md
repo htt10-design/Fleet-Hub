@@ -39,6 +39,7 @@ tools/smoke-test.js   Browser-Smoke-Test (Playwright)
 | 15-settings | Backup Export/Import, Einstellungen, Bildkomprimierung |
 | 16-sale-report | Verkaufsbericht (Druck) |
 | 17-acar-import | Import aus aCar (.abp) |
+| 18-fuel-deal | Optionaler Tank-Deal (z.B. Shell Smart Deal): Literkontingent Monat/Jahr, Ersparnis |
 
 ## Konventionen
 

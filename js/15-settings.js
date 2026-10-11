@@ -71,6 +71,7 @@ function openSettingsModal() {
   applyUiStyle(appData.uiStyle || 'standard');
   applyCustomerVehiclesVisibility();
   applyVehicleCategoryToggleVisibility();
+  applyFuelDealSettingsUI();
 
   document.getElementById('settingsModal').classList.add('active');
 }

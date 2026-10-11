@@ -303,6 +303,9 @@
 
         <!-- FUEL TAB -->
         <section id="tab-fuel" class="tab-content">
+          <!-- Tank-Deal-Übersicht (nur sichtbar, wenn in den Einstellungen aktiviert) -->
+          <div class="card fuel-deal-card" id="fuelDealCard" style="display: none;"></div>
+
           <div class="card">
             <h3>Letzte Tankungen</h3>
             <div class="table-responsive">
@@ -386,6 +389,9 @@
               </div>
               <div class="form-group checkbox-group">
                 <label><input type="checkbox" id="fuelFull" checked> Vollgetankt</label>
+              </div>
+              <div class="form-group checkbox-group" id="fuelDealGroup" style="display: none;">
+                <label><input type="checkbox" id="fuelDealUsed"> <span id="fuelDealLabelText">Mit Tank-Deal getankt</span></label>
               </div>
               <div class="form-group checkbox-group">
                 <label><input type="checkbox" id="fuelHasAdditive" onchange="toggleAdditiveInput()"> Zusatzstoff / Additiv zugegeben</label>
@@ -1146,6 +1152,56 @@
       </div>
 
       <div class="detail-section">
+        <details class="settings-accordion" id="fuelDealDetails">
+          <summary><span class="settings-summary-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" x2="15" y1="22" y2="22"/><line x1="4" x2="14" y1="9" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg></span>Tank-Deal / Spritabo</summary>
+
+          <div class="theme-switch-row">
+            <span class="sub-text" style="margin: 0;">Tank-Deal verwenden</span>
+            <div class="theme-switch">
+              <button type="button" class="theme-switch-btn" id="fuelDealToggleOn" onclick="setFuelDealEnabled(true)">An</button>
+              <button type="button" class="theme-switch-btn" id="fuelDealToggleOff" onclick="setFuelDealEnabled(false)">Aus</button>
+            </div>
+          </div>
+          <p class="sub-text" style="margin-top: 0.5rem;">Für Tank-Abos wie den Shell Smart Deal: zeigt bei den Tankungen, wie viele Liter du diesen Monat und dieses Jahr noch rabattiert tanken kannst und wie viel du gespart hast. Gezählt wird über alle Fahrzeuge.</p>
+
+          <form id="fuelDealForm" onsubmit="saveFuelDealSettings(event)" style="display: none;">
+            <div class="form-group">
+              <label>Name des Deals</label>
+              <input type="text" id="fuelDealName" placeholder="z.B. Shell Smart Deal">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Liter pro Monat</label>
+                <input type="number" step="1" min="0" id="fuelDealMonthly" inputmode="decimal" placeholder="165">
+              </div>
+              <div class="form-group">
+                <label>Liter pro Jahr</label>
+                <input type="number" step="1" min="0" id="fuelDealYearly" inputmode="decimal" placeholder="2000">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Rabatt (Cent/Liter)</label>
+                <input type="number" step="0.1" min="0" id="fuelDealDiscount" inputmode="decimal" placeholder="15">
+              </div>
+              <div class="form-group">
+                <label>Monatsgebühr (€)</label>
+                <input type="number" step="0.01" min="0" id="fuelDealFee" inputmode="decimal" placeholder="0,00">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Vertragsbeginn (optional)</label>
+              <input type="date" id="fuelDealStart">
+            </div>
+            <p class="sub-text">Leere Felder werden ignoriert. Ohne Jahreslimit gilt 12 × Monatslimit. Mit Vertragsbeginn läuft das Jahr ab diesem Datum, sonst ab 1. Januar. Bei den Tankungen bitte den tatsächlich bezahlten Preis eintragen – die Ersparnis berechnet die App aus dem Rabatt.</p>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Deal Speichern</button>
+            </div>
+          </form>
+        </details>
+      </div>
+
+      <div class="detail-section">
         <details class="settings-accordion">
           <summary><span class="settings-summary-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 0-3-6.7 5.5 5.5 0 0 0-10.6 1.7A4.5 4.5 0 0 0 5 18h13a3 3 0 0 0 3-3Z"/></svg></span>Daten-Sicherung</summary>
           <p class="sub-text">Sichert und lädt den kompletten App-Datenbestand (alle Fahrzeuge & Kunden) als Datei.</p>
@@ -1651,5 +1707,6 @@
   <script src="js/15-settings.js"></script>
   <script src="js/16-sale-report.js"></script>
   <script src="js/17-acar-import.js"></script>
+  <script src="js/18-fuel-deal.js"></script>
 </body>
 </html>
