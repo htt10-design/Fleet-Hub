@@ -2313,6 +2313,11 @@ body[data-bg-style="mercedes-classic"],
 .cost-detail-item-title small { display: block; color: var(--text-muted); font-size: 0.7rem; }
 .cost-detail-items strong { font-family: var(--font-mono); white-space: nowrap; }
 
+.cost-detail-fuel-types {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0 0 1.1rem;
+  border-top: 1px solid var(--border-color);
+}
 .cost-detail-fuel { margin-bottom: 0.75rem; }
 .cost-detail-fuel-top {
   display: flex;

@@ -1,7 +1,7 @@
 /* --- KOSTEN IM DETAIL (Popup hinter der Kachel "Gesamtkosten") ---
    Nutzt nur vorhandene Daten des aktiven Fahrzeugs: Tankungen + Service-Einträge.
    Zeitraum umschaltbar; daraus: Summe, Ø pro Monat, Kosten pro 100 km,
-   Aufschlüsselung nach Kategorie (aufklappbar), Kraftstoffsorten und Verlauf
+   Aufschlüsselung nach Kategorie (aufklappbar, Kraftstoff -> Sorten) und Verlauf
    als gestapeltes Balkendiagramm. Außerdem die Mini-Vorschau in der Kachel. */
 
 let costDetailPeriod = 'all';
@@ -189,15 +189,36 @@ function renderCostDetailModal() {
     stats.push(`<div><span>Gefahren</span><strong>${formatNumberForDisplay(d.distance)} km</strong></div>`);
   }
 
-  // 2. Kategorien
+  // Kraftstoffsorten (nur sichtbar, wenn "Kraftstoff" aufgeklappt ist)
+  const fuelTypesHtml = d.fuelTypes.length === 0 ? '' : `
+    <div class="cost-detail-fuel-types">
+      ${d.fuelTypes.map(t => {
+        const pct = d.totalLiters > 0 ? t.liters / d.totalLiters * 100 : 0;
+        const avgPrice = t.liters > 0 ? t.cost / t.liters : 0;
+        return `
+          <div class="cost-detail-fuel">
+            <div class="cost-detail-fuel-top">
+              <span>${escapeHtml(t.name)} <small>${t.count}× getankt</small></span>
+              <strong>${formatDealLiters(t.liters)} · ${pct.toFixed(0)} %</strong>
+            </div>
+            <div class="cost-detail-bar"><span style="width: ${pct.toFixed(1)}%; background: ${getCostCategoryColor('Kraftstoff')}"></span></div>
+            <div class="cost-detail-fuel-sub">${formatCostEuro(t.cost)} · Ø ${avgPrice.toFixed(3).replace('.', ',')} €/L</div>
+          </div>`;
+      }).join('')}
+      ${d.dealSaved !== null && d.dealSaved > 0 ? `<p class="cost-detail-note">Mit ${escapeHtml(getFuelDealName())} gespart: <strong>${formatCostEuro(d.dealSaved)}</strong> (Rabatt, ohne Gebühren)</p>` : ''}
+    </div>`;
+
+  // 2. Kategorien (aufklappbar: Kraftstoff -> Sorten, sonst -> Einträge)
   const categoryRows = COST_DETAIL_CATEGORIES
     .filter(c => d.totals[c.key] > 0)
     .map(c => {
       const amount = d.totals[c.key];
       const pct = d.total > 0 ? amount / d.total * 100 : 0;
-      const expandable = d.items[c.key].length > 0;
+      const isFuel = c.key === 'Kraftstoff';
+      const count = isFuel ? d.fuel.length : d.items[c.key].length;
+      const expandable = isFuel ? fuelTypesHtml !== '' : count > 0;
       const isOpen = expandable && costDetailOpenCategory === c.key;
-      const detailHtml = isOpen ? `
+      const detailHtml = !isOpen ? '' : isFuel ? fuelTypesHtml : `
         <ul class="cost-detail-items">
           ${d.items[c.key].map(s => `
             <li>
@@ -205,12 +226,12 @@ function renderCostDetailModal() {
               <span class="cost-detail-item-title">${escapeHtml(s.title || c.label)}${c.key === 'Werkstatt' ? `<small>${s.category === 'TÜV' ? 'HU / AU / TÜV' : escapeHtml(s.category)}</small>` : ''}</span>
               <strong>${formatCostEuro(s.cost || 0)}</strong>
             </li>`).join('')}
-        </ul>` : '';
+        </ul>`;
       return `
         <div class="cost-detail-cat${isOpen ? ' is-open' : ''}">
           <button type="button" class="cost-detail-cat-head" ${expandable ? `onclick="toggleCostDetailCategory('${c.key}')"` : 'disabled'}>
             <span class="cost-detail-dot" style="background: ${getCostCategoryColor(c.key)}"></span>
-            <span class="cost-detail-cat-name">${c.label}${expandable ? ` <small>(${d.items[c.key].length})</small>` : ''}</span>
+            <span class="cost-detail-cat-name">${c.label}${expandable ? ` <small>(${count})</small>` : ''}</span>
             <span class="cost-detail-cat-pct">${pct.toFixed(0)} %</span>
             <strong>${formatCostEuro(amount)}</strong>
             ${expandable ? `<span class="cost-detail-chevron">${isOpen ? '▴' : '▾'}</span>` : '<span class="cost-detail-chevron"></span>'}
@@ -219,29 +240,6 @@ function renderCostDetailModal() {
           ${detailHtml}
         </div>`;
     }).join('');
-
-  // 3. Kraftstoffsorten
-  let fuelTypesHtml = '';
-  if (d.fuelTypes.length > 0) {
-    fuelTypesHtml = `
-      <section class="cost-detail-section">
-        <h4>Kraftstoffsorten</h4>
-        ${d.fuelTypes.map(t => {
-          const pct = d.totalLiters > 0 ? t.liters / d.totalLiters * 100 : 0;
-          const avgPrice = t.liters > 0 ? t.cost / t.liters : 0;
-          return `
-            <div class="cost-detail-fuel">
-              <div class="cost-detail-fuel-top">
-                <span>${escapeHtml(t.name)} <small>${t.count}× getankt</small></span>
-                <strong>${formatDealLiters(t.liters)} · ${pct.toFixed(0)} %</strong>
-              </div>
-              <div class="cost-detail-bar"><span style="width: ${pct.toFixed(1)}%; background: ${getCostCategoryColor('Kraftstoff')}"></span></div>
-              <div class="cost-detail-fuel-sub">${formatCostEuro(t.cost)} · Ø ${avgPrice.toFixed(3).replace('.', ',')} €/L</div>
-            </div>`;
-        }).join('')}
-        ${d.dealSaved !== null && d.dealSaved > 0 ? `<p class="cost-detail-note">Mit ${escapeHtml(getFuelDealName())} gespart: <strong>${formatCostEuro(d.dealSaved)}</strong> (Rabatt, ohne Gebühren)</p>` : ''}
-      </section>`;
-  }
 
   body.innerHTML = `
     <div class="cost-detail-hero">
@@ -254,8 +252,6 @@ function renderCostDetailModal() {
       <h4>Nach Kategorie</h4>
       ${categoryRows}
     </section>
-
-    ${fuelTypesHtml}
 
     <section class="cost-detail-section" id="costDetailChartSection">
       <h4 id="costDetailChartTitle">Verlauf</h4>
