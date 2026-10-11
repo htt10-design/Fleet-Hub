@@ -23,6 +23,9 @@ function calcFuelFields(changedField) {
   if (changedField === 'liters' && ppl > 0) document.getElementById('fuelTotalPrice').value = (liters * ppl).toFixed(2);
   else if (changedField === 'total' && liters > 0) document.getElementById('fuelPricePerLiter').value = (total / liters).toFixed(3);
   else if (changedField === 'ppl' && liters > 0) document.getElementById('fuelTotalPrice').value = (liters * ppl).toFixed(2);
+
+  // Tank-Deal-Rabatt in € an die neue Literzahl anpassen
+  if (changedField === 'liters' && isFuelDealEnabled()) calcFuelDealDiscount('ct');
 }
 
 function saveFuelEntry(e) {
@@ -56,9 +59,13 @@ function saveFuelEntry(e) {
   // Bearbeiten den bisherigen Wert behalten
   if (isFuelDealEnabled()) {
     entry.dealUsed = document.getElementById('fuelDealUsed').checked;
+    entry.dealDiscountCt = entry.dealUsed ? readFuelDealDiscountCt() : null;
   } else if (editId) {
     const previous = (v.fuelEntries || []).find(f => f.id === editId);
-    if (previous && previous.dealUsed) entry.dealUsed = true;
+    if (previous && previous.dealUsed) {
+      entry.dealUsed = true;
+      entry.dealDiscountCt = previous.dealDiscountCt ?? null;
+    }
   }
 
   if (!v.fuelEntries) v.fuelEntries = [];
@@ -211,10 +218,14 @@ function renderFuelTable() {
 
   // 4. Tabelle befüllen
   const dealEnabled = isFuelDealEnabled();
+  const dealStats = dealEnabled ? computeFuelDealStats(appData.fuelDeal, getLocalDateStr()) : null;
   entriesToRender.forEach(f => {
     const tr = document.createElement('tr');
     const additiveBadge = f.hasAdditive ? `<span class="badge-additive" title="${escapeHtml(f.additiveName)}">🧪 ${escapeHtml(f.additiveName || 'Zusatz')}</span>` : '-';
-    const dealBadge = f.dealUsed && dealEnabled ? ' <span class="badge badge-deal" title="Mit Tank-Deal getankt">Deal</span>' : '';
+    const dealSaving = f.dealUsed && dealEnabled ? getFuelDealEntryLabel(dealStats, f.id) : '';
+    const dealBadge = f.dealUsed && dealEnabled
+      ? ` <span class="badge badge-deal" title="${hasEnteredDealDiscount(f) ? 'Gespart laut Beleg' : 'Gespart, geschätzt mit Durchschnittsrabatt'}">Deal${dealSaving ? ' ' + dealSaving : ''}</span>`
+      : '';
     const notesVal = f.notes && f.notes.trim()
       ? `<span class="fuel-note">${escapeHtml(f.notes.trim())}</span>`
       : '-';

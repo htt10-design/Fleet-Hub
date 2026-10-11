@@ -391,7 +391,21 @@
                 <label><input type="checkbox" id="fuelFull" checked> Vollgetankt</label>
               </div>
               <div class="form-group checkbox-group" id="fuelDealGroup" style="display: none;">
-                <label><input type="checkbox" id="fuelDealUsed"> <span id="fuelDealLabelText">Mit Tank-Deal getankt</span></label>
+                <label><input type="checkbox" id="fuelDealUsed" onchange="toggleFuelDealDiscountGroup()"> <span id="fuelDealLabelText">Mit Tank-Deal getankt</span></label>
+              </div>
+              <div class="form-group fuel-deal-discount-group" id="fuelDealDiscountGroup" style="display: none;">
+                <label>Rabatt dieser Tankung (optional)</label>
+                <div class="form-row">
+                  <div class="form-group">
+                    <input type="number" step="0.1" min="0" id="fuelDealCt" inputmode="decimal" placeholder="z.B. 15" oninput="calcFuelDealDiscount('ct')">
+                    <small class="sub-text">Cent pro Liter</small>
+                  </div>
+                  <div class="form-group">
+                    <input type="number" step="0.01" min="0" id="fuelDealEuro" inputmode="decimal" placeholder="z.B. 9.75" oninput="calcFuelDealDiscount('euro')">
+                    <small class="sub-text">€ gespart (Beleg)</small>
+                  </div>
+                </div>
+                <p class="sub-text" id="fuelDealDiscountHint"></p>
               </div>
               <div class="form-group checkbox-group">
                 <label><input type="checkbox" id="fuelHasAdditive" onchange="toggleAdditiveInput()"> Zusatzstoff / Additiv zugegeben</label>
@@ -1181,7 +1195,7 @@
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Rabatt (Cent/Liter)</label>
+                <label>Standard-Rabatt (ct/L, optional)</label>
                 <input type="number" step="0.1" min="0" id="fuelDealDiscount" inputmode="decimal" placeholder="15">
               </div>
               <div class="form-group">
@@ -1193,7 +1207,8 @@
               <label>Vertragsbeginn (optional)</label>
               <input type="date" id="fuelDealStart">
             </div>
-            <p class="sub-text">Leere Felder werden ignoriert. Ohne Jahreslimit gilt 12 × Monatslimit. Mit Vertragsbeginn läuft das Jahr ab diesem Datum, sonst ab 1. Januar. Bei den Tankungen bitte den tatsächlich bezahlten Preis eintragen – die Ersparnis berechnet die App aus dem Rabatt.</p>
+            <p class="sub-text">Leere Felder werden ignoriert. Ohne Jahreslimit gilt 12 × Monatslimit. Mit Vertragsbeginn läuft das Jahr ab diesem Datum, sonst ab 1. Januar.</p>
+            <p class="sub-text">Den Rabatt trägst du bei jeder Tankung ein (ct/L oder € vom Beleg). Tankungen ohne Angabe werden mit dem Durchschnitt deiner eingetragenen Rabatte geschätzt. Der Standard-Rabatt wird nur genutzt, solange noch keine Tankung einen Rabatt hat. Als Preis bitte immer den tatsächlich bezahlten eintragen.</p>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Deal Speichern</button>
             </div>

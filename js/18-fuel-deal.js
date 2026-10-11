@@ -4,9 +4,14 @@
    Tankungen, die mit dem Deal getankt wurden, tragen f.dealUsed = true.
    Gezählt wird über ALLE Fahrzeuge (auch archivierte), weil das Kontingent an
    der Tankkarte/dem Konto hängt und nicht an einem einzelnen Fahrzeug.
-   Ersparnis = Rabatt (ct/L) × rabattberechtigte Liter (innerhalb der
-   Monats-/Jahresgrenze) − Monatsgebühren. Der in der Tankung eingetragene
-   Preis ist der tatsächlich bezahlte (bereits rabattierte) Preis. */
+   Rabatt pro Tankung (optional): f.dealDiscountCt (ct/L, null = unbekannt).
+   Ersparnis einer Tankung:
+   - mit eingetragenem Rabatt: Rabatt × Liter (so wie auf dem Beleg)
+   - ohne: geschätzt mit dem literbezogenen Durchschnitt aller eingetragenen
+     Rabatte (Fallback: Standard-Rabatt aus den Einstellungen), und nur für
+     Liter innerhalb der Monats-/Jahresgrenze
+   Davon gehen die Monatsgebühren ab. Der in der Tankung eingetragene Preis
+   ist der tatsächlich bezahlte (bereits rabattierte) Preis. */
 
 function isFuelDealEnabled() {
   return !!(appData.fuelDeal && appData.fuelDeal.enabled);
@@ -53,10 +58,13 @@ function getAllFuelDealEntries() {
   return entries.sort((a, b) => a.date.localeCompare(b.date) || (a.mileage || 0) - (b.mileage || 0));
 }
 
+function hasEnteredDealDiscount(f) {
+  return typeof f.dealDiscountCt === 'number' && !isNaN(f.dealDiscountCt);
+}
+
 function computeFuelDealStats(deal, today) {
   const monthCap = deal.monthlyLiters > 0 ? deal.monthlyLiters : null;
   const yearCap = deal.yearlyLiters > 0 ? deal.yearlyLiters : (monthCap ? monthCap * 12 : null);
-  const discountPerLiter = (deal.discountCt || 0) / 100;
   const fee = deal.monthlyFee || 0;
   const currentMonth = today.slice(0, 7);
   const currentYearStart = getFuelDealYearStart(deal, today);
@@ -64,7 +72,17 @@ function computeFuelDealStats(deal, today) {
   const litersByMonth = {};
   const litersByYear = {};
   let grossMonth = 0, grossYear = 0, grossTotal = 0;
+  let estimatedTotal = 0;
   const entries = getAllFuelDealEntries();
+  const perEntry = {};
+
+  // Durchschnittsrabatt (ct/L) aus allen Tankungen mit eingetragenem Rabatt
+  const known = entries.filter(hasEnteredDealDiscount);
+  const knownLiters = known.reduce((sum, f) => sum + (f.liters || 0), 0);
+  const avgCt = knownLiters > 0
+    ? known.reduce((sum, f) => sum + f.dealDiscountCt * (f.liters || 0), 0) / knownLiters
+    : (deal.discountCt > 0 ? deal.discountCt : null);
+  let unknownCount = 0;
 
   entries.forEach(f => {
     const liters = f.liters || 0;
@@ -73,11 +91,21 @@ function computeFuelDealStats(deal, today) {
     const usedMonth = litersByMonth[month] || 0;
     const usedYear = litersByYear[yearStart] || 0;
 
-    // Nur Liter innerhalb der Kontingente bekommen den Rabatt
-    let eligible = liters;
-    if (monthCap) eligible = Math.min(eligible, Math.max(0, monthCap - usedMonth));
-    if (yearCap) eligible = Math.min(eligible, Math.max(0, yearCap - usedYear));
-    const saved = eligible * discountPerLiter;
+    let saved = 0;
+    if (hasEnteredDealDiscount(f)) {
+      saved = liters * f.dealDiscountCt / 100;
+      perEntry[f.id] = { saved, estimated: false };
+    } else if (avgCt !== null) {
+      // Schätzung: nur Liter innerhalb der Kontingente bekommen den Rabatt
+      let eligible = liters;
+      if (monthCap) eligible = Math.min(eligible, Math.max(0, monthCap - usedMonth));
+      if (yearCap) eligible = Math.min(eligible, Math.max(0, yearCap - usedYear));
+      saved = eligible * avgCt / 100;
+      estimatedTotal += saved;
+      perEntry[f.id] = { saved, estimated: true };
+    } else {
+      unknownCount++;
+    }
 
     litersByMonth[month] = usedMonth + liters;
     litersByYear[yearStart] = usedYear + liters;
@@ -105,6 +133,9 @@ function computeFuelDealStats(deal, today) {
     yearLiters: litersByYear[currentYearStart] || 0,
     nextMonthStart, nextYearStart,
     hasFee: fee > 0,
+    avgCt, avgFromEntries: knownLiters > 0, knownCount: known.length,
+    estimatedCount: entries.length - known.length - unknownCount, unknownCount,
+    estimatedTotal, perEntry,
     gross: { month: grossMonth, year: grossYear, total: grossTotal },
     fees: { month: feesMonth, year: feesYear, total: feesTotal },
     net: { month: grossMonth - feesMonth, year: grossYear - feesYear, total: grossTotal - feesTotal }
@@ -176,16 +207,69 @@ function renderFuelDealCard() {
       <span class="sub-text">alle Fahrzeuge</span>
     </div>
     ${metersHtml}
-    ${deal.discountCt > 0 ? `
+    ${s.avgCt !== null ? `
       <div class="fuel-deal-savings-title">Gespart${s.hasFee ? ' (nach Gebühr)' : ''}</div>
       <div class="fuel-deal-savings">
         ${savingCell('Monat', 'month')}
         ${savingCell(deal.startDate ? 'Vertragsjahr' : 'Jahr', 'year')}
         ${savingCell('Gesamt', 'total')}
-      </div>` : `<p class="sub-text fuel-deal-hint">Trage in den Einstellungen den Rabatt pro Liter ein, um deine Ersparnis zu sehen.</p>`}
+      </div>
+      <p class="fuel-deal-avg-note">${buildFuelDealAvgNote(s)}</p>` : `<p class="sub-text fuel-deal-hint">Trag bei einer Tankung den Rabatt vom Beleg ein, um deine Ersparnis zu sehen.</p>`}
   `;
   card.style.display = '';
 }
+
+function formatDealCt(ct) {
+  return ct.toLocaleString('de-DE', { maximumFractionDigits: 1 }) + ' ct/L';
+}
+
+function buildFuelDealAvgNote(s) {
+  const source = s.avgFromEntries
+    ? `Ø ${formatDealCt(s.avgCt)} aus ${s.knownCount} ${s.knownCount === 1 ? 'Tankung' : 'Tankungen'} mit Rabatt`
+    : `Standard-Rabatt ${formatDealCt(s.avgCt)} (noch keine Tankung mit Rabatt)`;
+  if (!s.estimatedCount) return source;
+  return `${source} · ${s.estimatedCount} ohne Angabe geschätzt (~${formatDealEuro(s.estimatedTotal)})`;
+}
+
+// Ersparnis einer Tankung für die Tabelle, z.B. "12,38 €" bzw. "~11,90 €" (geschätzt)
+function getFuelDealEntryLabel(stats, entryId) {
+  const info = stats && stats.perEntry[entryId];
+  if (!info) return '';
+  return `${info.estimated ? '~' : ''}${formatDealEuro(info.saved)}`;
+}
+
+/* --- Rabatt einer Tankung: ct/L ↔ € (gekoppelt über die Liter) --- */
+function calcFuelDealDiscount(changedField) {
+  const liters = parseFloat(document.getElementById('fuelLiters').value) || 0;
+  const ctInput = document.getElementById('fuelDealCt');
+  const euroInput = document.getElementById('fuelDealEuro');
+  if (changedField === 'ct') {
+    const ct = parseFloat(ctInput.value);
+    euroInput.value = !isNaN(ct) && liters > 0 ? (ct * liters / 100).toFixed(2) : '';
+  } else if (changedField === 'euro') {
+    const euro = parseFloat(euroInput.value);
+    ctInput.value = !isNaN(euro) && liters > 0 ? (euro / liters * 100).toFixed(1) : '';
+  }
+}
+window.calcFuelDealDiscount = calcFuelDealDiscount;
+
+// Gelesener Rabatt aus dem Formular in ct/L (null = leer gelassen)
+function readFuelDealDiscountCt() {
+  const liters = parseFloat(document.getElementById('fuelLiters').value) || 0;
+  const ct = parseFloat(document.getElementById('fuelDealCt').value);
+  const euro = parseFloat(document.getElementById('fuelDealEuro').value);
+  if (!isNaN(euro) && liters > 0) return Math.round(euro / liters * 100 * 1000) / 1000;
+  if (!isNaN(ct)) return ct;
+  return null;
+}
+
+function toggleFuelDealDiscountGroup() {
+  const group = document.getElementById('fuelDealDiscountGroup');
+  const checkbox = document.getElementById('fuelDealUsed');
+  if (!group || !checkbox) return;
+  group.style.display = isFuelDealEnabled() && checkbox.checked ? '' : 'none';
+}
+window.toggleFuelDealDiscountGroup = toggleFuelDealDiscountGroup;
 
 /* --- Häkchen "Mit Deal getankt" im Tank-Formular --- */
 function syncFuelDealCheckbox() {
@@ -195,22 +279,39 @@ function syncFuelDealCheckbox() {
 
   const enabled = isFuelDealEnabled();
   group.style.display = enabled ? '' : 'none';
-  if (!enabled) return;
+  if (!enabled) {
+    toggleFuelDealDiscountGroup();
+    return;
+  }
 
   document.getElementById('fuelDealLabelText').textContent = `Mit ${getFuelDealName()} getankt`;
 
   const v = getActiveVehicle();
   const editId = document.getElementById('fuelEditId').value;
   const entries = (v && v.fuelEntries) || [];
+  const ctInput = document.getElementById('fuelDealCt');
+  const euroInput = document.getElementById('fuelDealEuro');
+  ctInput.value = '';
+  euroInput.value = '';
   if (editId) {
     const entry = entries.find(f => f.id === editId);
     checkbox.checked = !!(entry && entry.dealUsed);
+    if (entry && hasEnteredDealDiscount(entry)) {
+      ctInput.value = Math.round(entry.dealDiscountCt * 10) / 10;
+      calcFuelDealDiscount('ct');
+    }
   } else {
     // Neue Tankung: "an" - außer die letzte Tankung dieses Fahrzeugs wurde
     // bewusst ohne Deal gespeichert (dealUsed === false)
     const latest = [...entries].sort(compareByDateThenMileageDesc)[0];
     checkbox.checked = !(latest && latest.dealUsed === false);
   }
+
+  const stats = computeFuelDealStats(appData.fuelDeal, getLocalDateStr());
+  document.getElementById('fuelDealDiscountHint').textContent = stats.avgCt !== null
+    ? `Leer lassen = Ø ${formatDealCt(stats.avgCt)} wird angenommen.`
+    : 'Steht auf dem Beleg meist als „Rabatt“ oder „Ersparnis“.';
+  toggleFuelDealDiscountGroup();
 }
 
 /* --- Einstellungen --- */
