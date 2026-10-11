@@ -2283,7 +2283,24 @@ body[data-bg-style="mercedes-classic"],
 .cost-detail-cat-name small { color: var(--text-muted); }
 .cost-detail-cat-pct { color: var(--text-muted); font-size: 0.75rem; }
 .cost-detail-cat-head strong { font-family: var(--font-mono); white-space: nowrap; }
-.cost-detail-chevron { width: 0.8rem; color: var(--text-muted); font-size: 0.75rem; text-align: center; }
+/* Aufklapp-Pfeil (nur bei Kraftstoff): runder Knopf, dreht sich beim Öffnen */
+.cost-detail-chevron {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.cost-detail-chevron:not(:empty) {
+  border: 1px solid var(--border-highlight);
+  background: var(--bg-body);
+  color: var(--accent-primary);
+}
+.cost-detail-chevron svg { transition: transform 0.2s ease; }
+.cost-detail-cat.is-open .cost-detail-chevron svg { transform: rotate(180deg); }
+.cost-detail-cat-head:not(:disabled):hover .cost-detail-chevron { border-color: var(--accent-primary); }
 
 .cost-detail-bar {
   height: 6px;
@@ -2293,25 +2310,6 @@ body[data-bg-style="mercedes-classic"],
   margin-top: 0.25rem;
 }
 .cost-detail-bar span { display: block; height: 100%; border-radius: inherit; }
-
-.cost-detail-items {
-  list-style: none;
-  margin: 0.5rem 0 0;
-  padding: 0;
-}
-.cost-detail-items li {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-size: 0.8rem;
-  padding: 0.4rem 0;
-  border-top: 1px solid var(--border-color);
-}
-.cost-detail-items { padding-left: 1.1rem; }
-.cost-detail-item-date { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.72rem; white-space: nowrap; }
-.cost-detail-item-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.cost-detail-item-title small { display: block; color: var(--text-muted); font-size: 0.7rem; }
-.cost-detail-items strong { font-family: var(--font-mono); white-space: nowrap; }
 
 .cost-detail-fuel-types {
   margin-top: 0.5rem;

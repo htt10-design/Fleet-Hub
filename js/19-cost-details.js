@@ -25,6 +25,8 @@ const COST_DETAIL_CATEGORIES = [
   { key: 'Sonstiges', label: 'Sonstiges / Pflege', short: 'Sonstiges' }
 ];
 
+const COST_DETAIL_CHEVRON_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
 function getCostCategoryColor(key) {
   const c = COST_CATEGORY_COLORS[key] || COST_CATEGORY_COLORS.Sonstiges;
   return appData.theme === 'dark' ? c.dark : c.light;
@@ -77,15 +79,9 @@ function computeCostDetails(v, period, today) {
   const services = (v.serviceEntries || []).filter(s => (s.cost || 0) > 0 && isDateInRange(s.date, range));
 
   const totals = {};
-  const items = {};
-  COST_DETAIL_CATEGORIES.forEach(c => { totals[c.key] = 0; items[c.key] = []; });
+  COST_DETAIL_CATEGORIES.forEach(c => { totals[c.key] = 0; });
   fuel.forEach(f => { totals.Kraftstoff += f.totalPrice || 0; });
-  services.forEach(s => {
-    const key = getServiceCostCategory(s);
-    totals[key] += s.cost || 0;
-    items[key].push(s);
-  });
-  Object.values(items).forEach(list => list.sort(compareByDateThenMileageDesc));
+  services.forEach(s => { totals[getServiceCostCategory(s)] += s.cost || 0; });
   const total = Object.values(totals).reduce((a, b) => a + b, 0);
 
   // Kraftstoffsorten
@@ -117,7 +113,7 @@ function computeCostDetails(v, period, today) {
     dealSaved = fuel.reduce((sum, f) => sum + ((stats.perEntry[f.id] && stats.perEntry[f.id].saved) || 0), 0);
   }
 
-  return { range, fuel, services, totals, items, total, fuelTypes, totalLiters, months, distance, dealSaved, datedEntries };
+  return { range, fuel, services, totals, total, fuelTypes, totalLiters, months, distance, dealSaved, datedEntries };
 }
 
 function formatCostEuro(value) {
@@ -208,33 +204,23 @@ function renderCostDetailModal() {
       ${d.dealSaved !== null && d.dealSaved > 0 ? `<p class="cost-detail-note">Mit ${escapeHtml(getFuelDealName())} gespart: <strong>${formatCostEuro(d.dealSaved)}</strong> (Rabatt, ohne Gebühren)</p>` : ''}
     </div>`;
 
-  // 2. Kategorien (aufklappbar: Kraftstoff -> Sorten, sonst -> Einträge)
+  // 2. Kategorien (nur Kraftstoff ist aufklappbar -> Sorten)
   const categoryRows = COST_DETAIL_CATEGORIES
     .filter(c => d.totals[c.key] > 0)
     .map(c => {
       const amount = d.totals[c.key];
       const pct = d.total > 0 ? amount / d.total * 100 : 0;
-      const isFuel = c.key === 'Kraftstoff';
-      const count = isFuel ? d.fuel.length : d.items[c.key].length;
-      const expandable = isFuel ? fuelTypesHtml !== '' : count > 0;
+      const expandable = c.key === 'Kraftstoff' && fuelTypesHtml !== '';
       const isOpen = expandable && costDetailOpenCategory === c.key;
-      const detailHtml = !isOpen ? '' : isFuel ? fuelTypesHtml : `
-        <ul class="cost-detail-items">
-          ${d.items[c.key].map(s => `
-            <li>
-              <span class="cost-detail-item-date">${formatCostDate(s.date)}</span>
-              <span class="cost-detail-item-title">${escapeHtml(s.title || c.label)}${c.key === 'Werkstatt' ? `<small>${s.category === 'TÜV' ? 'HU / AU / TÜV' : escapeHtml(s.category)}</small>` : ''}</span>
-              <strong>${formatCostEuro(s.cost || 0)}</strong>
-            </li>`).join('')}
-        </ul>`;
+      const detailHtml = isOpen ? fuelTypesHtml : '';
       return `
         <div class="cost-detail-cat${isOpen ? ' is-open' : ''}">
           <button type="button" class="cost-detail-cat-head" ${expandable ? `onclick="toggleCostDetailCategory('${c.key}')"` : 'disabled'}>
             <span class="cost-detail-dot" style="background: ${getCostCategoryColor(c.key)}"></span>
-            <span class="cost-detail-cat-name">${c.label}${expandable ? ` <small>(${count})</small>` : ''}</span>
+            <span class="cost-detail-cat-name">${c.label}${expandable ? ` <small>(${d.fuel.length})</small>` : ''}</span>
             <span class="cost-detail-cat-pct">${pct.toFixed(0)} %</span>
             <strong>${formatCostEuro(amount)}</strong>
-            ${expandable ? `<span class="cost-detail-chevron">${isOpen ? '▴' : '▾'}</span>` : '<span class="cost-detail-chevron"></span>'}
+            <span class="cost-detail-chevron"${expandable ? ` aria-label="${isOpen ? 'Zuklappen' : 'Aufklappen'}"` : ''}>${expandable ? COST_DETAIL_CHEVRON_SVG : ''}</span>
           </button>
           <div class="cost-detail-bar"><span style="width: ${pct.toFixed(1)}%; background: ${getCostCategoryColor(c.key)}"></span></div>
           ${detailHtml}
