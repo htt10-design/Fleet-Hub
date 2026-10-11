@@ -1874,10 +1874,26 @@ body[data-bg-style="mercedes-classic"],
 /* Zweite, dezentere Detailzeile unter der Gesamtkosten-Kachel (Gesamt-Liter +
    reine Spritkosten) - etwas schwächer als die normale Sub-Zeile, damit die
    Kachel nicht überladen wirkt */
-.kpi-sub-fuel-detail {
-  opacity: 0.75;
-  margin-top: 0.05rem;
+/* Mini-Vorschau in der Kachel "Gesamtkosten" */
+.kpi-cost-preview { margin-top: 0.45rem; }
+.kpi-cost-bar {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
 }
+.kpi-cost-bar span { min-width: 3px; }
+.kpi-cost-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.6rem;
+  margin-top: 0.35rem;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+.kpi-cost-legend span { display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+.kpi-cost-legend i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 
 .tire-kpi-visual {
   position: relative;
@@ -1983,7 +1999,7 @@ body[data-bg-style="mercedes-classic"],
 
 .charts-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1rem;
 }
 
@@ -2278,14 +2294,12 @@ body[data-bg-style="mercedes-classic"],
 }
 .cost-detail-bar span { display: block; height: 100%; border-radius: inherit; }
 
-.cost-detail-items,
-.cost-detail-top {
+.cost-detail-items {
   list-style: none;
   margin: 0.5rem 0 0;
   padding: 0;
 }
-.cost-detail-items li,
-.cost-detail-top li {
+.cost-detail-items li {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -2297,8 +2311,7 @@ body[data-bg-style="mercedes-classic"],
 .cost-detail-item-date { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.72rem; white-space: nowrap; }
 .cost-detail-item-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .cost-detail-item-title small { display: block; color: var(--text-muted); font-size: 0.7rem; }
-.cost-detail-items strong,
-.cost-detail-top strong { font-family: var(--font-mono); white-space: nowrap; }
+.cost-detail-items strong { font-family: var(--font-mono); white-space: nowrap; }
 
 .cost-detail-fuel { margin-bottom: 0.75rem; }
 .cost-detail-fuel-top {
@@ -2315,10 +2328,6 @@ body[data-bg-style="mercedes-classic"],
 .cost-detail-note strong { color: var(--accent-success); font-family: var(--font-mono); }
 
 .cost-detail-chart { height: 220px; }
-
-.chart-inline-stat {
-  margin: -0.25rem 0 0.5rem 0;
-}
 
 /* Motorenverwaltung bei Booten (Stammdaten) */
 #boatEnginesSection {

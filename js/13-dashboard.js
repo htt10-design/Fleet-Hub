@@ -1,10 +1,8 @@
-/* Feste Farben der Kostenkategorien (Kreisdiagramm, Kosten-Detailansicht).
+/* Feste Farben der Kostenkategorien (Kachel-Vorschau, Kosten-Detailansicht).
    Gegen Farbenblindheit/Kontrast geprüft (dataviz-Validator) - Reihenfolge fest. */
 const COST_CATEGORY_COLORS = {
   Kraftstoff: { light: '#2a78d6', dark: '#3987e5' },
-  Wartung:    { light: '#1baf7a', dark: '#199e70' },
-  Reparatur:  { light: '#e34948', dark: '#e66767' },
-  'TÜV':      { light: '#4a3aa7', dark: '#9085e9' },
+  Werkstatt:  { light: '#1baf7a', dark: '#199e70' },
   Sonstiges:  { light: '#a8741c', dark: '#b98a2c' }
 };
 
@@ -112,32 +110,8 @@ function renderDashboard() {
   const totalCosts = fuelCosts + serviceCosts;
   document.getElementById('kpi-total-cost').innerText = `${totalCosts.toFixed(2)} €`;
 
-  // Zusatzzeile: insgesamt getankte Liter (alle Tankungen, nicht nur die für den
-  // Verbrauchsschnitt genutzte Voll-zu-Voll-Spanne) sowie die reinen Spritkosten
-  const totalCostFuelDetailEl = document.getElementById('kpi-total-cost-fuel-detail');
-  if (totalCostFuelDetailEl) {
-    const totalLitersAll = fuelList.reduce((sum, f) => sum + (f.liters || 0), 0);
-    if (totalLitersAll > 0 || fuelCosts > 0) {
-      totalCostFuelDetailEl.innerText = `davon ${formatNumberForDisplay(totalLitersAll.toFixed(1))} L · ${fuelCosts.toFixed(2)} € Sprit`;
-      totalCostFuelDetailEl.style.display = '';
-    } else {
-      totalCostFuelDetailEl.innerText = '';
-      totalCostFuelDetailEl.style.display = 'none';
-    }
-  }
-
-  // "Kosten/100km" ist auf der KPI-Kachel der Reifen-Übersicht gewichen (s.u.),
-  // taucht aber weiterhin dezent bei der Kostenverteilung (Kreisdiagramm) auf -
-  // nur bei Autos sinnvoll (Boote laufen über Betriebsstunden, Anhänger tanken nicht)
-  const costPerKm = totalDist > 0 ? (fuelCosts / totalDist) * 100 : 0;
-  const costPerKmInlineStat = document.getElementById('costPerKmInlineStat');
-  if (costPerKmInlineStat) {
-    const showCostPerKmInline = (v.category || 'auto') === 'auto';
-    costPerKmInlineStat.style.display = showCostPerKmInline ? '' : 'none';
-    if (showCostPerKmInline) {
-      costPerKmInlineStat.innerText = `Kosten / 100 km: ${costPerKm.toFixed(2)} €`;
-    }
-  }
+  // Mini-Vorschau (Anteile Sprit / Werkstatt / Sonstiges) - Details per Tippen
+  renderCostTilePreview(v);
 
   // KPI-Kacheln je nach Fahrzeugart ein-/ausblenden:
   // - Anhänger hat keinen eigenen Antrieb und keinen sinnvollen KM-Stand
@@ -433,75 +407,6 @@ function renderCharts(v) {
   } else if (consumptionChartInstance) {
     consumptionChartInstance.destroy();
     consumptionChartInstance = null;
-  }
-
-  const fuelTotal = fuelList.reduce((sum, f) => sum + (f.totalPrice || 0), 0);
-  const serviceTotal = serviceList.filter(s => s.category === 'Wartung').reduce((sum, s) => sum + (s.cost || 0), 0);
-  const repairTotal = serviceList.filter(s => s.category === 'Reparatur').reduce((sum, s) => sum + (s.cost || 0), 0);
-  const tuevTotal = serviceList.filter(s => s.category === 'TÜV').reduce((sum, s) => sum + (s.cost || 0), 0);
-  // Alles andere (z.B. "Sonstiges / Pflege") - zählt auch in die Gesamtkosten-Kachel
-  const otherTotal = serviceList.filter(s => !['Wartung', 'Reparatur', 'TÜV'].includes(s.category)).reduce((sum, s) => sum + (s.cost || 0), 0);
-
-  const costCanvas = document.getElementById('costPieChart');
-  if (costCanvas) {
-    const ctx2 = costCanvas.getContext('2d');
-    if (costPieChartInstance) costPieChartInstance.destroy();
-
-    const isDark = appData.theme === 'dark';
-    const textColor = getCssVar('--text-muted', '#8b98a5');
-    const cardBg = getCssVar('--bg-card', '#131820');
-
-    // Feste, aufeinander abgestimmte Kategorie-Farben (statt der bisherigen
-    // knalligen Bootstrap-Farben) - bewusst UNABHÄNGIG von der frei wählbaren
-    // Akzentfarbe der App, damit sich z.B. "Kraftstoff" nicht plötzlich mit
-    // "Reparatur" verwechseln lässt, nur weil jemand die rote Akzentfarbe wählt.
-    // Reihenfolge ist fest: Kraftstoff -> Wartung -> Reparatur -> TÜV -> Sonstiges.
-    // (Farben: COST_CATEGORY_COLORS, oben in dieser Datei)
-    const colorFor = (label) => isDark ? COST_CATEGORY_COLORS[label].dark : COST_CATEGORY_COLORS[label].light;
-
-    const pieLabels = ['Wartung', 'Reparatur', 'TÜV', 'Sonstiges'];
-    const pieData = [serviceTotal, repairTotal, tuevTotal, otherTotal];
-
-    if (hasEngineForCharts) {
-      pieLabels.unshift('Kraftstoff');
-      pieData.unshift(fuelTotal);
-    }
-
-    const pieColors = pieLabels.map(colorFor);
-
-    costPieChartInstance = new Chart(ctx2, {
-      type: 'doughnut',
-      data: {
-        labels: pieLabels,
-        datasets: [{
-          data: pieData,
-          backgroundColor: pieColors,
-          borderColor: cardBg,
-          borderWidth: 2,
-          hoverOffset: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '62%',
-        plugins: {
-          legend: { position: 'bottom', labels: { color: textColor, padding: 14, usePointStyle: true, pointStyle: 'circle' } },
-          tooltip: {
-            backgroundColor: cardBg,
-            titleColor: getCssVar('--text-main', '#e6edf3'),
-            bodyColor: getCssVar('--text-main', '#e6edf3'),
-            borderColor: getCssVar('--border-color', '#212c38'),
-            borderWidth: 1,
-            padding: 10,
-            cornerRadius: 8,
-            callbacks: {
-              label: (ctx) => ` ${ctx.label}: ${(ctx.parsed || 0).toFixed(2)} €`
-            }
-          }
-        }
-      }
-    });
   }
 }
 

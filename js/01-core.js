@@ -32,7 +32,6 @@ function getDefaultBusinessInfo() {
 }
 
 let consumptionChartInstance = null;
-let costPieChartInstance = null;
 let tempServiceImages = [];
 let tempCustomerServiceImages = [];
 

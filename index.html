@@ -259,8 +259,8 @@
             <div class="kpi-card kpi-card-clickable" id="kpiTotalCostCard" onclick="openCostDetailModal()" title="Kosten im Detail">
               <span class="kpi-label">Gesamtkosten</span>
               <div class="kpi-value" id="kpi-total-cost">0,00 €</div>
-              <span class="kpi-sub">Sprit, Service & TÜV · Details ›</span>
-              <span class="kpi-sub kpi-sub-fuel-detail" id="kpi-total-cost-fuel-detail"></span>
+              <div class="kpi-cost-preview" id="kpi-cost-preview" style="display: none;"></div>
+              <span class="kpi-sub">Details ›</span>
             </div>
             <div class="kpi-card kpi-card-clickable" id="kpiTireCard" onclick="handleTireCardClick()">
               <span class="kpi-label">Reifen</span>
@@ -289,13 +289,6 @@
               <h3>Verbrauchsverlauf</h3>
               <div class="chart-container">
                 <canvas id="consumptionChart"></canvas>
-              </div>
-            </div>
-            <div class="card">
-              <h3>Kostenverteilung</h3>
-              <p class="sub-text chart-inline-stat" id="costPerKmInlineStat" style="display: none;"></p>
-              <div class="chart-container">
-                <canvas id="costPieChart"></canvas>
               </div>
             </div>
           </div>

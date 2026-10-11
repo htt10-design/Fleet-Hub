@@ -1,8 +1,8 @@
 /* --- KOSTEN IM DETAIL (Popup hinter der Kachel "Gesamtkosten") ---
    Nutzt nur vorhandene Daten des aktiven Fahrzeugs: Tankungen + Service-Einträge.
    Zeitraum umschaltbar; daraus: Summe, Ø pro Monat, Kosten pro 100 km,
-   Aufschlüsselung nach Kategorie (aufklappbar), Kraftstoffsorten, Verlauf
-   als gestapeltes Balkendiagramm und die größten Einzelposten. */
+   Aufschlüsselung nach Kategorie (aufklappbar), Kraftstoffsorten und Verlauf
+   als gestapeltes Balkendiagramm. Außerdem die Mini-Vorschau in der Kachel. */
 
 let costDetailPeriod = 'all';
 let costDetailChartInstance = null;
@@ -18,12 +18,11 @@ function getCostDetailPeriodLabel(period, today) {
 }
 
 // Reihenfolge und Bezeichnungen der Kostenkategorien (Farben: COST_CATEGORY_COLORS)
+// (Wartung, Reparatur und TÜV sind bewusst zu "Werkstatt" zusammengefasst)
 const COST_DETAIL_CATEGORIES = [
-  { key: 'Kraftstoff', label: 'Kraftstoff' },
-  { key: 'Wartung', label: 'Wartung' },
-  { key: 'Reparatur', label: 'Reparatur' },
-  { key: 'TÜV', label: 'HU / AU / TÜV' },
-  { key: 'Sonstiges', label: 'Sonstiges / Pflege' }
+  { key: 'Kraftstoff', label: 'Kraftstoff', short: 'Sprit' },
+  { key: 'Werkstatt', label: 'Wartung, Reparatur & TÜV', short: 'Werkstatt' },
+  { key: 'Sonstiges', label: 'Sonstiges / Pflege', short: 'Sonstiges' }
 ];
 
 function getCostCategoryColor(key) {
@@ -33,7 +32,7 @@ function getCostCategoryColor(key) {
 
 // Service-Kategorie auf eine der festen Kostenkategorien abbilden
 function getServiceCostCategory(s) {
-  return ['Wartung', 'Reparatur', 'TÜV'].includes(s.category) ? s.category : 'Sonstiges';
+  return ['Wartung', 'Reparatur', 'TÜV'].includes(s.category) ? 'Werkstatt' : 'Sonstiges';
 }
 
 // Zeitraum als { start, end } ('YYYY-MM-DD', inklusive; null = offen)
@@ -118,9 +117,7 @@ function computeCostDetails(v, period, today) {
     dealSaved = fuel.reduce((sum, f) => sum + ((stats.perEntry[f.id] && stats.perEntry[f.id].saved) || 0), 0);
   }
 
-  const topItems = [...services].sort((a, b) => (b.cost || 0) - (a.cost || 0)).slice(0, 5);
-
-  return { range, fuel, services, totals, items, total, fuelTypes, totalLiters, months, distance, dealSaved, topItems, datedEntries };
+  return { range, fuel, services, totals, items, total, fuelTypes, totalLiters, months, distance, dealSaved, datedEntries };
 }
 
 function formatCostEuro(value) {
@@ -205,7 +202,7 @@ function renderCostDetailModal() {
           ${d.items[c.key].map(s => `
             <li>
               <span class="cost-detail-item-date">${formatCostDate(s.date)}</span>
-              <span class="cost-detail-item-title">${escapeHtml(s.title || c.label)}</span>
+              <span class="cost-detail-item-title">${escapeHtml(s.title || c.label)}${c.key === 'Werkstatt' ? `<small>${s.category === 'TÜV' ? 'HU / AU / TÜV' : escapeHtml(s.category)}</small>` : ''}</span>
               <strong>${formatCostEuro(s.cost || 0)}</strong>
             </li>`).join('')}
         </ul>` : '';
@@ -246,20 +243,6 @@ function renderCostDetailModal() {
       </section>`;
   }
 
-  // 4. Größte Einzelposten
-  const topHtml = d.topItems.length > 0 ? `
-    <section class="cost-detail-section">
-      <h4>Größte Einzelposten</h4>
-      <ol class="cost-detail-top">
-        ${d.topItems.map(s => `
-          <li>
-            <span class="cost-detail-dot" style="background: ${getCostCategoryColor(getServiceCostCategory(s))}"></span>
-            <span class="cost-detail-item-title">${escapeHtml(s.title || s.category || 'Eintrag')}<small>${formatCostDate(s.date)}</small></span>
-            <strong>${formatCostEuro(s.cost || 0)}</strong>
-          </li>`).join('')}
-      </ol>
-    </section>` : '';
-
   body.innerHTML = `
     <div class="cost-detail-hero">
       <span class="cost-detail-hero-label">${periodLabel}</span>
@@ -279,7 +262,6 @@ function renderCostDetailModal() {
       <div class="chart-container cost-detail-chart"><canvas id="costDetailChart"></canvas></div>
     </section>
 
-    ${topHtml}
   `;
 
   renderCostDetailChart(d, today);
@@ -368,4 +350,26 @@ function renderCostDetailChart(d, today) {
       }
     }
   });
+}
+
+/* --- Mini-Vorschau in der Kachel "Gesamtkosten": Anteile als Balken + Legende --- */
+function renderCostTilePreview(v) {
+  const el = document.getElementById('kpi-cost-preview');
+  if (!el) return;
+  const d = computeCostDetails(v, 'all', getLocalDateStr());
+  const parts = COST_DETAIL_CATEGORIES.filter(c => d.totals[c.key] > 0);
+  if (d.total <= 0 || parts.length === 0) {
+    el.innerHTML = '';
+    el.style.display = 'none';
+    return;
+  }
+  const pctOf = key => d.totals[key] / d.total * 100;
+  el.innerHTML = `
+    <div class="kpi-cost-bar">
+      ${parts.map(c => `<span style="flex-grow: ${pctOf(c.key).toFixed(2)}; background: ${getCostCategoryColor(c.key)}" title="${c.label}"></span>`).join('')}
+    </div>
+    <div class="kpi-cost-legend">
+      ${parts.map(c => `<span><i style="background: ${getCostCategoryColor(c.key)}"></i>${c.short} ${Math.round(pctOf(c.key))} %</span>`).join('')}
+    </div>`;
+  el.style.display = '';
 }

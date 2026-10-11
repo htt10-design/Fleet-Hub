@@ -40,7 +40,7 @@ tools/smoke-test.js   Browser-Smoke-Test (Playwright)
 | 16-sale-report | Verkaufsbericht (Druck) |
 | 17-acar-import | Import aus aCar (.abp) |
 | 18-fuel-deal | Optionaler Tank-Deal (z.B. Shell Smart Deal): Literkontingent Monat/Jahr, Ersparnis |
-| 19-cost-details | Popup „Kosten im Detail“ hinter der Gesamtkosten-Kachel (Zeitraum, Kategorien, Kraftstoffsorten, Verlauf, Top-Posten) |
+| 19-cost-details | Popup „Kosten im Detail“ hinter der Gesamtkosten-Kachel (Zeitraum, Kategorien Sprit/Werkstatt/Sonstiges, Kraftstoffsorten, Verlauf) + Mini-Vorschau in der Kachel |
 
 ## Konventionen
 
