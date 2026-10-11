@@ -1,3 +1,13 @@
+/* Feste Farben der Kostenkategorien (Kreisdiagramm, Kosten-Detailansicht).
+   Gegen Farbenblindheit/Kontrast geprüft (dataviz-Validator) - Reihenfolge fest. */
+const COST_CATEGORY_COLORS = {
+  Kraftstoff: { light: '#2a78d6', dark: '#3987e5' },
+  Wartung:    { light: '#1baf7a', dark: '#199e70' },
+  Reparatur:  { light: '#e34948', dark: '#e66767' },
+  'TÜV':      { light: '#4a3aa7', dark: '#9085e9' },
+  Sonstiges:  { light: '#a8741c', dark: '#b98a2c' }
+};
+
 /* --- DASHBOARD & CHARTS --- */
 function renderDashboard() {
   const v = getActiveVehicle();
@@ -429,6 +439,8 @@ function renderCharts(v) {
   const serviceTotal = serviceList.filter(s => s.category === 'Wartung').reduce((sum, s) => sum + (s.cost || 0), 0);
   const repairTotal = serviceList.filter(s => s.category === 'Reparatur').reduce((sum, s) => sum + (s.cost || 0), 0);
   const tuevTotal = serviceList.filter(s => s.category === 'TÜV').reduce((sum, s) => sum + (s.cost || 0), 0);
+  // Alles andere (z.B. "Sonstiges / Pflege") - zählt auch in die Gesamtkosten-Kachel
+  const otherTotal = serviceList.filter(s => !['Wartung', 'Reparatur', 'TÜV'].includes(s.category)).reduce((sum, s) => sum + (s.cost || 0), 0);
 
   const costCanvas = document.getElementById('costPieChart');
   if (costCanvas) {
@@ -443,17 +455,12 @@ function renderCharts(v) {
     // knalligen Bootstrap-Farben) - bewusst UNABHÄNGIG von der frei wählbaren
     // Akzentfarbe der App, damit sich z.B. "Kraftstoff" nicht plötzlich mit
     // "Reparatur" verwechseln lässt, nur weil jemand die rote Akzentfarbe wählt.
-    // Reihenfolge ist fest: Kraftstoff -> Wartung -> Reparatur -> TÜV.
-    const CHART_CATEGORY_COLORS = {
-      Kraftstoff: { light: '#2a78d6', dark: '#3987e5' },
-      Wartung:    { light: '#1baf7a', dark: '#199e70' },
-      Reparatur:  { light: '#e34948', dark: '#e66767' },
-      'TÜV':      { light: '#4a3aa7', dark: '#9085e9' }
-    };
-    const colorFor = (label) => isDark ? CHART_CATEGORY_COLORS[label].dark : CHART_CATEGORY_COLORS[label].light;
+    // Reihenfolge ist fest: Kraftstoff -> Wartung -> Reparatur -> TÜV -> Sonstiges.
+    // (Farben: COST_CATEGORY_COLORS, oben in dieser Datei)
+    const colorFor = (label) => isDark ? COST_CATEGORY_COLORS[label].dark : COST_CATEGORY_COLORS[label].light;
 
-    const pieLabels = ['Wartung', 'Reparatur', 'TÜV'];
-    const pieData = [serviceTotal, repairTotal, tuevTotal];
+    const pieLabels = ['Wartung', 'Reparatur', 'TÜV', 'Sonstiges'];
+    const pieData = [serviceTotal, repairTotal, tuevTotal, otherTotal];
 
     if (hasEngineForCharts) {
       pieLabels.unshift('Kraftstoff');

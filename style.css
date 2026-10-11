@@ -2190,6 +2190,132 @@ body[data-bg-style="mercedes-classic"],
   cursor: pointer;
 }
 
+/* --- Kosten im Detail (Popup hinter der Gesamtkosten-Kachel) --- */
+.cost-detail-periods { margin-bottom: 1rem; }
+.cost-detail-periods .theme-switch-btn { flex: 1; padding: 0.45rem 0.3rem; }
+
+.cost-detail-empty { text-align: center; padding: 1.5rem 0; }
+
+.cost-detail-hero {
+  text-align: center;
+  padding: 0.25rem 0 1rem;
+  border-bottom: 1px dashed var(--border-color);
+  margin-bottom: 1rem;
+}
+.cost-detail-hero-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.cost-detail-hero-value {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0.15rem 0 0.75rem;
+}
+.cost-detail-stats {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+}
+.cost-detail-stats > div { display: flex; flex-direction: column; min-width: 0; }
+.cost-detail-stats span {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.cost-detail-stats strong { font-family: var(--font-mono); font-size: 0.95rem; color: var(--text-main); }
+.cost-detail-stats small { font-size: 0.68rem; color: var(--text-muted); }
+
+.cost-detail-section { margin-bottom: 1.25rem; }
+.cost-detail-section h4 {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 0.6rem;
+}
+
+.cost-detail-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cost-detail-cat { margin-bottom: 0.7rem; }
+.cost-detail-cat-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  padding: 0.2rem 0;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+.cost-detail-cat-head:disabled { cursor: default; opacity: 1; }
+.cost-detail-cat-name { flex: 1; min-width: 0; }
+.cost-detail-cat-name small { color: var(--text-muted); }
+.cost-detail-cat-pct { color: var(--text-muted); font-size: 0.75rem; }
+.cost-detail-cat-head strong { font-family: var(--font-mono); white-space: nowrap; }
+.cost-detail-chevron { width: 0.8rem; color: var(--text-muted); font-size: 0.75rem; text-align: center; }
+
+.cost-detail-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border-color);
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+.cost-detail-bar span { display: block; height: 100%; border-radius: inherit; }
+
+.cost-detail-items,
+.cost-detail-top {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+.cost-detail-items li,
+.cost-detail-top li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border-color);
+}
+.cost-detail-items { padding-left: 1.1rem; }
+.cost-detail-item-date { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.72rem; white-space: nowrap; }
+.cost-detail-item-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cost-detail-item-title small { display: block; color: var(--text-muted); font-size: 0.7rem; }
+.cost-detail-items strong,
+.cost-detail-top strong { font-family: var(--font-mono); white-space: nowrap; }
+
+.cost-detail-fuel { margin-bottom: 0.75rem; }
+.cost-detail-fuel-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+.cost-detail-fuel-top small { color: var(--text-muted); font-size: 0.7rem; margin-left: 0.25rem; }
+.cost-detail-fuel-top strong { font-family: var(--font-mono); white-space: nowrap; }
+.cost-detail-fuel-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem; }
+.cost-detail-note { font-size: 0.78rem; color: var(--text-muted); margin: 0.25rem 0 0; }
+.cost-detail-note strong { color: var(--accent-success); font-family: var(--font-mono); }
+
+.cost-detail-chart { height: 220px; }
+
 .chart-inline-stat {
   margin: -0.25rem 0 0.5rem 0;
 }

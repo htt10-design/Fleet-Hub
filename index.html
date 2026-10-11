@@ -256,10 +256,10 @@
               <div class="kpi-value" id="kpi-consumption">0.0 <small>L/100km</small></div>
               <span class="kpi-sub">Gefilterte Vollbetankungen</span>
             </div>
-            <div class="kpi-card">
+            <div class="kpi-card kpi-card-clickable" id="kpiTotalCostCard" onclick="openCostDetailModal()" title="Kosten im Detail">
               <span class="kpi-label">Gesamtkosten</span>
               <div class="kpi-value" id="kpi-total-cost">0,00 €</div>
-              <span class="kpi-sub">Sprit, Service & TÜV</span>
+              <span class="kpi-sub">Sprit, Service & TÜV · Details ›</span>
               <span class="kpi-sub kpi-sub-fuel-detail" id="kpi-total-cost-fuel-detail"></span>
             </div>
             <div class="kpi-card kpi-card-clickable" id="kpiTireCard" onclick="handleTireCardClick()">
@@ -1448,6 +1448,22 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="costDetailModal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3>Kosten im Detail</h3>
+        <button class="modal-close" onclick="closeCostDetailModal()">✕</button>
+      </div>
+      <div class="theme-switch cost-detail-periods" id="costDetailPeriodSwitch">
+        <button type="button" class="theme-switch-btn" data-period="year" onclick="setCostDetailPeriod('year')">Dieses Jahr</button>
+        <button type="button" class="theme-switch-btn" data-period="lastYear" onclick="setCostDetailPeriod('lastYear')">Letztes Jahr</button>
+        <button type="button" class="theme-switch-btn" data-period="12m" onclick="setCostDetailPeriod('12m')">12 Monate</button>
+        <button type="button" class="theme-switch-btn" data-period="all" onclick="setCostDetailPeriod('all')">Gesamt</button>
+      </div>
+      <div id="costDetailBody"></div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="tireOverviewModal">
     <div class="modal modal-lg">
       <div class="modal-header">
@@ -1723,5 +1739,6 @@
   <script src="js/16-sale-report.js"></script>
   <script src="js/17-acar-import.js"></script>
   <script src="js/18-fuel-deal.js"></script>
+  <script src="js/19-cost-details.js"></script>
 </body>
 </html>
