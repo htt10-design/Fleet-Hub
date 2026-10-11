@@ -1,0 +1,252 @@
+/* --- TANKEN --- */
+function toggleCustomFuelInput() {
+  const selectVal = document.getElementById('fuelCategorySelect').value;
+  const customGroup = document.getElementById('customFuelGroup');
+  if (customGroup) customGroup.style.display = selectVal === 'Sonstiges' ? 'block' : 'none';
+}
+
+function toggleAdditiveInput() {
+  const hasAdd = document.getElementById('fuelHasAdditive').checked;
+  const addGroup = document.getElementById('fuelAdditiveGroup');
+  if (addGroup) addGroup.style.display = hasAdd ? 'block' : 'none';
+  if (!hasAdd) {
+    const nameInput = document.getElementById('fuelAdditiveName');
+    if (nameInput) nameInput.value = '';
+  }
+}
+
+function calcFuelFields(changedField) {
+  const liters = parseFloat(document.getElementById('fuelLiters').value) || 0;
+  const total = parseFloat(document.getElementById('fuelTotalPrice').value) || 0;
+  const ppl = parseFloat(document.getElementById('fuelPricePerLiter').value) || 0;
+
+  if (changedField === 'liters' && ppl > 0) document.getElementById('fuelTotalPrice').value = (liters * ppl).toFixed(2);
+  else if (changedField === 'total' && liters > 0) document.getElementById('fuelPricePerLiter').value = (total / liters).toFixed(3);
+  else if (changedField === 'ppl' && liters > 0) document.getElementById('fuelTotalPrice').value = (liters * ppl).toFixed(2);
+}
+
+function saveFuelEntry(e) {
+  e.preventDefault();
+  const v = getActiveVehicle();
+  if (!v) return;
+
+  const editId = document.getElementById('fuelEditId').value;
+  const hasAdditive = document.getElementById('fuelHasAdditive').checked;
+
+  const categorySelect = document.getElementById('fuelCategorySelect').value;
+  const finalFuelType = categorySelect === 'Sonstiges' 
+    ? (document.getElementById('fuelCustomType').value || 'Sonstiges')
+    : categorySelect;
+
+  const entry = {
+    id: editId ? editId : "f_" + Date.now(),
+    date: document.getElementById('fuelDate').value,
+    fuelType: finalFuelType,
+    mileage: parseFormattedNumber(document.getElementById('fuelMileage').value) || 0,
+    liters: parseFloat(document.getElementById('fuelLiters').value) || 0,
+    totalPrice: parseFloat(document.getElementById('fuelTotalPrice').value) || 0,
+    pricePerLiter: parseFloat(document.getElementById('fuelPricePerLiter').value) || 0,
+    full: document.getElementById('fuelFull').checked,
+    hasAdditive: hasAdditive,
+    additiveName: hasAdditive ? document.getElementById('fuelAdditiveName').value : '',
+    notes: document.getElementById('fuelNotes').value
+  };
+
+  if (!v.fuelEntries) v.fuelEntries = [];
+
+  if (editId) {
+    const idx = v.fuelEntries.findIndex(f => f.id === editId);
+    if (idx !== -1) v.fuelEntries[idx] = entry;
+  } else {
+    v.fuelEntries.push(entry);
+  }
+
+  v.fuelEntries.sort(compareByDateThenMileageDesc);
+
+  saveData();
+  closeFuelFormModal();
+  renderFuelTable();
+  renderDashboard();
+}
+
+function editFuelEntry(id) {
+  const v = getActiveVehicle();
+  if (!v || !v.fuelEntries) return;
+  const entry = v.fuelEntries.find(f => f.id === id);
+  if (!entry) return;
+
+  document.getElementById('fuelEditId').value = entry.id;
+  document.getElementById('fuelDate').value = entry.date;
+
+  const standardTypes = ["Super", "Super Plus", "Diesel", "Premium Diesel"];
+  if (standardTypes.includes(entry.fuelType)) {
+    document.getElementById('fuelCategorySelect').value = entry.fuelType;
+    document.getElementById('customFuelGroup').style.display = 'none';
+  } else {
+    document.getElementById('fuelCategorySelect').value = 'Sonstiges';
+    document.getElementById('customFuelGroup').style.display = 'block';
+    document.getElementById('fuelCustomType').value = entry.fuelType || '';
+  }
+
+  document.getElementById('fuelMileage').value = formatNumberForDisplay(entry.mileage);
+  document.getElementById('fuelLiters').value = entry.liters;
+  document.getElementById('fuelTotalPrice').value = entry.totalPrice;
+  document.getElementById('fuelPricePerLiter').value = entry.pricePerLiter;
+  document.getElementById('fuelFull').checked = entry.full;
+  document.getElementById('fuelHasAdditive').checked = entry.hasAdditive || false;
+  toggleAdditiveInput();
+  document.getElementById('fuelAdditiveName').value = entry.additiveName || '';
+  document.getElementById('fuelNotes').value = entry.notes || '';
+
+  document.getElementById('fuelSubmitBtn').innerText = "Änderungen Speichern";
+  document.getElementById('fuelCancelBtn').style.display = "inline-block";
+  openFuelFormModal();
+}
+
+function deleteFuelEntry(id) {
+  if (!confirm("Diesen Tankeintrag wirklich löschen?")) return;
+  const v = getActiveVehicle();
+  if (!v || !v.fuelEntries) return;
+  v.fuelEntries = v.fuelEntries.filter(f => f.id !== id);
+  saveData();
+  renderFuelTable();
+  renderDashboard();
+}
+
+function resetFuelForm() {
+  document.getElementById('fuelEditId').value = '';
+  document.getElementById('fuelForm').reset();
+  document.getElementById('fuelDate').value = new Date().toISOString().split('T')[0];
+  toggleCustomFuelInput();
+  toggleAdditiveInput();
+  document.getElementById('fuelSubmitBtn').innerText = "Tankung Speichern";
+  document.getElementById('fuelCancelBtn').style.display = "none";
+}
+
+// Formular für neue/bearbeitete Tankungen als Modal öffnen/schließen (FAB-Button)
+function openFuelFormModal() {
+  document.getElementById('fuelFormModal').classList.add('active');
+}
+window.openFuelFormModal = openFuelFormModal;
+
+function closeFuelFormModal() {
+  document.getElementById('fuelFormModal').classList.remove('active');
+  resetFuelForm();
+}
+window.closeFuelFormModal = closeFuelFormModal;
+
+// Status: Tankungs-Tabelle ausgeklappt?
+let showAllFuelEntries = false;
+
+function renderFuelTable() {
+  if (typeof renderHistoryTable === 'function') renderHistoryTable();
+  const v = getActiveVehicle();
+  const tbody = document.getElementById('fuelTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (!v || !v.fuelEntries || v.fuelEntries.length === 0) {
+    const toggleContainer = document.getElementById('fuelToggleBtnContainer');
+    if (toggleContainer) toggleContainer.style.display = 'none';
+    return;
+  }
+
+  // 1. Sortierung für die Verbrauchsberechnung (aufsteigend nach Kilometerstand)
+  // Verbrauch wird nach der "Voll-zu-Voll"-Methode berechnet: von einer Volltankung
+  // bis zur nächsten, wobei die Literzahl ALLER Tankungen dazwischen (auch
+  // Teilbetankungen) zusammengezählt wird - nur so stimmt die Strecke zur Menge.
+  const sortedFuel = [...v.fuelEntries].sort((a, b) => a.mileage - b.mileage);
+  const consumptionMap = {};
+  const unitLabel = v.type === 'km' ? 'L/100km' : 'L/Std';
+  let lastFullIndex = -1;
+
+  for (let i = 0; i < sortedFuel.length; i++) {
+    const current = sortedFuel[i];
+
+    if (!current.full) {
+      consumptionMap[current.id] = '-';
+      continue;
+    }
+
+    if (lastFullIndex === -1) {
+      consumptionMap[current.id] = '-';
+    } else {
+      const previousFull = sortedFuel[lastFullIndex];
+      const dist = current.mileage - previousFull.mileage;
+
+      let totalLiters = 0;
+      for (let j = lastFullIndex + 1; j <= i; j++) {
+        totalLiters += sortedFuel[j].liters || 0;
+      }
+
+      if (dist > 0) {
+        const consumption = (totalLiters / dist) * 100;
+        consumptionMap[current.id] = `${consumption.toFixed(2)} ${unitLabel}`;
+      } else {
+        consumptionMap[current.id] = '-';
+      }
+    }
+
+    lastFullIndex = i;
+  }
+
+  // 2. Sortierung für die Anzeige in der Tabelle (neueste Einträge zuerst)
+  const displaySorted = [...v.fuelEntries].sort(compareByDateThenMileageDesc);
+
+  // 3. Auf max. 5 Einträge begrenzen (falls nicht ausgeklappt)
+  const hasMoreThan10 = displaySorted.length > 5;
+  const entriesToRender = (hasMoreThan10 && !showAllFuelEntries) 
+    ? displaySorted.slice(0, 5) 
+    : displaySorted;
+
+  // 4. Tabelle befüllen
+  entriesToRender.forEach(f => {
+    const tr = document.createElement('tr');
+    const additiveBadge = f.hasAdditive ? `<span class="badge-additive" title="${escapeHtml(f.additiveName)}">🧪 ${escapeHtml(f.additiveName || 'Zusatz')}</span>` : '-';
+    const notesVal = f.notes && f.notes.trim()
+      ? `<span class="fuel-note">${escapeHtml(f.notes.trim())}</span>`
+      : '-';
+    const consumptionVal = f.full
+      ? (consumptionMap[f.id] || '-')
+      : '<span class="badge badge-partial" title="Teilbetankung – fließt erst in die nächste Volltankung mit ein">Teilbetankung</span>';
+    const pricePerLiterVal = f.pricePerLiter ? `${f.pricePerLiter.toFixed(3)} €` : '-';
+
+    tr.innerHTML = `
+      <td data-label="Datum">${f.date}</td>
+      <td data-label="Kraftstoff">${f.fuelType}</td>
+      <td data-label="Stand">${f.mileage.toLocaleString()}</td>
+      <td data-label="Liter">${f.liters.toFixed(2)} L</td>
+      <td data-label="€/Liter">${pricePerLiterVal}</td>
+      <td data-label="Verbrauch">${consumptionVal}</td>
+      <td data-label="Zusatz">${additiveBadge}</td>
+      <td data-label="Notiz" class="fuel-note-cell">${notesVal}</td>
+      <td data-label="Gesamt"><strong>${f.totalPrice.toFixed(2)} €</strong></td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="editFuelEntry('${f.id}')">${ICON_EDIT_SVG}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteFuelEntry('${f.id}')">${ICON_DELETE_SVG}</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // 5. Button "Mehr anzeigen / Weniger anzeigen" steuern
+  let toggleContainer = document.getElementById('fuelToggleBtnContainer');
+  let toggleBtn = document.getElementById('fuelToggleBtn');
+
+  if (hasMoreThan10 && toggleContainer && toggleBtn) {
+    toggleContainer.style.display = 'block';
+    const remainingCount = displaySorted.length - 5;
+    toggleBtn.innerText = showAllFuelEntries 
+      ? 'Weniger anzeigen' 
+      : `Mehr anzeigen (${remainingCount} weitere Einträge)`;
+  } else if (toggleContainer) {
+    toggleContainer.style.display = 'none';
+  }
+}
+
+// Umschalt-Funktion & Global-Bindung
+function toggleFuelEntries() {
+  showAllFuelEntries = !showAllFuelEntries;
+  renderFuelTable();
+}
+
+window.toggleFuelEntries = toggleFuelEntries;
