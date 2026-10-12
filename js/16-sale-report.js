@@ -65,19 +65,8 @@ function printSaleReport() {
   const mileageUnit = v.type === 'hours' ? 'Std' : 'km';
   const currentMileageStr = `${currentMileage.toLocaleString('de-DE')} ${mileageUnit}`;
 
-  // Voll-zu-Voll-Methode: Teilbetankungen fließen mit ein statt ignoriert zu werden
-  const sortedFuelForReport = [...fuelList].sort((a, b) => a.mileage - b.mileage);
-  const fullTankings = sortedFuelForReport.filter(f => f.full);
-  let avgConsumption = 0;
-  if (fullTankings.length >= 2) {
-    const firstFull = fullTankings[0];
-    const lastFull = fullTankings[fullTankings.length - 1];
-    const totalDist = lastFull.mileage - firstFull.mileage;
-    const totalLiters = sortedFuelForReport
-      .filter(f => f.mileage > firstFull.mileage && f.mileage <= lastFull.mileage)
-      .reduce((sum, f) => sum + (f.liters || 0), 0);
-    avgConsumption = totalDist > 0 ? (totalLiters / totalDist) * 100 : 0;
-  }
+  // Voll-zu-Voll-Methode (inkl. Teilbetankungen, Neustart bei "firstFill")
+  const avgConsumption = getAverageConsumption(fuelList);
   const consumptionUnit = v.type === 'hours' ? 'L/Std' : 'L/100km';
   const hasEngine = vehicleHasEngine(v);
   const boatEngines = getBoatEngines(v);

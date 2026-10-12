@@ -8,6 +8,38 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+/* --- VERBRAUCH: Voll-zu-Voll-Segmente (gemeinsame Grundlage für Tankliste,
+   Durchschnitts-Kachel, Verlaufsgrafik und Verkaufsbericht) ---
+   Von einer Volltankung bis zur nächsten werden die Liter ALLER Tankungen
+   dazwischen (auch Teilbetankungen) zusammengezählt. Eine Volltankung mit
+   firstFill = true ("Verbrauch hier neu beginnen", z.B. Spritmonitor-
+   Erstbetankung oder vergessene Tankung davor) beendet keine Strecke, sondern
+   startet die Rechnung neu. Liefert [{ entry, liters, dist }] je Volltankung. */
+function getFullToFullSegments(fuelEntries) {
+  const sorted = [...(fuelEntries || [])].sort((a, b) => (a.mileage || 0) - (b.mileage || 0));
+  const segments = [];
+  let lastFullIdx = -1;
+  sorted.forEach((current, i) => {
+    if (!current.full) return;
+    if (lastFullIdx !== -1 && !current.firstFill) {
+      const dist = current.mileage - sorted[lastFullIdx].mileage;
+      let liters = 0;
+      for (let j = lastFullIdx + 1; j <= i; j++) liters += sorted[j].liters || 0;
+      if (dist > 0) segments.push({ entry: current, liters, dist });
+    }
+    lastFullIdx = i;
+  });
+  return segments;
+}
+
+// Gesamtdurchschnitt aus allen Segmenten (Summe Liter / Summe Strecke)
+function getAverageConsumption(fuelEntries) {
+  const segments = getFullToFullSegments(fuelEntries);
+  const liters = segments.reduce((sum, s) => sum + s.liters, 0);
+  const dist = segments.reduce((sum, s) => sum + s.dist, 0);
+  return dist > 0 ? (liters / dist) * 100 : 0;
+}
+
 /* --- KM-/STUNDEN-EINGABEFELDER: AUTOMATISCHE TAUSENDERPUNKTE --- */
 // Live-Formatierung während der Eingabe (z.B. "333200" -> "333.200").
 // Erlaubt ein Komma für Nachkommastellen (z.B. Betriebsstunden "145,5").

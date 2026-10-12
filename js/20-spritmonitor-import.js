@@ -110,6 +110,8 @@ function spritmonitorExtractFile(fileName, text) {
       pricePerLiter: liters > 0 ? Math.round((totalPrice / liters) * 1000) / 1000 : 0,
       // 1 = voll, 3 = Erstbetankung (Tank voll) -> beides "voll"; 2 = teil, 0 = ungültig
       full: tankType === 1 || tankType === 3,
+      // Erstbetankung: Tank voll, aber Verbrauch davor unbekannt -> Rechnung neu beginnen
+      firstFill: tankType === 3,
       fuelCode: String(parseInt(get(r, 'Kraftstoff'), 10) || 0),
       notes: spritmonitorBuildNote(get(r, 'Tankstelle'), get(r, 'Ort'), get(r, 'Bemerkung'))
     });
@@ -272,8 +274,8 @@ window.spritmonitorSetFuelCustom = spritmonitorSetFuelCustom;
 
 // Bereits vorhanden = gleicher Tag, gleicher KM-Stand (±2) und gleicher Betrag
 // oder gleiche Literzahl - so werden auch von Hand erfasste Tankungen erkannt
-function spritmonitorIsDuplicate(existing, candidate) {
-  return existing.some(f =>
+function spritmonitorFindDuplicate(existing, candidate) {
+  return existing.find(f =>
     f.date === candidate.date &&
     Math.abs((f.mileage || 0) - candidate.mileage) < 2 &&
     (Math.abs((f.totalPrice || 0) - candidate.totalPrice) < 0.05 || Math.abs((f.liters || 0) - candidate.liters) < 0.05)
@@ -316,7 +318,13 @@ function runSpritmonitorImport() {
     });
 
     sf.fillups.forEach(f => {
-      if (spritmonitorIsDuplicate(target.fuelEntries, f)) { skipped++; return; }
+      const duplicate = spritmonitorFindDuplicate(target.fuelEntries, f);
+      if (duplicate) {
+        // Erstbetankungs-Markierung bei früher importierten Tankungen nachtragen
+        if (f.firstFill && duplicate.full && !duplicate.firstFill) duplicate.firstFill = true;
+        skipped++;
+        return;
+      }
       target.fuelEntries.push({
         id: "f_" + Date.now() + "_" + Math.floor(Math.random() * 100000),
         date: f.date,
@@ -326,6 +334,7 @@ function runSpritmonitorImport() {
         totalPrice: f.totalPrice,
         pricePerLiter: f.pricePerLiter,
         full: f.full,
+        firstFill: f.firstFill,
         hasAdditive: false,
         additiveName: '',
         notes: f.notes,

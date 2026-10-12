@@ -290,6 +290,7 @@
           <div class="charts-grid">
             <div class="card" id="consumptionChartCard">
               <h3>Verbrauchsverlauf</h3>
+              <p class="sub-text consumption-chart-sub" id="consumptionChartSub" style="display: none;"></p>
               <div class="chart-container">
                 <canvas id="consumptionChart"></canvas>
               </div>
@@ -384,7 +385,10 @@
                 </div>
               </div>
               <div class="form-group checkbox-group">
-                <label><input type="checkbox" id="fuelFull" checked> Vollgetankt</label>
+                <label><input type="checkbox" id="fuelFull" checked onchange="toggleFirstFillOption()"> Vollgetankt</label>
+              </div>
+              <div class="form-group checkbox-group" id="fuelFirstFillGroup">
+                <label><input type="checkbox" id="fuelFirstFill"> Vorherige Tankung fehlt – Verbrauch hier neu beginnen</label>
               </div>
               <div class="form-group checkbox-group" id="fuelDealGroup" style="display: none;">
                 <label><input type="checkbox" id="fuelDealUsed" onchange="toggleFuelDealDiscountGroup()"> <span id="fuelDealLabelText">Mit Tank-Deal getankt</span></label>

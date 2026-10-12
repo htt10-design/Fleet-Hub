@@ -5,6 +5,15 @@ function toggleCustomFuelInput() {
   if (customGroup) customGroup.style.display = selectVal === 'Sonstiges' ? 'block' : 'none';
 }
 
+// "Verbrauch hier neu beginnen" ergibt nur bei einer Volltankung Sinn
+function toggleFirstFillOption() {
+  const full = document.getElementById('fuelFull').checked;
+  const group = document.getElementById('fuelFirstFillGroup');
+  if (group) group.style.display = full ? '' : 'none';
+  if (!full) document.getElementById('fuelFirstFill').checked = false;
+}
+window.toggleFirstFillOption = toggleFirstFillOption;
+
 function toggleAdditiveInput() {
   const hasAdd = document.getElementById('fuelHasAdditive').checked;
   const addGroup = document.getElementById('fuelAdditiveGroup');
@@ -50,6 +59,7 @@ function saveFuelEntry(e) {
     totalPrice: parseFloat(document.getElementById('fuelTotalPrice').value) || 0,
     pricePerLiter: parseFloat(document.getElementById('fuelPricePerLiter').value) || 0,
     full: document.getElementById('fuelFull').checked,
+    firstFill: document.getElementById('fuelFull').checked && document.getElementById('fuelFirstFill').checked,
     hasAdditive: hasAdditive,
     additiveName: hasAdditive ? document.getElementById('fuelAdditiveName').value : '',
     notes: document.getElementById('fuelNotes').value
@@ -66,6 +76,12 @@ function saveFuelEntry(e) {
       entry.dealUsed = true;
       entry.dealDiscountCt = previous.dealDiscountCt ?? null;
     }
+  }
+
+  // Herkunft (z.B. Spritmonitor-Import) beim Bearbeiten beibehalten
+  if (editId) {
+    const previous = (v.fuelEntries || []).find(f => f.id === editId);
+    if (previous && previous.importSource) entry.importSource = previous.importSource;
   }
 
   if (!v.fuelEntries) v.fuelEntries = [];
@@ -109,6 +125,8 @@ function editFuelEntry(id) {
   document.getElementById('fuelTotalPrice').value = entry.totalPrice;
   document.getElementById('fuelPricePerLiter').value = entry.pricePerLiter;
   document.getElementById('fuelFull').checked = entry.full;
+  document.getElementById('fuelFirstFill').checked = !!entry.firstFill;
+  toggleFirstFillOption();
   document.getElementById('fuelHasAdditive').checked = entry.hasAdditive || false;
   toggleAdditiveInput();
   document.getElementById('fuelAdditiveName').value = entry.additiveName || '';
@@ -135,6 +153,7 @@ function resetFuelForm() {
   document.getElementById('fuelDate').value = new Date().toISOString().split('T')[0];
   toggleCustomFuelInput();
   toggleAdditiveInput();
+  toggleFirstFillOption();
   document.getElementById('fuelSubmitBtn').innerText = "Tankung Speichern";
   document.getElementById('fuelCancelBtn').style.display = "none";
 }
@@ -172,40 +191,11 @@ function renderFuelTable() {
   // Verbrauch wird nach der "Voll-zu-Voll"-Methode berechnet: von einer Volltankung
   // bis zur nächsten, wobei die Literzahl ALLER Tankungen dazwischen (auch
   // Teilbetankungen) zusammengezählt wird - nur so stimmt die Strecke zur Menge.
-  const sortedFuel = [...v.fuelEntries].sort((a, b) => a.mileage - b.mileage);
   const consumptionMap = {};
   const unitLabel = v.type === 'km' ? 'L/100km' : 'L/Std';
-  let lastFullIndex = -1;
-
-  for (let i = 0; i < sortedFuel.length; i++) {
-    const current = sortedFuel[i];
-
-    if (!current.full) {
-      consumptionMap[current.id] = '-';
-      continue;
-    }
-
-    if (lastFullIndex === -1) {
-      consumptionMap[current.id] = '-';
-    } else {
-      const previousFull = sortedFuel[lastFullIndex];
-      const dist = current.mileage - previousFull.mileage;
-
-      let totalLiters = 0;
-      for (let j = lastFullIndex + 1; j <= i; j++) {
-        totalLiters += sortedFuel[j].liters || 0;
-      }
-
-      if (dist > 0) {
-        const consumption = (totalLiters / dist) * 100;
-        consumptionMap[current.id] = `${consumption.toFixed(2)} ${unitLabel}`;
-      } else {
-        consumptionMap[current.id] = '-';
-      }
-    }
-
-    lastFullIndex = i;
-  }
+  getFullToFullSegments(v.fuelEntries).forEach(seg => {
+    consumptionMap[seg.entry.id] = `${(seg.liters / seg.dist * 100).toFixed(2)} ${unitLabel}`;
+  });
 
   // 2. Sortierung für die Anzeige in der Tabelle (neueste Einträge zuerst)
   const displaySorted = [...v.fuelEntries].sort(compareByDateThenMileageDesc);

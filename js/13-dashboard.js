@@ -85,23 +85,8 @@ function renderDashboard() {
   const maxMileage = allMileage.length > 0 ? Math.max(...allMileage) : 0;
   document.getElementById('kpi-mileage').innerText = `${maxMileage.toLocaleString()} ${v.type === 'km' ? 'km' : 'Std'}`;
 
-  // Voll-zu-Voll-Methode: Strecke zwischen erster & letzter Volltankung, aber die
-  // Literzahl ALLER Tankungen (auch Teilbetankungen) dazwischen zusammenzählen
-  const sortedFuelForAvg = [...fuelList].sort((a, b) => a.mileage - b.mileage);
-  const fullTankings = sortedFuelForAvg.filter(f => f.full);
-  let totalLiters = 0;
-  let totalDist = 0;
-
-  if (fullTankings.length >= 2) {
-    const firstFull = fullTankings[0];
-    const lastFull = fullTankings[fullTankings.length - 1];
-    totalDist = lastFull.mileage - firstFull.mileage;
-    totalLiters = sortedFuelForAvg
-      .filter(f => f.mileage > firstFull.mileage && f.mileage <= lastFull.mileage)
-      .reduce((sum, f) => sum + (f.liters || 0), 0);
-  }
-
-  const avgConsumption = totalDist > 0 ? (totalLiters / totalDist) * 100 : 0;
+  // Voll-zu-Voll-Methode (inkl. Teilbetankungen, Neustart bei "firstFill")
+  const avgConsumption = getAverageConsumption(fuelList);
   const unitLabel = v.type === 'km' ? 'L/100km' : 'L/Std';
   document.getElementById('kpi-consumption').innerHTML = `${avgConsumption.toFixed(2)} <small>${unitLabel}</small>`;
 
@@ -303,6 +288,47 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// Voll-zu-Voll-Segmente zu Monats-/Quartals-/Jahresdurchschnitten zusammenfassen
+function groupConsumptionSegments(segments) {
+  if (segments.length === 0) return { labels: [], dataPoints: [], counts: [], periodLabel: '' };
+  const dates = segments.map(s => s.date).sort();
+  const first = dates[0], last = dates[dates.length - 1];
+  const spanMonths = (parseInt(last.slice(0, 4), 10) - parseInt(first.slice(0, 4), 10)) * 12
+    + (parseInt(last.slice(5, 7), 10) - parseInt(first.slice(5, 7), 10)) + 1;
+  const mode = spanMonths <= 18 ? 'month' : spanMonths <= 72 ? 'quarter' : 'year';
+
+  const keyOf = date => {
+    const y = date.slice(0, 4), m = parseInt(date.slice(5, 7), 10);
+    if (mode === 'month') return `${y}-${String(m).padStart(2, '0')}`;
+    if (mode === 'quarter') return `${y}-Q${Math.ceil(m / 3)}`;
+    return y;
+  };
+  const labelOf = key => {
+    if (mode === 'month') {
+      const [y, m] = key.split('-');
+      return new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1).toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
+    }
+    if (mode === 'quarter') { const [y, q] = key.split('-'); return `${q} ${y}`; }
+    return key;
+  };
+
+  const buckets = {};
+  segments.forEach(s => {
+    const key = keyOf(s.date);
+    if (!buckets[key]) buckets[key] = { liters: 0, dist: 0, count: 0 };
+    buckets[key].liters += s.liters;
+    buckets[key].dist += s.dist;
+    buckets[key].count++;
+  });
+  const keys = Object.keys(buckets).sort();
+  return {
+    labels: keys.map(labelOf),
+    dataPoints: keys.map(k => (buckets[k].liters / buckets[k].dist * 100).toFixed(2)),
+    counts: keys.map(k => buckets[k].count),
+    periodLabel: mode === 'month' ? 'pro Monat' : mode === 'quarter' ? 'pro Quartal' : 'pro Jahr'
+  };
+}
+
 function renderCharts(v) {
   if (typeof Chart === 'undefined') return;
 
@@ -316,30 +342,19 @@ function renderCharts(v) {
 
   // Voll-zu-Voll-Methode wie in der Tankliste: Teilbetankungen fließen in die
   // jeweils nächste Volltankung mit ein, statt ignoriert zu werden
-  const sortedFuelForChart = [...fuelList].sort((a, b) => a.mileage - b.mileage);
-  const labels = [];
-  const dataPoints = [];
-  let lastFullIdxChart = -1;
+  // Jede Voll-zu-Voll-Strecke als Segment (Liter + Strecke, Datum der Volltankung)
+  const segments = getFullToFullSegments(fuelList)
+    .filter(seg => seg.entry.date)
+    .map(seg => ({ date: seg.entry.date, liters: seg.liters, dist: seg.dist }));
 
-  for (let i = 0; i < sortedFuelForChart.length; i++) {
-    const current = sortedFuelForChart[i];
-    if (!current.full) continue;
-
-    if (lastFullIdxChart !== -1) {
-      const previousFull = sortedFuelForChart[lastFullIdxChart];
-      const dist = current.mileage - previousFull.mileage;
-      if (dist > 0) {
-        let totalLitersChart = 0;
-        for (let j = lastFullIdxChart + 1; j <= i; j++) {
-          totalLitersChart += sortedFuelForChart[j].liters || 0;
-        }
-        const cons = (totalLitersChart / dist) * 100;
-        labels.push(current.date);
-        dataPoints.push(cons.toFixed(2));
-      }
-    }
-
-    lastFullIdxChart = i;
+  // Statt jeder einzelnen Tankung (sehr unruhig) Durchschnitte pro Zeitraum:
+  // bis 18 Monate pro Monat, bis 6 Jahre pro Quartal, sonst pro Jahr.
+  // Gewichtet: Summe Liter / Summe Strecke - wie der Gesamtdurchschnitt.
+  const { labels, dataPoints, counts, periodLabel } = groupConsumptionSegments(segments);
+  const consSub = document.getElementById('consumptionChartSub');
+  if (consSub) {
+    consSub.textContent = periodLabel ? `Ø ${periodLabel} (gewichtet nach Litern und Strecke)` : '';
+    consSub.style.display = periodLabel ? '' : 'none';
   }
 
   const consCanvas = document.getElementById('consumptionChart');
@@ -372,7 +387,7 @@ function renderCharts(v) {
           borderColor: accentHex,
           backgroundColor: fillGradient,
           borderWidth: 2,
-          pointRadius: 2.5,
+          pointRadius: dataPoints.length > 24 ? 2 : 3.5,
           pointHoverRadius: 6,
           pointBackgroundColor: accentHex,
           pointBorderColor: cardBg,
@@ -386,11 +401,13 @@ function renderCharts(v) {
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         scales: {
-          x: { ticks: { color: textColor }, grid: { color: gridColor } },
-          y: { ticks: { color: textColor }, grid: { color: gridColor } }
+          x: { ticks: { color: textColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 }, grid: { display: false } },
+          // Etwas Luft über/unter den Werten, damit kleine Schwankungen nicht dramatisch wirken
+          y: { grace: '40%', ticks: { color: textColor, maxTicksLimit: 5 }, grid: { color: gridColor }, border: { display: false } }
         },
         plugins: {
-          legend: { labels: { color: textColor } },
+          // Nur eine Linie - der Kartentitel benennt sie, keine Legende nötig
+          legend: { display: false },
           tooltip: {
             backgroundColor: cardBg,
             titleColor: getCssVar('--text-main', '#e6edf3'),
@@ -399,7 +416,11 @@ function renderCharts(v) {
             borderWidth: 1,
             padding: 10,
             cornerRadius: 8,
-            displayColors: false
+            displayColors: false,
+            callbacks: {
+              label: ctx => ` ${Number(ctx.parsed.y).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${v.type === 'km' ? 'L/100km' : 'L/Std'}`,
+              afterLabel: ctx => ` aus ${counts[ctx.dataIndex]} ${counts[ctx.dataIndex] === 1 ? 'Tankung' : 'Tankungen'}`
+            }
           }
         }
       }

@@ -2206,6 +2206,8 @@ body[data-bg-style="mercedes-classic"],
   cursor: pointer;
 }
 
+.consumption-chart-sub { margin: -0.35rem 0 0.6rem; font-size: 0.75rem; }
+
 /* --- Backup-Erinnerung auf dem Startbildschirm --- */
 .backup-reminder {
   max-width: 720px;
