@@ -288,45 +288,10 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-// Voll-zu-Voll-Segmente zu Monats-/Quartals-/Jahresdurchschnitten zusammenfassen
-function groupConsumptionSegments(segments) {
-  if (segments.length === 0) return { labels: [], dataPoints: [], counts: [], periodLabel: '' };
-  const dates = segments.map(s => s.date).sort();
-  const first = dates[0], last = dates[dates.length - 1];
-  const spanMonths = (parseInt(last.slice(0, 4), 10) - parseInt(first.slice(0, 4), 10)) * 12
-    + (parseInt(last.slice(5, 7), 10) - parseInt(first.slice(5, 7), 10)) + 1;
-  const mode = spanMonths <= 18 ? 'month' : spanMonths <= 72 ? 'quarter' : 'year';
-
-  const keyOf = date => {
-    const y = date.slice(0, 4), m = parseInt(date.slice(5, 7), 10);
-    if (mode === 'month') return `${y}-${String(m).padStart(2, '0')}`;
-    if (mode === 'quarter') return `${y}-Q${Math.ceil(m / 3)}`;
-    return y;
-  };
-  const labelOf = key => {
-    if (mode === 'month') {
-      const [y, m] = key.split('-');
-      return new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1).toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
-    }
-    if (mode === 'quarter') { const [y, q] = key.split('-'); return `${q} ${y}`; }
-    return key;
-  };
-
-  const buckets = {};
-  segments.forEach(s => {
-    const key = keyOf(s.date);
-    if (!buckets[key]) buckets[key] = { liters: 0, dist: 0, count: 0 };
-    buckets[key].liters += s.liters;
-    buckets[key].dist += s.dist;
-    buckets[key].count++;
-  });
-  const keys = Object.keys(buckets).sort();
-  return {
-    labels: keys.map(labelOf),
-    dataPoints: keys.map(k => (buckets[k].liters / buckets[k].dist * 100).toFixed(2)),
-    counts: keys.map(k => buckets[k].count),
-    periodLabel: mode === 'month' ? 'pro Monat' : mode === 'quarter' ? 'pro Quartal' : 'pro Jahr'
-  };
+// "2026-10-03" -> "03.10.26" (kurz für die Achsenbeschriftung)
+function formatChartDate(dateStr) {
+  const [y, m, d] = dateStr.split('-');
+  return `${d}.${m}.${y.slice(2)}`;
 }
 
 function renderCharts(v) {
@@ -342,19 +307,18 @@ function renderCharts(v) {
 
   // Voll-zu-Voll-Methode wie in der Tankliste: Teilbetankungen fließen in die
   // jeweils nächste Volltankung mit ein, statt ignoriert zu werden
-  // Jede Voll-zu-Voll-Strecke als Segment (Liter + Strecke, Datum der Volltankung)
+  // Nur die letzten 10 Tankungen (Voll-zu-Voll), damit der Verlauf übersichtlich bleibt
+  const CONSUMPTION_CHART_MAX_POINTS = 10;
   const segments = getFullToFullSegments(fuelList)
     .filter(seg => seg.entry.date)
-    .map(seg => ({ date: seg.entry.date, liters: seg.liters, dist: seg.dist }));
-
-  // Statt jeder einzelnen Tankung (sehr unruhig) Durchschnitte pro Zeitraum:
-  // bis 18 Monate pro Monat, bis 6 Jahre pro Quartal, sonst pro Jahr.
-  // Gewichtet: Summe Liter / Summe Strecke - wie der Gesamtdurchschnitt.
-  const { labels, dataPoints, counts, periodLabel } = groupConsumptionSegments(segments);
+    .sort((a, b) => a.entry.date.localeCompare(b.entry.date) || a.entry.mileage - b.entry.mileage)
+    .slice(-CONSUMPTION_CHART_MAX_POINTS);
+  const labels = segments.map(seg => formatChartDate(seg.entry.date));
+  const dataPoints = segments.map(seg => (seg.liters / seg.dist * 100).toFixed(2));
   const consSub = document.getElementById('consumptionChartSub');
   if (consSub) {
-    consSub.textContent = periodLabel ? `Ø ${periodLabel} (gewichtet nach Litern und Strecke)` : '';
-    consSub.style.display = periodLabel ? '' : 'none';
+    consSub.textContent = segments.length ? `Letzte ${segments.length} ${segments.length === 1 ? 'Tankung' : 'Tankungen'}` : '';
+    consSub.style.display = segments.length ? '' : 'none';
   }
 
   const consCanvas = document.getElementById('consumptionChart');
@@ -387,7 +351,7 @@ function renderCharts(v) {
           borderColor: accentHex,
           backgroundColor: fillGradient,
           borderWidth: 2,
-          pointRadius: dataPoints.length > 24 ? 2 : 3.5,
+          pointRadius: 3.5,
           pointHoverRadius: 6,
           pointBackgroundColor: accentHex,
           pointBorderColor: cardBg,
@@ -418,8 +382,7 @@ function renderCharts(v) {
             cornerRadius: 8,
             displayColors: false,
             callbacks: {
-              label: ctx => ` ${Number(ctx.parsed.y).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${v.type === 'km' ? 'L/100km' : 'L/Std'}`,
-              afterLabel: ctx => ` aus ${counts[ctx.dataIndex]} ${counts[ctx.dataIndex] === 1 ? 'Tankung' : 'Tankungen'}`
+              label: ctx => ` ${Number(ctx.parsed.y).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${v.type === 'km' ? 'L/100km' : 'L/Std'}`
             }
           }
         }
