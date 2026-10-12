@@ -2637,8 +2637,13 @@ input[type="month"]::-webkit-calendar-picker-indicator {
    erscheinen, unabhängig von der DOM-Reihenfolge der Modals. */
 #imageCropModal.active { z-index: 1200; }
 
-/* Wird aus dem Einstellungen-Fenster heraus geöffnet - muss davor liegen */
-#acarImportModal.active { z-index: 1200; }
+/* Werden aus dem Einstellungen-Fenster heraus geöffnet - müssen davor liegen */
+#acarImportModal.active,
+#spritmonitorImportModal.active { z-index: 1200; }
+
+/* Spritmonitor-Import: Kraftstoff-Zuordnung je Nummer */
+.sm-fuel-row { margin-top: 0.6rem; }
+.sm-fuel-row .acar-fuel-label { line-height: 1.4; }
 
 .modal {
   background-color: var(--bg-card);
