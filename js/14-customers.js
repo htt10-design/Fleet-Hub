@@ -459,35 +459,68 @@ function printInvoice(serviceId) {
   if (!c || !c.services) return;
   const cs = c.services.find(item => item.id === serviceId);
   if (!cs) return;
+  printCustomerInvoice(c, [cs]);
+}
 
-  const printContainer = document.getElementById('printableInvoice');
-  if (!printContainer) return;
-
-  let itemsHtml = '';
+// Positionen eines Auftrags als Tabellenzeilen (ohne Positionen: Pauschale)
+function buildInvoiceItemRows(cs, indent) {
+  const pad = indent ? ' style="padding-left: 12px;"' : '';
   if (cs.items && cs.items.length > 0) {
-    cs.items.forEach(it => {
-      itemsHtml += `
+    return cs.items.map(it => `
         <tr>
-          <td>${it.desc}</td>
+          <td${pad}>${it.desc}</td>
           <td style="text-align: right;">${it.price ? parseFloat(it.price).toFixed(2) + ' €' : '-'}</td>
         </tr>
+      `).join('');
+  }
+  return `<tr><td${pad}>Pauschale Durchführung / Arbeitswert</td><td style="text-align: right;">${(cs.totalCost || 0).toFixed(2)} €</td></tr>`;
+}
+
+// Druckt eine Rechnung für einen Auftrag oder - als Sammelrechnung - für
+// mehrere Aufträge desselben Kundenfahrzeugs (gegliedert nach Auftrag)
+function printCustomerInvoice(c, services) {
+  const printContainer = document.getElementById('printableInvoice');
+  if (!printContainer || !services || services.length === 0) return;
+
+  const isCombined = services.length > 1;
+  const jobs = [...services].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const cs = jobs[jobs.length - 1];
+  const invoiceDate = isCombined ? getLocalDateStr() : cs.date;
+  const invoiceMileage = Math.max(...jobs.map(j => j.mileage || 0));
+  const invoiceTotal = jobs.reduce((sum, j) => sum + (j.totalCost || 0), 0);
+  const invoiceTitle = isCombined ? `Sammelrechnung – ${jobs.length} Aufträge` : cs.title;
+
+  let itemsHtml = '';
+  if (isCombined) {
+    jobs.forEach(j => {
+      itemsHtml += `
+        <tr style="background-color: #f3f4f6; border-top: 1px solid #d1d5db;">
+          <td><strong>${escapeHtml(j.title || 'Auftrag')}</strong> <span style="color: #4b5563;">· ${j.date || '-'}${j.mileage ? ' · ' + j.mileage.toLocaleString('de-DE') + ' km' : ''}</span></td>
+          <td style="text-align: right;"><strong>${(j.totalCost || 0).toFixed(2)} €</strong></td>
+        </tr>
+        ${buildInvoiceItemRows(j, true)}
       `;
     });
   } else {
-    itemsHtml = `<tr><td>Pauschale Durchführung / Arbeitswert</td><td style="text-align: right;">${cs.totalCost.toFixed(2)} €</td></tr>`;
+    itemsHtml = buildInvoiceItemRows(cs, false);
   }
 
+  const allImages = jobs.flatMap(j => j.images || []);
   let imagesHtml = '';
-  if (cs.images && cs.images.length > 0) {
+  if (allImages.length > 0) {
     imagesHtml = `
       <div class="invoice-images">
         <h4>Fotodokumentation:</h4>
         <div class="invoice-image-grid">
-          ${cs.images.map(img => `<img src="${img}">`).join('')}
+          ${allImages.map(img => `<img src="${img}">`).join('')}
         </div>
       </div>
     `;
   }
+
+  const notesText = isCombined
+    ? jobs.filter(j => j.notes).map(j => `${j.title || 'Auftrag'}: ${j.notes}`).join('\n')
+    : cs.notes;
 
   const biz = appData.businessInfo || getDefaultBusinessInfo();
 
@@ -515,8 +548,11 @@ function printInvoice(serviceId) {
         }
         .invoice-box {
           position: relative !important;
-          height: 283mm !important; /* Druckbare A4-Höhe (297mm - 2x6mm Seitenrand, mit Puffer) */
-          min-height: 0 !important;
+          /* Druckbare A4-Höhe (297mm - 2x6mm Seitenrand, mit Puffer). min-height statt
+             height: lange Sammelrechnungen dürfen auf eine 2. Seite wachsen, statt
+             in die Fußzeile zu laufen - kurze Rechnungen bleiben exakt 1 Seite. */
+          min-height: 283mm !important;
+          height: auto !important;
           max-height: none !important;
           display: block !important; /* Kein Flexbox im Druck, um Mobile-Bugs zu vermeiden */
           padding: 0 0 62px 0 !important; /* Platz für die fixierte Fußzeile freihalten */
@@ -576,7 +612,7 @@ function printInvoice(serviceId) {
             </div>
           </div>
           <div style="text-align: right; font-size: 10.5px; color: #111827;">
-            <strong>Datum:</strong> ${cs.date}
+            <strong>Datum:</strong> ${invoiceDate}
           </div>
         </div>
 
@@ -632,7 +668,7 @@ function printInvoice(serviceId) {
               </tr>
               <tr>
                 <td style="color: #4b5563; padding: 0;">KM-Stand:</td>
-                <td style="text-align: right; font-weight: 600; color: #111827;">${cs.mileage.toLocaleString('de-DE')} km</td>
+                <td style="text-align: right; font-weight: 600; color: #111827;">${invoiceMileage.toLocaleString('de-DE')} km</td>
               </tr>
             </table>
           </div>
@@ -648,7 +684,7 @@ function printInvoice(serviceId) {
           border-bottom: 1px solid #e5e7eb;
           text-transform: uppercase;
           letter-spacing: 0.3px;
-        ">${cs.title}</h3>
+        ">${invoiceTitle}</h3>
 
         <!-- LEISTUNGSTABELLE -->
         <table class="invoice-table" style="
@@ -683,11 +719,11 @@ function printInvoice(serviceId) {
           margin-bottom: 6px;
         ">
           <span style="margin-right: 6px; font-weight: 400; font-size: 9.5px; opacity: 0.9;">Gesamtsumme:</span>
-          <span>${cs.totalCost.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
+          <span>${invoiceTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
         </div>
 
         <!-- ARBEITSBERICHT & ANMERKUNGEN -->
-        ${cs.notes ? `
+        ${notesText ? `
           <div class="invoice-notes" style="
             background-color: #f9fafb;
             border: 1px solid #d1d5db;
@@ -699,7 +735,7 @@ function printInvoice(serviceId) {
             color: #1f2937;
           ">
             <strong style="display: block; margin-bottom: 1px; color: #111827; font-size: 8.5px; text-transform: uppercase;">Arbeitsbericht / Anmerkungen:</strong>
-            <span style="white-space: pre-line;">${cs.notes}</span>
+            <span style="white-space: pre-line;">${notesText}</span>
           </div>
         ` : ''}
 
@@ -733,7 +769,7 @@ function printInvoice(serviceId) {
           <strong style="color: #111827; font-size: 8.5px;">PayPal / Alternative</strong><br>
           PayPal-Me: ${biz.paypalMe}<br>
           E-Mail: ${biz.paypalEmail}<br>
-          Verwendungszweck: ${c.plate || c.owner} - ${cs.date}
+          Verwendungszweck: ${c.plate || c.owner} - ${invoiceDate}
         </div>
       </div>
     </div>
@@ -741,3 +777,56 @@ function printInvoice(serviceId) {
 
   printWhenImagesLoaded(printContainer);
 }
+
+/* --- SAMMELRECHNUNG: mehrere Aufträge eines Kundenfahrzeugs auf eine Rechnung --- */
+function openCombinedInvoiceModal() {
+  const c = getActiveCustomerVehicle();
+  if (!c || !c.services || c.services.length === 0) {
+    alert('Für dieses Fahrzeug sind noch keine Aufträge erfasst.');
+    return;
+  }
+  const list = document.getElementById('combinedInvoiceList');
+  const jobs = [...c.services].sort(compareByDateThenMileageDesc);
+  list.innerHTML = jobs.map(j => `
+    <label class="combined-invoice-item">
+      <input type="checkbox" value="${j.id}" onchange="updateCombinedInvoiceTotal()">
+      <span class="combined-invoice-item-main">
+        <strong>${escapeHtml(j.title || 'Auftrag')}</strong>
+        <small>${j.date || '-'}${j.mileage ? ' · ' + j.mileage.toLocaleString('de-DE') + ' km' : ''}${j.items && j.items.length ? ' · ' + j.items.length + (j.items.length === 1 ? ' Position' : ' Positionen') : ''}</small>
+      </span>
+      <span class="combined-invoice-item-price">${(j.totalCost || 0).toFixed(2)} €</span>
+    </label>`).join('');
+  updateCombinedInvoiceTotal();
+  document.getElementById('combinedInvoiceModal').classList.add('active');
+}
+window.openCombinedInvoiceModal = openCombinedInvoiceModal;
+
+function closeCombinedInvoiceModal() {
+  document.getElementById('combinedInvoiceModal').classList.remove('active');
+}
+window.closeCombinedInvoiceModal = closeCombinedInvoiceModal;
+
+function getSelectedCombinedInvoiceJobs() {
+  const c = getActiveCustomerVehicle();
+  if (!c || !c.services) return [];
+  const ids = Array.from(document.querySelectorAll('#combinedInvoiceList input:checked')).map(cb => cb.value);
+  return c.services.filter(j => ids.includes(j.id));
+}
+
+function updateCombinedInvoiceTotal() {
+  const jobs = getSelectedCombinedInvoiceJobs();
+  const total = jobs.reduce((sum, j) => sum + (j.totalCost || 0), 0);
+  document.getElementById('combinedInvoiceSummary').textContent =
+    `${jobs.length} ${jobs.length === 1 ? 'Auftrag' : 'Aufträge'} ausgewählt · Summe ${total.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  document.getElementById('combinedInvoicePrintBtn').disabled = jobs.length === 0;
+}
+window.updateCombinedInvoiceTotal = updateCombinedInvoiceTotal;
+
+function printCombinedInvoice() {
+  const c = getActiveCustomerVehicle();
+  const jobs = getSelectedCombinedInvoiceJobs();
+  if (!c || jobs.length === 0) return;
+  closeCombinedInvoiceModal();
+  printCustomerInvoice(c, jobs);
+}
+window.printCombinedInvoice = printCombinedInvoice;

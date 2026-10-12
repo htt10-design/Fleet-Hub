@@ -35,7 +35,7 @@ tools/smoke-test.js   Browser-Smoke-Test (Playwright)
 | 11-fahrzeugschein | Fahrzeugschein (Foto + digitale Felder) |
 | 12-stand-entry | KM-/Stunden-Stand ohne Tankung erfassen |
 | 13-dashboard | Dashboard, Charts, Chronik |
-| 14-customers | Kundenfahrzeuge, Werkstattaufträge, Rechnungsdruck |
+| 14-customers | Kundenfahrzeuge, Werkstattaufträge, Rechnungsdruck (`printCustomerInvoice`: Einzel- & Sammelrechnung) |
 | 15-settings | Backup Export/Import, Einstellungen, Bildkomprimierung |
 | 16-sale-report | Verkaufsbericht (Druck) |
 | 17-acar-import | Import aus aCar (.abp) |

@@ -2208,6 +2208,28 @@ body[data-bg-style="mercedes-classic"],
 
 .consumption-chart-sub { margin: -0.35rem 0 0.6rem; font-size: 0.75rem; }
 
+/* --- Sammelrechnung: Auswahl der Aufträge --- */
+.combined-invoice-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+.combined-invoice-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  cursor: pointer;
+}
+.combined-invoice-item + .combined-invoice-item { border-top: 1px solid var(--border-color); }
+.combined-invoice-item input { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--accent-primary); }
+.combined-invoice-item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 0.85rem; }
+.combined-invoice-item-main strong { overflow-wrap: anywhere; }
+.combined-invoice-item-main small { color: var(--text-muted); font-size: 0.72rem; }
+.combined-invoice-item-price { font-family: var(--font-mono); font-size: 0.85rem; white-space: nowrap; }
+.combined-invoice-summary { font-size: 0.85rem; font-weight: 600; margin: 0.75rem 0 0; }
+
 /* --- Backup-Erinnerung auf dem Startbildschirm --- */
 .backup-reminder {
   max-width: 720px;

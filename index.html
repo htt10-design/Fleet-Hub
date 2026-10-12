@@ -740,6 +740,7 @@
           <div class="card">
             <div class="card-header-flex" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
               <h3 style="margin: 0;">Durchgeführte Arbeiten</h3>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="openCombinedInvoiceModal()" title="Mehrere Aufträge auf eine Rechnung">🖨️ Sammelrechnung</button>
             </div>
 
             <div class="table-responsive">
@@ -1736,6 +1737,22 @@
       <div class="modal-actions">
         <button class="btn btn-primary" id="sdEditBtn">Bearbeiten</button>
         <button class="btn btn-secondary" onclick="closeServiceDetailModal()">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="combinedInvoiceModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Sammelrechnung</h3>
+        <button class="modal-close" onclick="closeCombinedInvoiceModal()">✕</button>
+      </div>
+      <p class="sub-text">Wähle die Aufträge, die auf eine gemeinsame Rechnung sollen. Die Rechnung wird nach Auftrag gegliedert, mit Zwischensummen und Gesamtsumme.</p>
+      <div class="combined-invoice-list" id="combinedInvoiceList"></div>
+      <p class="combined-invoice-summary" id="combinedInvoiceSummary"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" id="combinedInvoicePrintBtn" onclick="printCombinedInvoice()" disabled>🖨️ Rechnung drucken</button>
+        <button type="button" class="btn btn-secondary" onclick="closeCombinedInvoiceModal()">Abbrechen</button>
       </div>
     </div>
   </div>
