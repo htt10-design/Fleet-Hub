@@ -2206,6 +2206,30 @@ body[data-bg-style="mercedes-classic"],
   cursor: pointer;
 }
 
+/* --- Backup-Erinnerung auf dem Startbildschirm --- */
+.backup-reminder {
+  max-width: 720px;
+  margin: 0 auto 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+}
+.backup-reminder-text { display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.82rem; min-width: 0; }
+.backup-reminder-text strong { color: var(--accent-primary); }
+.backup-reminder-text span { color: var(--text-muted); }
+.backup-reminder-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.backup-reminder-select {
+  width: auto;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+}
+
 /* --- Kosten im Detail (Popup hinter der Gesamtkosten-Kachel) --- */
 .cost-detail-periods { margin-bottom: 1rem; }
 .cost-detail-periods .theme-switch-btn { flex: 1; padding: 0.45rem 0.3rem; }

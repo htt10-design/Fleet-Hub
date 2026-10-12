@@ -68,6 +68,9 @@
     <h2 id="selection-title">Bereichsauswahl</h2>
   </header>
 
+  <!-- Backup-Erinnerung (nur sichtbar, wenn ein Backup fällig ist) -->
+  <div class="backup-reminder" id="backupReminder" style="display: none;"></div>
+
   <!-- Bereichsauswahl (Hauptkacheln) -->
   <div class="kachel-grid" id="area-selection-grid">
     <div class="selection-card" id="card-eigene" onclick="selectArea('eigene')">
@@ -1248,13 +1251,26 @@
       <div class="detail-section">
         <details class="settings-accordion">
           <summary><span class="settings-summary-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 0-3-6.7 5.5 5.5 0 0 0-10.6 1.7A4.5 4.5 0 0 0 5 18h13a3 3 0 0 0 3-3Z"/></svg></span>Daten-Sicherung</summary>
-          <p class="sub-text">Sichert und lädt den kompletten App-Datenbestand (alle Fahrzeuge & Kunden) als Datei.</p>
+          <p class="sub-text">Deine Daten liegen nur auf diesem Gerät (jedes Gerät hat seinen eigenen Stand). Sichere sie regelmäßig als Datei – z.B. per Teilen nach Google Drive oder als Download.</p>
           <p class="sub-text">Letztes Backup: <strong id="lastBackupInfo">-</strong></p>
           <div class="form-actions">
-            <button type="button" class="btn btn-secondary" onclick="exportData()">Daten Exportieren</button>
+            <button type="button" class="btn btn-primary" id="backupShareBtn" onclick="shareBackup()" style="display: none;">Sichern / Teilen</button>
+            <button type="button" class="btn btn-secondary" onclick="downloadBackup()">Herunterladen</button>
+          </div>
+          <div class="theme-switch-row" style="margin-top: 0.75rem;">
+            <span class="sub-text" style="margin: 0;">Backup-Erinnerung</span>
+            <select id="backupReminderDays" class="backup-reminder-select" onchange="setBackupReminderDays(this.value)">
+              <option value="7">nach 7 Tagen</option>
+              <option value="14">nach 14 Tagen</option>
+              <option value="30">nach 30 Tagen</option>
+              <option value="0">aus</option>
+            </select>
+          </div>
+          <p class="sub-text" style="margin-top: 0.4rem;">Erinnert auf dem Startbildschirm, wenn du seit dem letzten Backup etwas geändert hast.</p>
+          <div class="form-actions" style="margin-top: 0.75rem;">
             <label class="btn btn-secondary">
-              Daten Importieren
-              <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importData(event)">
+              Backup wiederherstellen
+              <input type="file" id="importFileInput" accept=".json,.txt,application/json,text/plain" style="display:none;" onchange="importData(event)">
             </label>
           </div>
         </details>

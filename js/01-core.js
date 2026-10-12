@@ -234,6 +234,8 @@ async function initApp() {
   // ERGÄNZUNG: Initial auf das Dashboard wechseln
   const defaultNavBtn = document.querySelector('.nav-item[onclick*="dashboard"]');
   showTab('dashboard', defaultNavBtn);
+
+  renderBackupReminder();
 }
 
 function loadDefaultData() {
@@ -283,10 +285,16 @@ function loadDefaultData() {
     backgroundStyle: "concrete",
     accentColor: "amber"
   };
-  saveData();
+  saveData({ keepChangeDate: true });
 }
 
-function saveData() {
+function saveData(options = {}) {
+  // Zeitpunkt der letzten Änderung merken (für die Backup-Erinnerung).
+  // keepChangeDate: z.B. beim Backup selbst oder beim Anlegen der Demo-Daten
+  if (!options.keepChangeDate) {
+    appData.lastChangeDate = new Date().toISOString();
+    if (!appData.firstChangeDate) appData.firstChangeDate = appData.lastChangeDate;
+  }
   // Absichtlich nicht "awaited" - der Aufrufer rendert direkt weiter aus dem
   // appData-Objekt im Speicher, das Schreiben auf die Platte läuft im
   // Hintergrund fertig

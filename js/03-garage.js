@@ -334,6 +334,7 @@ function showAreaSelection() {
 }
 
 function backToSelection() {
+  renderBackupReminder();
   document.getElementById('app-wrapper').classList.add('hidden');
   document.getElementById('selection-screen').classList.remove('hidden');
 

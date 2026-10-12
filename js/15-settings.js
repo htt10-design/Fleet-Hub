@@ -1,49 +1,208 @@
 /* --- EXPORT & IMPORT (BACKUP) --- */
-function exportData() {
-  appData.lastBackupDate = new Date().toISOString();
-  saveData();
-  updateLastBackupInfo();
+/* --- BACKUP: Sichern (Teilen-Menü oder Download) --- */
+// Die Datei ist immer reines JSON. Chrome (Android) lässt beim Teilen keine
+// .json-Dateien zu - dann wird dieselbe Datei als .txt geteilt; der Import
+// akzeptiert beides.
+function buildBackupFile(extension) {
+  const now = new Date();
+  const stamp = `${getLocalDateStr(now)}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+  const payload = { ...appData, lastBackupDate: now.toISOString(), exportedAt: now.toISOString() };
+  const json = JSON.stringify(payload, null, 2);
+  const type = extension === 'txt' ? 'text/plain' : 'application/json';
+  return new File([json], `sgs_backup_${stamp}.${extension}`, { type });
+}
 
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
-  const dlAnchorElem = document.createElement('a');
-  dlAnchorElem.setAttribute("href", dataStr);
-  dlAnchorElem.setAttribute("download", `sgs_backup_${new Date().toISOString().split('T')[0]}.json`);
-  document.body.appendChild(dlAnchorElem);
-  dlAnchorElem.click();
-  dlAnchorElem.remove();
+// Welche Dateiendung lässt das Teilen-Menü zu? (Test mit Mini-Datei, damit nicht
+// jedes Mal das komplette Backup samt Fotos gebaut werden muss)
+function getShareableBackupExtension() {
+  if (!navigator.share || !navigator.canShare) return null;
+  for (const ext of ['json', 'txt']) {
+    const probe = new File(['{}'], `probe.${ext}`, { type: ext === 'txt' ? 'text/plain' : 'application/json' });
+    try {
+      if (navigator.canShare({ files: [probe] })) return ext;
+    } catch (e) { /* nächste Variante probieren */ }
+  }
+  return null;
+}
+
+function canShareBackup() {
+  return getShareableBackupExtension() !== null;
+}
+
+function markBackupDone() {
+  appData.lastBackupDate = new Date().toISOString();
+  appData.backupReminderSnoozeUntil = null;
+  saveData({ keepChangeDate: true });
+  updateLastBackupInfo();
+  renderBackupReminder();
+}
+
+function downloadBackup() {
+  const file = buildBackupFile('json');
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  markBackupDone();
+}
+window.downloadBackup = downloadBackup;
+
+async function shareBackup() {
+  const ext = getShareableBackupExtension();
+  if (!ext) {
+    downloadBackup();
+    return;
+  }
+  const file = buildBackupFile(ext);
+  try {
+    await navigator.share({ files: [file], title: 'SGS Pro Backup' });
+    markBackupDone();
+  } catch (err) {
+    // Abbruch im Teilen-Menü ist kein Fehler - dann gilt das Backup nur nicht als erledigt
+    if (err && err.name === 'AbortError') return;
+    console.warn('Teilen fehlgeschlagen, lade stattdessen herunter:', err);
+    downloadBackup();
+  }
+}
+window.shareBackup = shareBackup;
+
+// Ältere Aufrufe (z.B. aus gespeicherten Seiten) weiter unterstützen
+function exportData() { downloadBackup(); }
+window.exportData = exportData;
+
+/* --- BACKUP: Wiederherstellen (mit Vorschau, was in der Datei steckt) --- */
+function summarizeBackupData(data) {
+  const vehicles = (data.vehicles || []);
+  return {
+    vehicles: vehicles.length,
+    fuel: vehicles.reduce((sum, v) => sum + (v.fuelEntries || []).length, 0),
+    services: vehicles.reduce((sum, v) => sum + (v.serviceEntries || []).filter(s => !s.isStandEntry).length, 0),
+    customers: (data.customerVehicles || []).length
+  };
+}
+
+function formatBackupSummary(sum) {
+  const n = (count, one, many) => `${count} ${count === 1 ? one : many}`;
+  const parts = [n(sum.vehicles, 'Fahrzeug', 'Fahrzeuge'), n(sum.fuel, 'Tankung', 'Tankungen'), n(sum.services, 'Wartung/Ausgabe', 'Wartungen/Ausgaben')];
+  if (sum.customers > 0) parts.push(n(sum.customers, 'Kundenfahrzeug', 'Kundenfahrzeuge'));
+  return parts.join(', ');
 }
 
 function importData(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  if (!confirm("Achtung: Beim Import werden ALLE aktuellen Daten (Fahrzeuge, Kunden, Einstellungen) auf diesem Gerät unwiderruflich durch die Backup-Datei ersetzt. Fortfahren?")) {
-    event.target.value = '';
-    return;
-  }
-
   const reader = new FileReader();
   reader.onload = function(e) {
+    let parsed;
     try {
-      const parsed = JSON.parse(e.target.result);
-      if (parsed && parsed.vehicles) {
-        appData = parsed;
-        if (!appData.businessInfo) appData.businessInfo = getDefaultBusinessInfo();
-        if (!appData.customerVehicles) appData.customerVehicles = [];
-        saveData();
-        initApp();
-        closeSettingsModal();
-        alert("Daten erfolgreich wiederhergestellt!");
-      } else {
-        alert("Ungültiges Backup-Format.");
-      }
+      parsed = JSON.parse(e.target.result);
     } catch (err) {
-      alert("Fehler beim Lesen der Backup-Datei: " + err.message);
+      alert("Die Datei ist kein gültiges Backup (kein lesbares JSON): " + err.message);
+      return;
     }
+    if (!parsed || !Array.isArray(parsed.vehicles)) {
+      alert("Ungültiges Backup-Format.");
+      return;
+    }
+
+    const backupDateIso = parsed.exportedAt || parsed.lastBackupDate;
+    const backupDateText = backupDateIso ? new Date(backupDateIso).toLocaleString('de-DE') : 'unbekannt';
+    const lines = [
+      `Backup vom ${backupDateText}:`,
+      formatBackupSummary(summarizeBackupData(parsed)),
+      '',
+      'Aktuell auf diesem Gerät:',
+      formatBackupSummary(summarizeBackupData(appData)),
+      ''
+    ];
+    if (backupDateIso && appData.lastChangeDate && appData.lastChangeDate > backupDateIso) {
+      lines.push('⚠ Achtung: Auf diesem Gerät gibt es neuere Änderungen als in diesem Backup - sie gehen beim Wiederherstellen verloren.', '');
+    }
+    lines.push('Alle aktuellen Daten auf diesem Gerät werden durch das Backup ersetzt. Fortfahren?');
+    if (!confirm(lines.join('\n'))) return;
+
+    delete parsed.exportedAt;
+    appData = parsed;
+    if (!appData.businessInfo) appData.businessInfo = getDefaultBusinessInfo();
+    if (!appData.customerVehicles) appData.customerVehicles = [];
+    // Das wiederhergestellte Backup gilt als gesichert (die Datei existiert ja)
+    appData.lastChangeDate = backupDateIso || null;
+    saveData({ keepChangeDate: true });
+    initApp();
+    closeSettingsModal();
+    alert("Daten erfolgreich wiederhergestellt!");
   };
   reader.readAsText(file);
   event.target.value = '';
 }
+
+/* --- BACKUP-ERINNERUNG (Hinweis auf dem Startbildschirm) ---
+   Erscheint, wenn es seit dem letzten Backup Änderungen gibt und das letzte
+   Backup länger als appData.backupReminderDays (Standard 14, 0 = aus) her ist.
+   Wird pro Gerät gezählt, weil jedes Gerät seine eigenen Daten hat. */
+const BACKUP_REMINDER_DEFAULT_DAYS = 14;
+const BACKUP_REMINDER_SNOOZE_DAYS = 3;
+
+function getBackupReminderDays() {
+  return typeof appData.backupReminderDays === 'number' ? appData.backupReminderDays : BACKUP_REMINDER_DEFAULT_DAYS;
+}
+
+function getBackupReminderState(now = new Date()) {
+  const days = getBackupReminderDays();
+  if (days <= 0 || !appData.lastChangeDate) return null;
+  if (appData.lastBackupDate && appData.lastChangeDate <= appData.lastBackupDate) return null;
+  if (appData.backupReminderSnoozeUntil && now.toISOString() < appData.backupReminderSnoozeUntil) return null;
+  // Ohne bisheriges Backup zählt die Frist ab der ersten erfassten Änderung
+  const since = appData.lastBackupDate || appData.firstChangeDate || appData.lastChangeDate;
+  const daysSince = Math.floor((now - new Date(since)) / 86400000);
+  if (daysSince < days) return null;
+  return { daysSince, neverBackedUp: !appData.lastBackupDate };
+}
+
+function renderBackupReminder() {
+  const el = document.getElementById('backupReminder');
+  if (!el) return;
+  const state = getBackupReminderState();
+  if (!state) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const text = state.neverBackedUp
+    ? 'Du hast noch nie ein Backup gemacht.'
+    : `Letztes Backup vor ${state.daysSince} Tagen.`;
+  const shareAvailable = canShareBackup();
+  el.innerHTML = `
+    <div class="backup-reminder-text">
+      <strong>Daten sichern?</strong>
+      <span>${text} Deine Daten liegen nur auf diesem Gerät.</span>
+    </div>
+    <div class="backup-reminder-actions">
+      ${shareAvailable ? '<button type="button" class="btn btn-primary btn-sm" onclick="shareBackup()">Sichern / Teilen</button>' : ''}
+      <button type="button" class="btn ${shareAvailable ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="downloadBackup()">Herunterladen</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="snoozeBackupReminder()">Später</button>
+    </div>`;
+  el.style.display = '';
+}
+
+function snoozeBackupReminder() {
+  appData.backupReminderSnoozeUntil = new Date(Date.now() + BACKUP_REMINDER_SNOOZE_DAYS * 86400000).toISOString();
+  saveData({ keepChangeDate: true });
+  renderBackupReminder();
+}
+window.snoozeBackupReminder = snoozeBackupReminder;
+
+function setBackupReminderDays(value) {
+  appData.backupReminderDays = parseInt(value, 10) || 0;
+  saveData({ keepChangeDate: true });
+  renderBackupReminder();
+}
+window.setBackupReminderDays = setBackupReminderDays;
 
 /* --- EINSTELLUNGEN-MENÜ --- */
 function updateLastBackupInfo() {
@@ -65,6 +224,10 @@ function openSettingsModal() {
   document.getElementById('bizPaypalEmail').value = info.paypalEmail || '';
 
   updateLastBackupInfo();
+  const reminderSelect = document.getElementById('backupReminderDays');
+  if (reminderSelect) reminderSelect.value = String(getBackupReminderDays());
+  const shareBtn = document.getElementById('backupShareBtn');
+  if (shareBtn) shareBtn.style.display = canShareBackup() ? '' : 'none';
   applyTheme(appData.theme || 'dark');
   applyBackgroundStyle(appData.backgroundStyle || 'concrete');
   applyAccentColor(appData.accentColor || 'amber');
