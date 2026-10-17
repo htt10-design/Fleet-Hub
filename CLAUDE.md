@@ -16,6 +16,7 @@ sw.js                 Service Worker (App-Shell-Cache, network-first)
 manifest.json, icons/ PWA-Manifest, App-Icons, SGS-Logos (logo-dark/-light.png)
 w124-front.webp       Foto für die Garagentor-Animation
 tools/smoke-test.js   Browser-Smoke-Test (Playwright)
+tuning.html, tuning/  Prototyp „Tuning-Studio“ (3D, three.js aus vendor/three/, ES-Module) – eigene Seite, nicht in der App verlinkt
 ```
 
 ### js/-Dateien (Ladereihenfolge = Nummer)

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SGS Tuning-Studio (Prototyp)</title>
+  <link rel="icon" type="image/png" href="icons/logo-dark.png">
+  <meta name="theme-color" content="#07090c">
+  <style>
+    :root {
+      --bg: #07090c;
+      --panel: rgba(16, 20, 27, 0.92);
+      --border: #232c37;
+      --text: #e6edf3;
+      --muted: #8b98a5;
+      --accent: #f39c12;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+    #stage { position: fixed; inset: 0; touch-action: none; }
+    #stage canvas { display: block; width: 100%; height: 100%; }
+
+    /* Kopfzeile */
+    .topbar { position: fixed; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 0.6rem;
+      padding: max(0.7rem, env(safe-area-inset-top)) 0.8rem 0.7rem; z-index: 5;
+      background: linear-gradient(180deg, rgba(7, 9, 12, 0.85), transparent); pointer-events: none; }
+    .topbar > * { pointer-events: auto; }
+    .brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 800; letter-spacing: 0.5px; flex: 1; min-width: 0; }
+    .brand img { width: 26px; height: 26px; }
+    .brand small { display: block; font-weight: 600; font-size: 0.65rem; color: var(--muted); letter-spacing: 0.3px; }
+    .icon-btn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border); background: rgba(16, 20, 27, 0.8);
+      color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; }
+    .icon-btn svg { width: 19px; height: 19px; }
+    .icon-btn.active { border-color: var(--accent); color: var(--accent); }
+
+    /* Bedienleiste: unten auf dem Handy, rechts am Desktop */
+    .panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--panel); border-top: 1px solid var(--border);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); padding-bottom: env(safe-area-inset-bottom); }
+    @media (min-width: 900px) {
+      .panel { left: auto; top: 70px; bottom: auto; right: 16px; width: 340px; border: 1px solid var(--border); border-radius: 14px; }
+      .panel .tab-body { max-height: calc(100vh - 160px); }
+    }
+    .tabs { display: flex; border-bottom: 1px solid var(--border); }
+    .tab { flex: 1; padding: 0.7rem 0.2rem; background: none; border: none; color: var(--muted); font: inherit; font-size: 0.8rem;
+      font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-body { padding: 0.8rem 0.9rem 1rem; max-height: 34vh; overflow-y: auto; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin: 0.2rem 0 0.45rem; display: flex; justify-content: space-between; }
+    .label b { color: var(--text); font-weight: 600; text-transform: none; letter-spacing: 0; }
+    .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 0.45rem; margin-bottom: 0.9rem; }
+    .swatch { aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; position: relative; padding: 0; }
+    .swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+    .swatch input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .swatch.custom { background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); }
+    .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.9rem; }
+    .chip { padding: 0.45rem 0.75rem; border-radius: 999px; border: 1px solid var(--border); background: #0e1218; color: var(--text);
+      font: inherit; font-size: 0.8rem; cursor: pointer; }
+    .chip.active { border-color: var(--accent); color: var(--accent); background: rgba(243, 156, 18, 0.08); }
+    .rims { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 0.45rem; margin-bottom: 0.9rem; }
+    .rim-card { border: 1px solid var(--border); background: #0e1218; border-radius: 10px; padding: 0.45rem 0.3rem; cursor: pointer;
+      color: var(--text); font: inherit; font-size: 0.72rem; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+    .rim-card svg { width: 46px; height: 46px; }
+    .rim-card.active { border-color: var(--accent); color: var(--accent); }
+    input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0 0 0.9rem; }
+    .row { display: flex; gap: 0.5rem; }
+    .row .chip { flex: 1; text-align: center; }
+    .hint { font-size: 0.72rem; color: var(--muted); margin: 0.2rem 0 0; }
+    .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--accent);
+      color: var(--text); padding: 0.5rem 0.9rem; border-radius: 999px; font-size: 0.8rem; z-index: 6; opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    .webgl-error { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; padding: 2rem; color: var(--muted); }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three/three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="webgl-error" id="webglError">Dein Browser unterstützt leider kein 3D (WebGL). Das Tuning-Studio kann hier nicht angezeigt werden.</div>
+
+  <div class="topbar">
+    <a class="icon-btn" href="index.html" title="Zurück zur App" aria-label="Zurück zur App">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    </a>
+    <div class="brand">
+      <img src="icons/logo-light.png" alt="">
+      <div>TUNING-STUDIO<small>Prototyp · nur zum Spaß</small></div>
+    </div>
+    <button class="icon-btn active" id="btnSpin" title="Drehscheibe an/aus" aria-label="Drehscheibe an/aus">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+    </button>
+    <button class="icon-btn" id="btnShot" title="Bild speichern" aria-label="Bild speichern">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+    </button>
+  </div>
+
+  <div class="panel">
+    <div class="tabs">
+      <button class="tab active" data-tab="paint">Lack</button>
+      <button class="tab" data-tab="rims">Felgen</button>
+      <button class="tab" data-tab="chassis">Fahrwerk</button>
+      <button class="tab" data-tab="extras">Extras</button>
+    </div>
+    <div class="tab-body">
+      <div class="section active" id="sec-paint">
+        <div class="label">Farbe</div>
+        <div class="swatches" id="paintSwatches"></div>
+        <div class="label">Lackierung</div>
+        <div class="chips" id="finishChips"></div>
+      </div>
+      <div class="section" id="sec-rims">
+        <div class="label">Design</div>
+        <div class="rims" id="rimDesigns"></div>
+        <div class="label">Größe <b id="rimSizeVal"></b></div>
+        <div class="chips" id="rimSizes"></div>
+        <div class="label">Farbe</div>
+        <div class="chips" id="rimColors"></div>
+      </div>
+      <div class="section" id="sec-chassis">
+        <div class="label">Tieferlegung <b id="dropVal"></b></div>
+        <input type="range" id="drop" min="0" max="100" step="5">
+        <div class="label">Spurverbreiterung je Seite <b id="trackVal"></b></div>
+        <input type="range" id="track" min="0" max="40" step="5">
+        <div class="label">Sturz <b id="camberVal"></b></div>
+        <input type="range" id="camber" min="0" max="8" step="0.5">
+        <div class="label">Schnellwahl</div>
+        <div class="row">
+          <button class="chip" data-preset="serie">Serie</button>
+          <button class="chip" data-preset="sport">Sportlich</button>
+          <button class="chip" data-preset="stance">Stance</button>
+        </div>
+      </div>
+      <div class="section" id="sec-extras">
+        <div class="label">Scheibentönung <b id="tintVal"></b></div>
+        <input type="range" id="tint" min="0" max="90" step="5">
+        <div class="label">Heckspoiler</div>
+        <div class="chips" id="spoilerChips"></div>
+        <div class="label">Bremssättel</div>
+        <div class="chips" id="caliperChips"></div>
+        <div class="label">Scheinwerfer</div>
+        <div class="chips" id="lightChips"></div>
+        <div class="label">Alles</div>
+        <div class="row">
+          <button class="chip" id="btnRandom">🎲 Zufall</button>
+          <button class="chip" id="btnReset">↺ Serie</button>
+        </div>
+        <p class="hint">Finger: drehen · zwei Finger: zoomen. Deine Konfiguration wird auf diesem Gerät gemerkt.</p>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script type="module" src="tuning/studio.js"></script>
+</body>
+</html>
