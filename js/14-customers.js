@@ -224,7 +224,7 @@ function renderCustomerServiceImagePreviews() {
     const wrapper = document.createElement('div');
     wrapper.className = 'preview-thumb-wrapper';
     wrapper.innerHTML = `
-      <img src="${imgSrc}" class="preview-thumb">
+      <img src="${imgSrc}" class="preview-thumb" onclick="openImageZoomView(this.src)" alt="Foto">
       <button type="button" class="btn-remove-thumb" onclick="removeTempCustomerServiceImage(${index})">✕</button>
     `;
     container.appendChild(wrapper);
@@ -422,7 +422,7 @@ function openCustomerServiceDetailModal(id) {
       cs.images.forEach(img => {
         const wrapper = document.createElement('div');
         wrapper.className = 'gallery-img-wrapper';
-        wrapper.innerHTML = `<img src="${img}" onclick="window.open('${img}')">`;
+        wrapper.innerHTML = `<img src="${img}" onclick="openImageZoomView(this.src)" alt="Foto">`;
         container.appendChild(wrapper);
       });
     } else {

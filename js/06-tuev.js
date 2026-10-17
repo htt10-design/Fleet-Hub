@@ -319,7 +319,7 @@ function renderTuevImagePreviews() {
     const wrapper = document.createElement('div');
     wrapper.className = 'preview-thumb-wrapper';
     wrapper.innerHTML = `
-      <img src="${imgSrc}" class="preview-thumb">
+      <img src="${imgSrc}" class="preview-thumb" onclick="openImageZoomView(this.src)" alt="Foto">
       <button type="button" class="btn-remove-thumb" onclick="removeTempTuevImage(${index})">✕</button>
     `;
     container.appendChild(wrapper);

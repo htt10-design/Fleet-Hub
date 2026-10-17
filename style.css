@@ -2825,7 +2825,10 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 .crop-handle-se { bottom: -11px; right: -11px; cursor: nwse-resize; }
 
 /* Foto-Ansicht mit Zoom (Fahrzeugfoto & Fahrzeugschein-Scan) */
-.image-zoom-modal.active { z-index: 1200; }
+.image-zoom-modal.active { z-index: 1300; }
+
+/* Vorschaubilder in Formularen sind antippbar (öffnen die Zoom-Ansicht) */
+.preview-thumb { cursor: zoom-in; }
 
 .image-zoom-stage {
   position: relative;
