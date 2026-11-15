@@ -33,9 +33,18 @@ let syncUiRefreshPending = false;
 let syncUsersCache = null;
 const syncHashCache = new Map(); // dataURL -> Hash (nur im Speicher)
 
+// Server-Adresse vereinheitlichen: Leerzeichen, abschließende "/" und eine
+// versehentlich mitkopierte Admin-Adresse ("/_/") entfernen, https ergänzen
+function normalizeSyncUrl(url) {
+  let u = String(url || SYNC_DEFAULT_URL).trim();
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  u = u.replace(/#.*$/, '').replace(/\/_\/?.*$/, '').replace(/\/+$/, '');
+  return u;
+}
+
 function createSyncState(url) {
   return {
-    url: (url || SYNC_DEFAULT_URL).replace(/\/+$/, ''),
+    url: normalizeSyncUrl(url),
     token: null,
     user: null,               // { id, name, email, gast }
     lastSync: null,
@@ -77,7 +86,13 @@ async function pbFetch(path, opts = {}) {
     headers['Content-Type'] = 'application/json';
     body = JSON.stringify(opts.json);
   }
-  const res = await fetch(syncState.url + path, { method: opts.method || 'GET', headers, body });
+  let res;
+  try {
+    res = await fetch(syncState.url + path, { method: opts.method || 'GET', headers, body });
+  } catch (e) {
+    // Netzwerk-Ebene: Server aus, kein Tailscale, oder der Browser blockiert den Zugriff
+    throw Object.assign(new Error('Keine Verbindung (' + (e && e.message ? e.message : e) + ')'), { offline: true });
+  }
   if (opts.raw) {
     if (!res.ok) throw Object.assign(new Error('HTTP ' + res.status), { status: res.status });
     return res;
@@ -385,12 +400,12 @@ async function runSync(opts = {}) {
     console.warn('Sync fehlgeschlagen:', e);
     if (e && e.status === 401) {
       setSyncStatus('login', 'Bitte neu anmelden');
-    } else if (e instanceof TypeError || !e.status) {
+    } else if (e && e.offline) {
       setSyncStatus('offline', 'Server nicht erreichbar – Änderungen bleiben gespeichert');
     } else {
-      setSyncStatus('error', 'Fehler: ' + e.message);
+      setSyncStatus('error', 'Fehler beim Abgleich: ' + (e && e.message ? e.message : e));
     }
-    if (opts.manual && e.message) alert('Abgleich nicht möglich: ' + (syncStatus === 'offline' ? 'Server nicht erreichbar.' : e.message));
+    if (opts.manual) alert('Abgleich nicht möglich: ' + syncStatusText);
   } finally {
     syncRunning = false;
     if (syncQueued) { syncQueued = false; scheduleSync(); }
@@ -701,8 +716,12 @@ function renderSyncSettings() {
         <div class="form-group"><label>Server</label><input type="url" id="syncUrl" value="${escapeHtml((syncState && syncState.url) || SYNC_DEFAULT_URL)}" required></div>
         <div class="form-group"><label>E-Mail</label><input type="email" id="syncEmail" autocomplete="username" required></div>
         <div class="form-group"><label>Passwort</label><input type="password" id="syncPassword" autocomplete="current-password" required></div>
-        <div class="form-actions"><button type="submit" class="btn btn-primary" id="syncLoginBtn">Anmelden</button></div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="syncLoginBtn">Anmelden</button>
+          <button type="button" class="btn btn-secondary" onclick="runSyncDiagnose()">Verbindung testen</button>
+        </div>
         <p class="sub-text" id="syncLoginError" style="color: var(--accent-danger);"></p>
+        <p class="sub-text" id="syncDiagnoseResult"></p>
       </form>`;
     return;
   }
@@ -713,8 +732,10 @@ function renderSyncSettings() {
     <p class="sub-text">Status: <strong class="sync-status-text" data-state="${syncStatus}">${escapeHtml(syncStatusText || '–')}</strong><br>Letzter Abgleich: ${last}</p>
     <div class="form-actions">
       <button type="button" class="btn btn-primary" onclick="syncNow()">Jetzt abgleichen</button>
+      <button type="button" class="btn btn-secondary" onclick="runSyncDiagnose()">Verbindung testen</button>
       <button type="button" class="btn btn-secondary" onclick="syncLogout()">Abmelden</button>
-    </div>`;
+    </div>
+    <p class="sub-text" id="syncDiagnoseResult"></p>`;
 }
 
 async function submitSyncLogin(e) {
@@ -728,14 +749,47 @@ async function submitSyncLogin(e) {
     await syncLogin(document.getElementById('syncUrl').value.trim(), document.getElementById('syncEmail').value.trim(), document.getElementById('syncPassword').value);
     renderSyncSettings();
   } catch (ex) {
-    err.textContent = ex instanceof TypeError
-      ? 'Server nicht erreichbar. Adresse richtig? (Mit Tailscale: App eingeschaltet?)'
-      : (ex.status === 400 ? 'E-Mail oder Passwort falsch.' : 'Anmeldung fehlgeschlagen: ' + ex.message);
+    if (ex && ex.offline) {
+      err.textContent = 'Server nicht erreichbar – prüfe Verbindung …';
+      err.textContent = await syncDiagnose(document.getElementById('syncUrl').value);
+    } else {
+      err.textContent = ex.status === 400 ? 'E-Mail oder Passwort falsch (bzw. Konto nicht in "users" angelegt).' : 'Anmeldung fehlgeschlagen: ' + (ex && ex.message ? ex.message : ex);
+    }
     btn.disabled = false;
     btn.textContent = 'Anmelden';
   }
 }
 window.submitSyncLogin = submitSyncLogin;
+
+// "Verbindung testen": unterscheidet "Server nicht erreichbar" von
+// "Server antwortet, aber der Browser blockiert den Zugriff"
+async function syncDiagnose(rawUrl) {
+  const url = normalizeSyncUrl(rawUrl);
+  if (!window.crypto || !window.crypto.subtle) {
+    return 'Dieser Browser erlaubt die nötige Verschlüsselung hier nicht – die App muss über https geöffnet sein.';
+  }
+  try {
+    const res = await fetch(url + '/api/health', { cache: 'no-store' });
+    if (res.ok) return `Verbindung zu ${url} klappt. ✔`;
+    return `Server antwortet, aber mit Fehler ${res.status}. Ist die Adresse ${url} wirklich der PocketBase-Server?`;
+  } catch (e) {
+    try {
+      await fetch(url + '/api/health', { mode: 'no-cors', cache: 'no-store' });
+      return `Der Server ${url} ist erreichbar, aber der Browser blockiert den Zugriff der App. Häufigste Ursache: Chrome fragt nach der Berechtigung "Lokales Netzwerk" bzw. "Geräte im lokalen Netzwerk" – auf das Schloss links neben der Adresse der App tippen → Website-Einstellungen → Zugriff erlauben. Sonst CORS-Einstellungen des Servers prüfen.`;
+    } catch (e2) {
+      return `Keine Verbindung zu ${url}. Ist Tailscale auf diesem Gerät eingeschaltet und die Adresse richtig? (Test: diese Adresse + /api/health im Browser öffnen)`;
+    }
+  }
+}
+
+async function runSyncDiagnose() {
+  const out = document.getElementById('syncDiagnoseResult');
+  if (!out) return;
+  out.textContent = 'Teste Verbindung …';
+  const urlInput = document.getElementById('syncUrl');
+  out.textContent = await syncDiagnose(urlInput ? urlInput.value : (syncState && syncState.url));
+}
+window.runSyncDiagnose = runSyncDiagnose;
 
 // Gast-Konten (Feld "gast" am Nutzer): nur die Garage mit den geteilten Fahrzeugen
 function applySyncGuestMode() {
