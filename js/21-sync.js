@@ -311,8 +311,14 @@ async function syncDownloadImage(hash) {
 }
 
 /* --- Anmelden / Abmelden --- */
+// "gast" darf als Bool- oder als Textfeld angelegt sein (ja/true/1/x = Gast)
+function syncIsGuestValue(v) {
+  if (typeof v === 'string') return ['ja', 'true', '1', 'x', 'yes', 'gast'].includes(v.trim().toLowerCase());
+  return v === true || v === 1;
+}
+
 function syncPickUser(rec) {
-  return { id: rec.id, name: rec.name || '', email: rec.email || '', gast: !!rec.gast };
+  return { id: rec.id, name: rec.name || '', email: rec.email || '', gast: syncIsGuestValue(rec.gast) };
 }
 
 async function syncLogin(url, email, password) {
