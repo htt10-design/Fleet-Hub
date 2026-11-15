@@ -618,13 +618,17 @@ async function syncSettings(remote, known) {
 /* --- Freigabe ("Teilen mit ...") --- */
 async function syncLoadUsers(force) {
   if (syncUsersCache && !force) return syncUsersCache;
-  const items = await pbListAll('users', '&fields=id,name,email,gast&sort=name');
-  syncUsersCache = items.map(syncPickUser);
+  // bewusst ohne serverseitige Sortierung: fehlt ein Feld (z.B. "name"),
+  // würde PocketBase die ganze Anfrage ablehnen
+  const items = await pbListAll('users');
+  syncUsersCache = items.map(syncPickUser).sort((a, b) => syncUserLabel(a).localeCompare(syncUserLabel(b), 'de'));
   return syncUsersCache;
 }
 
 function syncUserLabel(u) {
-  return u ? (u.name || u.email || 'Unbekannt') : 'Unbekannt';
+  if (!u) return 'Unbekannt';
+  // E-Mail ist für andere meist verborgen -> ohne Namen wenigstens eindeutig
+  return u.name || u.email || ('Konto ' + String(u.id).slice(0, 6));
 }
 
 async function renderVehicleShareCard() {
@@ -643,7 +647,8 @@ async function renderVehicleShareCard() {
     return;
   }
   let users = [];
-  try { users = await syncLoadUsers(); } catch (e) { /* offline: nur Basisinfo */ }
+  let usersError = null;
+  try { users = await syncLoadUsers(); } catch (e) { usersError = e; }
   if (map.owner !== syncState.user.id) {
     const owner = users.find(u => u.id === map.owner);
     body.innerHTML = `<p class="sub-text">Dieses Fahrzeug wurde von <strong>${escapeHtml(syncUserLabel(owner))}</strong> mit dir geteilt. Deine Einträge werden für beide abgeglichen.</p>`;
@@ -652,7 +657,11 @@ async function renderVehicleShareCard() {
   let others = users.filter(u => u.id !== syncState.user.id);
   if (others.length === 0) {
     // evtl. wurde inzwischen ein Konto angelegt -> Liste frisch laden
-    try { others = (await syncLoadUsers(true)).filter(u => u.id !== syncState.user.id); } catch (e) { /* offline */ }
+    try { others = (await syncLoadUsers(true)).filter(u => u.id !== syncState.user.id); usersError = null; } catch (e) { usersError = e; }
+  }
+  if (usersError) {
+    body.innerHTML = `<p class="sub-text">Die Konten konnten nicht geladen werden: <strong>${escapeHtml(usersError.message || String(usersError))}</strong></p>`;
+    return;
   }
   if (others.length === 0) {
     body.innerHTML = `<p class="sub-text">Keine weiteren Konten gefunden. Entweder gibt es noch keine – oder die App darf sie nicht sehen:
