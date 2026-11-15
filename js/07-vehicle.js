@@ -48,6 +48,7 @@ function loadActiveVehicle() {
   renderFuelTable();
   renderServiceTable();
   renderDashboard();
+  renderVehicleShareCard();
 }
 
 function openVehicleModal() {
@@ -186,6 +187,10 @@ function createNewVehicle(e) {
 }
 
 function deleteCurrentVehicle() {
+  if (isVehicleSharedWithMe(getActiveVehicle())) {
+    alert("Dieses Fahrzeug wurde mit dir geteilt - löschen kann es nur der Besitzer.");
+    return;
+  }
   if (appData.vehicles.length <= 1) {
     alert("Das letzte eigene Fahrzeug kann nicht gelöscht werden.");
     return;

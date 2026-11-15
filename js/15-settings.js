@@ -132,6 +132,8 @@ function importData(event) {
     if (!appData.customerVehicles) appData.customerVehicles = [];
     // Das wiederhergestellte Backup gilt als gesichert (die Datei existiert ja)
     appData.lastChangeDate = backupDateIso || null;
+    // Mit Konto: Backup beim nächsten Abgleich nur zusammenführen, nichts löschen
+    syncResetMapping();
     saveData({ keepChangeDate: true });
     initApp();
     closeSettingsModal();
@@ -235,6 +237,7 @@ function openSettingsModal() {
   applyCustomerVehiclesVisibility();
   applyVehicleCategoryToggleVisibility();
   applyFuelDealSettingsUI();
+  renderSyncSettings();
 
   document.getElementById('settingsModal').classList.add('active');
 }
@@ -270,7 +273,13 @@ function resetAllData() {
   }
   localStorage.removeItem('sgs_data');
   localStorage.removeItem('fleethub_data');
-  sgsIdbDelete('sgs_data').finally(() => location.reload());
+  // Mit Konto: dieses Gerät auch abmelden - die Daten im Konto bleiben auf dem Server
+  const loggedIn = isSyncLoggedIn();
+  Promise.all([sgsIdbDelete('sgs_data'), loggedIn ? sgsIdbDelete(SYNC_STATE_KEY) : null])
+    .finally(() => {
+      if (loggedIn) alert("Gerät zurückgesetzt und abgemeldet. Die Daten in deinem Konto bleiben auf dem Server erhalten.");
+      location.reload();
+    });
 }
 window.resetAllData = resetAllData;
 /* --- BILDER AUTOMATISCH KOMPRIMIEREN (MAX 800PX / JPEG 70%) --- */

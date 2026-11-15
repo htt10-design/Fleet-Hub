@@ -2410,6 +2410,9 @@ label {
 }
 
 input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="url"],
 input[type="number"],
 input[type="date"],
 input[type="month"],
@@ -3737,3 +3740,31 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   font-size: 0.82rem;
   line-height: 1.4;
 }
+
+/* --- Konto & Abgleich (PocketBase-Sync) --- */
+.sync-indicator[data-state="ok"] { color: var(--accent-success); }
+.sync-indicator[data-state="busy"] svg { animation: syncPulse 1s ease-in-out infinite; }
+.sync-indicator[data-state="offline"],
+.sync-indicator[data-state="login"] { color: var(--accent-warning); }
+.sync-indicator[data-state="error"] { color: var(--accent-danger); }
+@keyframes syncPulse { 50% { opacity: 0.35; } }
+.sync-status-text[data-state="ok"] { color: var(--accent-success); }
+.sync-status-text[data-state="offline"],
+.sync-status-text[data-state="login"] { color: var(--accent-warning); }
+.sync-status-text[data-state="error"] { color: var(--accent-danger); }
+
+.vehicle-share-card { margin-bottom: 1rem; }
+.vehicle-share-card h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+.share-user-list { display: flex; flex-direction: column; gap: 0.4rem; margin: 0.4rem 0; }
+.share-user { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.7rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; }
+.share-user input { width: 18px; height: 18px; accent-color: var(--accent-primary); }
+.share-user small { color: var(--text-muted); }
+
+/* Gast-Konten: nur die Garage mit den geteilten Fahrzeugen */
+.sync-guest #card-kunden,
+.sync-guest #customerToggleOn,
+.sync-guest [onclick="openVehicleModal()"],
+.sync-guest [onclick="archiveCurrentVehicle()"],
+.sync-guest [onclick="deleteCurrentVehicle()"],
+.sync-guest .settings-accordion-danger,
+.sync-guest #bizDetails { display: none !important; }

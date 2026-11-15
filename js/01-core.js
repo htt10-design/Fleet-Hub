@@ -148,15 +148,19 @@ async function initApp() {
     }
   }
 
-  if (!appDataLoaded) {
-    loadDefaultData();
-  }
-
-  if (!appData.vehicles || appData.vehicles.length === 0) {
-    loadDefaultData();
+  // Mit Konto-Anmeldung kommen die Fahrzeuge vom Server - dann keine
+  // Beispieldaten anlegen, eine leere Garage ist dort in Ordnung
+  const syncLoggedIn = await loadSyncState();
+  if (!appDataLoaded || !appData.vehicles || appData.vehicles.length === 0) {
+    if (syncLoggedIn) {
+      if (!appDataLoaded) { loadDefaultData(); }
+      appData.vehicles = [];
+    } else {
+      loadDefaultData();
+    }
   }
   if (!appData.activeVehicleId || !appData.vehicles.some(v => v.id === appData.activeVehicleId)) {
-    appData.activeVehicleId = appData.vehicles[0].id;
+    appData.activeVehicleId = appData.vehicles[0] ? appData.vehicles[0].id : null;
   }
 
   if (!appData.customerVehicles) {
@@ -236,6 +240,7 @@ async function initApp() {
   showTab('dashboard', defaultNavBtn);
 
   renderBackupReminder();
+  initSync();
 }
 
 function loadDefaultData() {
@@ -291,6 +296,8 @@ function loadDefaultData() {
 function saveData(options = {}) {
   // Zeitpunkt der letzten Änderung merken (für die Backup-Erinnerung).
   // keepChangeDate: z.B. beim Backup selbst oder beim Anlegen der Demo-Daten
+  // Abgleich mit dem Server anstoßen (nicht, wenn die Änderung selbst vom Server kam)
+  if (!options.fromSync && typeof scheduleSync === 'function') scheduleSync();
   if (!options.keepChangeDate) {
     appData.lastChangeDate = new Date().toISOString();
     if (!appData.firstChangeDate) appData.firstChangeDate = appData.lastChangeDate;

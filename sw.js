@@ -5,7 +5,7 @@
 // Nur so merkt der Browser, dass es eine neue Version gibt und lädt sie
 // nach - sonst bekommen Nutzer u.U. dauerhaft die alte, zwischengespeicherte
 // Version ausgeliefert.
-const CACHE_VERSION = 'sgs-pro-v41';
+const CACHE_VERSION = 'sgs-pro-v42';
 
 // Alle Dateien, die die App offline-fähig machen ("App-Shell")
 const APP_SHELL_FILES = [
@@ -34,6 +34,7 @@ const APP_SHELL_FILES = [
   './js/18-fuel-deal.js',
   './js/19-cost-details.js',
   './js/20-spritmonitor-import.js',
+  './js/21-sync.js',
   './w124-front.webp',
   './icons/logo-dark.png',
   './icons/logo-light.png',

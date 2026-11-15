@@ -16,6 +16,7 @@ sw.js                 Service Worker (App-Shell-Cache, network-first)
 manifest.json, icons/ PWA-Manifest, App-Icons, SGS-Logos (logo-dark/-light.png)
 w124-front.webp       Foto für die Garagentor-Animation
 tools/smoke-test.js   Browser-Smoke-Test (Playwright)
+server/               PocketBase-Setup: Collections zum Import + Anleitung (README.md)
 tuning.html, tuning/  Prototyp „Tuning-Studio“ (3D, three.js aus vendor/three/, ES-Module) – eigene Seite, nicht in der App verlinkt
 ```
 
@@ -43,6 +44,7 @@ tuning.html, tuning/  Prototyp „Tuning-Studio“ (3D, three.js aus vendor/thre
 | 18-fuel-deal | Optionaler Tank-Deal (z.B. Shell Smart Deal): Literkontingent Monat/Jahr, Ersparnis |
 | 19-cost-details | Popup „Kosten im Detail“ hinter der Gesamtkosten-Kachel (Zeitraum, Kategorien Sprit/Werkstatt/Sonstiges, Kraftstoffsorten, Verlauf) + Mini-Vorschau in der Kachel |
 | 20-spritmonitor-import | Import/Sync der Spritmonitor-Tankungen (.csv): Kraftstoff-Nummern zuordnen, Tankstelle/Ort → Notiz, Duplikate überspringen |
+| 21-sync | Optionaler Abgleich mit PocketBase (Konto & Abgleich, Freigabe „Teilen mit“, Gast-Konten): Drei-Wege-Merge je Datensatz, Revisionsprüfung, Fotos als Dateien |
 
 ## Konventionen
 
@@ -57,6 +59,10 @@ tuning.html, tuning/  Prototyp „Tuning-Studio“ (3D, three.js aus vendor/thre
 - Datenmodell abwärtskompatibel halten (fehlende Felder tolerieren) – es gibt keine Migrationen,
   und Backups (JSON-Export) älterer Versionen müssen importierbar bleiben.
 - **Bei jeder Änderung an index.html / js / style.css `CACHE_VERSION` in `sw.js` hochzählen.**
+- Sync: Login-Token & Sync-Stand liegen unter eigenem IndexedDB-Key (`sgs_sync_state`), nie in `appData`.
+  `saveData()` stößt den Abgleich an (`{ fromSync: true }` unterdrückt das). Neue Felder in Fahrzeugen
+  brauchen nichts Besonderes – der Merge arbeitet generisch; Listen mit `id` werden eintragsweise gemergt.
+  Änderungen an den Server-Regeln: `server/pocketbase-collections.json` mitpflegen.
 
 ## Prüfen
 

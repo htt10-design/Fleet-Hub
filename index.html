@@ -52,6 +52,7 @@
 <!-- STEP 1: KACHEL-AUSWAHL STARTBILDSCHIRM -->
 <div id="selection-screen" class="selection-container">
   <div class="header-controls-floating">
+    <button class="btn-theme-toggle sync-indicator" onclick="syncNow()" title="Abgleich" style="display: none;"><svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></button>
     <button class="btn-theme-toggle" id="themeToggleBtnSelection" onclick="toggleTheme()" title="Design wechseln">
       <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
     </button>
@@ -150,6 +151,7 @@
       </div>
     </div>
     <div class="header-controls">
+      <button class="btn-theme-toggle sync-indicator" onclick="syncNow()" title="Abgleich" style="display: none;"><svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></button>
       <button class="btn-theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" title="Design wechseln">
         <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
       </button>
@@ -952,6 +954,11 @@
 
             <hr class="divider">
 
+            <div class="vehicle-share-card" id="vehicleShareCard" style="display: none;">
+              <h3>Freigabe</h3>
+              <div id="vehicleShareBody"></div>
+            </div>
+
             <div class="backup-section">
               <p class="sub-text">Backup, Rechnungsdaten und weitere App-Einstellungen findest du jetzt im Einstellungen-Menü (Zahnrad-Symbol oben rechts).</p>
             </div>
@@ -1250,6 +1257,13 @@
               <button type="submit" class="btn btn-primary">Deal Speichern</button>
             </div>
           </form>
+        </details>
+      </div>
+
+      <div class="detail-section">
+        <details class="settings-accordion" id="syncDetails">
+          <summary><span class="settings-summary-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></span>Konto &amp; Abgleich</summary>
+          <div id="syncSettingsBody"></div>
         </details>
       </div>
 
@@ -1812,5 +1826,6 @@
   <script src="js/18-fuel-deal.js"></script>
   <script src="js/19-cost-details.js"></script>
   <script src="js/20-spritmonitor-import.js"></script>
+  <script src="js/21-sync.js"></script>
 </body>
 </html>
