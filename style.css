@@ -3768,3 +3768,28 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 .sync-guest [onclick="deleteCurrentVehicle()"],
 .sync-guest .settings-accordion-danger,
 .sync-guest #bizDetails { display: none !important; }
+
+/* ==========================================================================
+   iPhone als Home-Bildschirm-App (viewport-fit=cover, Statusleiste transparent):
+   Statusleiste/Notch oben und Home-Balken unten liegen über der Seite -> Abstand halten
+   ========================================================================== */
+.header-controls-floating {
+  top: calc(1rem + env(safe-area-inset-top));
+  right: calc(1.25rem + env(safe-area-inset-right));
+}
+.selection-container { padding-top: env(safe-area-inset-top); }
+.app-header {
+  height: calc(52px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  padding-left: calc(1rem + env(safe-area-inset-left));
+  padding-right: calc(1rem + env(safe-area-inset-right));
+}
+.modal-overlay {
+  padding-top: calc(0.75rem + env(safe-area-inset-top));
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+@media (max-width: 850px) {
+  .app-container { padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+  .sidebar { height: calc(54px + env(safe-area-inset-bottom)); }
+  .fab-add-btn { bottom: calc(5rem + env(safe-area-inset-bottom)); }
+}
