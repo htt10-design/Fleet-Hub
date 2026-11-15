@@ -46,40 +46,11 @@ In **users → New record** je Person: E-Mail, Passwort, **Name** (wird in der A
 
 Freigeben: in der App beim Fahrzeug → Reiter **Stammdaten** → Abschnitt **Freigabe** → Häkchen setzen.
 
-## 4. Erreichbarkeit ohne Tailscale-App (Tailscale Funnel)
+## 4. Erreichbarkeit ohne Tailscale-App
 
-Damit deine Freundin die Tailscale-App nicht braucht, kann Tailscale **Funnel** genau diesen Dienst
-öffentlich per HTTPS unter derselben Adresse anbieten:
-
-```
-tailscale funnel --bg 8090        # 8090 = Port, auf dem PocketBase im Container lauscht
-tailscale funnel status
-```
-
-(Funnel muss einmalig in der Tailscale-Admin-Konsole für dein Tailnet erlaubt werden.)
-
-Weil der Server dann im Internet erreichbar ist, **unbedingt absichern**:
-
-- **Keine Selbstregistrierung** (siehe Schritt 2, Create rule gesperrt).
-- **Starke Passwörter** für alle Konten, besonders für den Admin.
-- **Admin-Konto mit MFA/OTP**: Admin → Settings → Superusers → Auth options.
-- **Rate-Limiting** einschalten: Settings → Application → *Rate limiting*.
-- **Admin-Oberfläche nicht öffentlich**: Am saubersten liegt ein kleiner Reverse-Proxy vor PocketBase,
-  der `/_/` und `/api/collections/_superusers` nur aus dem Tailnet zulässt und Funnel auf den Proxy zeigt.
-  Beispiel mit Caddy (Port 8091 per Funnel freigeben, PocketBase bleibt auf 8090):
-
-  ```
-  :8091 {
-      @admin path /_/* /api/collections/_superusers/*
-      handle @admin {
-          @tailnet remote_ip 100.64.0.0/10
-          handle @tailnet { reverse_proxy pocketbase:8090 }
-          respond 403
-      }
-      reverse_proxy pocketbase:8090
-  }
-  ```
-- **Backups** von `pb_data` einrichten (z. B. täglich per Cron/Docker-Volume-Backup).
+Empfohlener Aufbau: eigene PocketBase-Instanz „privat“ (getrennt von anderen Apps), öffentlich nur über
+Tailscale Funnel **hinter einem Filter**, der ausschließlich App-Anfragen durchlässt; Admin nur im Tailnet.
+→ Schritt-für-Schritt: [`privat/ANLEITUNG.md`](privat/ANLEITUNG.md) (Dockerfile, docker-compose.yml, Caddyfile liegen daneben).
 
 Ohne Funnel funktioniert alles genauso – dann braucht jedes Gerät die Tailscale-App.
 

@@ -1,0 +1,28 @@
+# Filter vor der privaten PocketBase für den öffentlichen Zugang (Tailscale Funnel).
+# Durch kommen NUR die Anfragen, die die Apps brauchen; alles andere -> 403.
+# Admin-Oberfläche, Superuser-Login, Einstellungen, Backups, Logs usw. sind von außen gesperrt.
+#
+# Neue private App? Ihre Collections mit eigenem Präfix anlegen (z.B. "haus_") und
+# unten an BEIDEN Stellen "(sgs)" zu "(sgs|haus)" erweitern, dann:
+#   docker compose restart caddy
+{
+	admin off
+	auto_https off
+}
+
+:8091 {
+	route {
+		# Konten dürfen von außen nur gelesen werden (Namen für "Teilen mit"),
+		# nicht angelegt oder verändert
+		@usersWrite {
+			path_regexp ^/api/collections/users/records
+			not method GET OPTIONS
+		}
+		respond @usersWrite 403
+
+		@app path_regexp ^/api/(health|files/token|files/(sgs)_images/[a-z0-9]{15}/[A-Za-z0-9_.-]+|collections/users/(auth-with-password|auth-refresh|records)|collections/(sgs)_[a-z_]+/records(/[a-z0-9]{15})?)$
+		reverse_proxy @app pb-privat:8090
+
+		respond 403
+	}
+}

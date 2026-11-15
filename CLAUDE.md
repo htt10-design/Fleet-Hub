@@ -16,7 +16,7 @@ sw.js                 Service Worker (App-Shell-Cache, network-first)
 manifest.json, icons/ PWA-Manifest, App-Icons, SGS-Logos (logo-dark/-light.png)
 w124-front.webp       Foto für die Garagentor-Animation
 tools/smoke-test.js   Browser-Smoke-Test (Playwright)
-server/               PocketBase-Setup: Collections zum Import + Anleitung (README.md)
+server/               PocketBase-Setup: Collections zum Import + Anleitung (README.md); privat/ = eigene Instanz mit Caddy-Filter + Funnel (ANLEITUNG.md)
 tuning.html, tuning/  Prototyp „Tuning-Studio“ (3D, three.js aus vendor/three/, ES-Module) – eigene Seite, nicht in der App verlinkt
 ```
 

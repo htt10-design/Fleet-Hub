@@ -1,0 +1,32 @@
+# Private PocketBase-Instanz (SGS Pro + künftige private Apps), getrennt von den Job-Apps.
+# - pb-privat: nur auf 127.0.0.1:8095 -> per "tailscale serve" NUR im Tailnet (Admin)
+# - caddy:     nur auf 127.0.0.1:8096 -> per "tailscale funnel" öffentlich, lässt nur App-Anfragen durch
+services:
+  pb-privat:
+    build: .
+    container_name: pb-privat
+    restart: unless-stopped
+    volumes:
+      - pb_privat_data:/pb/pb_data
+    ports:
+      - "127.0.0.1:8095:8090"
+    networks: [privat]
+
+  caddy:
+    image: caddy:2.8.4-alpine
+    container_name: pb-privat-filter
+    restart: unless-stopped
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "127.0.0.1:8096:8091"
+    depends_on: [pb-privat]
+    networks: [privat]
+
+networks:
+  privat:
+    name: pb-privat
+
+volumes:
+  pb_privat_data:
+    name: pb_privat_data
