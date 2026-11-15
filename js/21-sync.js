@@ -32,6 +32,7 @@ let syncStatusText = '';
 let syncUiRefreshPending = false;
 let syncUsersCache = null;
 const syncHashCache = new Map(); // dataURL -> Hash (nur im Speicher)
+const syncBadImages = new Set();  // Hashes von Bildern, die nicht als Datei hochladbar sind (bleiben eingebettet)
 
 // Server-Adresse vereinheitlichen: Leerzeichen, abschließende "/" und eine
 // versehentlich mitkopierte Admin-Adresse ("/_/") entfernen, https ergänzen
@@ -222,6 +223,7 @@ async function syncToRemoteForm(value, images) {
   if (typeof value === 'string') {
     if (value.startsWith('data:image/')) {
       const h = await syncHash(value);
+      if (syncBadImages.has(h)) return value; // nicht hochladbar -> eingebettet lassen
       images.set(h, value);
       return 'pbimg:' + h;
     }
@@ -273,22 +275,78 @@ async function syncLookupImages(hashes) {
   }
 }
 
+// Data-URL -> Blob ohne fetch() (fetch auf Data-URLs scheitert je nach Browser/Größe
+// oder bei leicht defektem Base64 mit "Failed to fetch"). Liefert null, wenn nicht lesbar.
+function syncDataUrlToBlob(dataUrl) {
+  try {
+    const comma = dataUrl.indexOf(',');
+    if (comma < 0) return null;
+    const meta = dataUrl.slice(5, comma); // ohne "data:"
+    const parts = meta.split(';');
+    const mime = (parts[0] || 'image/jpeg').trim().toLowerCase();
+    let payload = dataUrl.slice(comma + 1);
+    let bytes;
+    if (parts.some(p => p.trim().toLowerCase() === 'base64')) {
+      payload = payload.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
+      if (payload.length % 4 === 1) payload = payload.slice(0, -1); // abgeschnittenes Zeichen
+      while (payload.length % 4) payload += '=';
+      const bin = atob(payload);
+      bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    } else {
+      bytes = new TextEncoder().encode(decodeURIComponent(payload));
+    }
+    if (!bytes.length) return null;
+    return new Blob([bytes], { type: mime });
+  } catch (e) {
+    return null;
+  }
+}
+
+// Lädt fehlende Bilder hoch. Ein einzelnes kaputtes/abgelehntes Bild bricht den Abgleich
+// nicht ab: es wird gemerkt und bleibt im Datensatz eingebettet (siehe syncInlineBadImages).
+// Nur Verbindungs- und Anmeldefehler brechen ab.
 async function syncUploadImages(images) {
-  const hashes = [...images.keys()].filter(h => !syncState.images[h]);
+  const hashes = [...images.keys()].filter(h => !syncState.images[h] && !syncBadImages.has(h));
   if (hashes.length === 0) return;
   await syncLookupImages(hashes);
   for (const h of hashes) {
     if (syncState.images[h]) continue;
-    const dataUrl = images.get(h);
-    const blob = await (await fetch(dataUrl)).blob();
-    const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-    const form = new FormData();
-    form.append('owner', syncState.user.id);
-    form.append('hash', h);
-    form.append('file', blob, `${h}.${ext}`);
-    const rec = await pbFetch('/api/collections/sgs_images/records', { method: 'POST', body: form });
-    syncState.images[h] = { id: rec.id, file: rec.file };
+    try {
+      const blob = syncDataUrlToBlob(images.get(h));
+      if (!blob) throw new Error('Bilddaten nicht lesbar');
+      const ext = ((blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg').replace(/[^a-z0-9]/g, '')) || 'jpg';
+      const form = new FormData();
+      form.append('owner', syncState.user.id);
+      form.append('hash', h);
+      form.append('file', blob, `${h}.${ext}`);
+      const rec = await pbFetch('/api/collections/sgs_images/records', { method: 'POST', body: form });
+      syncState.images[h] = { id: rec.id, file: rec.file };
+    } catch (e) {
+      if (e && (e.offline || e.status === 401)) throw e;
+      console.warn('Bild konnte nicht hochgeladen werden, bleibt eingebettet:', h, e);
+      syncBadImages.add(h);
+    }
   }
+}
+
+// Ersetzt Verweise auf nicht hochladbare Bilder wieder durch die eingebettete Data-URL
+function syncInlineBadImages(value, images) {
+  if (syncBadImages.size === 0) return value;
+  if (typeof value === 'string') {
+    if (value.startsWith('pbimg:')) {
+      const h = value.slice(6);
+      if (syncBadImages.has(h) && images.has(h)) return images.get(h);
+    }
+    return value;
+  }
+  if (Array.isArray(value)) return value.map(x => syncInlineBadImages(x, images));
+  if (isPlainObject(value)) {
+    const out = {};
+    for (const k of Object.keys(value)) out[k] = syncInlineBadImages(value[k], images);
+    return out;
+  }
+  return value;
 }
 
 let syncFileToken = null;
@@ -401,7 +459,9 @@ async function runSync(opts = {}) {
       saveData({ fromSync: true });
       refreshUiAfterSync();
     }
-    setSyncStatus('ok', 'Synchron');
+    setSyncStatus('ok', syncBadImages.size
+      ? `Synchron – ${syncBadImages.size} Foto(s) konnten nicht als Datei hochgeladen werden und bleiben im Datensatz`
+      : 'Synchron');
   } catch (e) {
     console.warn('Sync fehlgeschlagen:', e);
     if (e && e.status === 401) {
@@ -527,10 +587,12 @@ async function syncCollection(c) {
   const nextList = [];
   for (const local of list) {
     const map = c.recMap[local.id];
-    const remoteData = await syncToRemoteForm(local, c.known);
+    let remoteData = await syncToRemoteForm(local, c.known);
+    // Bilder zuerst hochladen; nicht hochladbare bleiben eingebettet
+    await syncUploadImages(c.known);
+    remoteData = syncInlineBadImages(remoteData, c.known);
     if (!map) {
       // neu auf diesem Gerät -> hochladen
-      await syncUploadImages(c.known);
       const body = { owner: c.me, [c.idField]: local.id, data: remoteData, rev: syncNewRev() };
       const rec = await pbFetch(`/api/collections/${c.collection}/records`, { method: 'POST', json: body });
       c.recMap[local.id] = { id: rec.id, owner: rec.owner, shared_with: rec.shared_with || [] };
@@ -550,7 +612,6 @@ async function syncCollection(c) {
     map.shared_with = r.shared_with || [];
     const merged = syncMerge3(c.baseMap[map.id], remoteData, r.data || {});
     if (!syncEqual(merged, r.data)) {
-      await syncUploadImages(c.known);
       await pbUpdateWithRev(c.collection, r, { data: merged });
     }
     c.baseMap[map.id] = merged;
@@ -594,7 +655,9 @@ function syncRenameLocalCustomer(oldId, newId, list) {
 
 // Konto-Einstellungen: Tank-Deal & Rechnungsdaten gelten für alle Geräte des Kontos
 async function syncSettings(remote, known) {
-  const local = await syncToRemoteForm({ fuelDeal: appData.fuelDeal || null, businessInfo: appData.businessInfo || null }, known);
+  let local = await syncToRemoteForm({ fuelDeal: appData.fuelDeal || null, businessInfo: appData.businessInfo || null }, known);
+  await syncUploadImages(known); // z.B. Logo in den Rechnungsdaten
+  local = syncInlineBadImages(local, known);
   if (!remote) {
     if (syncState.user.gast && !appData.fuelDeal) return false;
     const rec = await pbFetch('/api/collections/sgs_user_settings/records', { method: 'POST', json: { owner: syncState.user.id, data: local, rev: syncNewRev() } });
