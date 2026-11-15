@@ -649,9 +649,15 @@ async function renderVehicleShareCard() {
     body.innerHTML = `<p class="sub-text">Dieses Fahrzeug wurde von <strong>${escapeHtml(syncUserLabel(owner))}</strong> mit dir geteilt. Deine Einträge werden für beide abgeglichen.</p>`;
     return;
   }
-  const others = users.filter(u => u.id !== syncState.user.id);
+  let others = users.filter(u => u.id !== syncState.user.id);
   if (others.length === 0) {
-    body.innerHTML = '<p class="sub-text">Es gibt noch keine weiteren Konten auf deinem Server.</p>';
+    // evtl. wurde inzwischen ein Konto angelegt -> Liste frisch laden
+    try { others = (await syncLoadUsers(true)).filter(u => u.id !== syncState.user.id); } catch (e) { /* offline */ }
+  }
+  if (others.length === 0) {
+    body.innerHTML = `<p class="sub-text">Keine weiteren Konten gefunden. Entweder gibt es noch keine – oder die App darf sie nicht sehen:
+      im PocketBase-Admin bei <strong>users → API Rules</strong> die <em>List/Search rule</em> und <em>View rule</em> auf
+      <code>@request.auth.id != ""</code> setzen. Danach diesen Reiter neu öffnen.</p>`;
     return;
   }
   body.innerHTML = `
